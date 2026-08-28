@@ -2332,6 +2332,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "musa-au"
+version = "0.1.0"
+dependencies = [
+ "musa-project",
+ "tempfile",
+]
+
+[[package]]
 name = "musa-calculus"
 version = "0.1.0"
 dependencies = [

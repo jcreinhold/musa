@@ -217,6 +217,21 @@ impl VoiceAllocator {
         }
     }
 
+    /// Silence every voice at once, held or decaying.
+    ///
+    /// Not a release: a release is what a player asks for, and this is what a
+    /// *host* asks for when it stops, loops, or hands the component a
+    /// discontinuity. A tail crossing that seam would be this instrument
+    /// sounding in a place the host did not put it.
+    pub(crate) fn silence(&mut self) {
+        for voice in &mut self.voices {
+            voice.instance = None;
+            voice.held = false;
+            voice.phase = 0.0;
+            voice.envelope = Adsr::IDLE;
+        }
+    }
+
     /// Voices currently making sound (gated or decaying).
     #[cfg(test)]
     fn sounding(&self) -> usize {

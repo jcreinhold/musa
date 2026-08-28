@@ -28,12 +28,26 @@ pub(crate) fn build(
     studio: &musa_dsp::StudioExecution,
     assets: &crate::assets::AssetInventory,
 ) -> Result<musa_dsp::PreparedAudio, ProjectError> {
+    build_at(score, studio, assets, sample_rate())
+}
+
+/// The same preparation, exact for a rate a host chose rather than the one
+/// this project plays at.
+///
+/// Split out for the hosted crossing (`06-daw-boundary.md` §3): a workstation
+/// states the rate, and preparing at one rate and rendering at another is the
+/// approximation §4 forbids at exactly this edge.
+pub(crate) fn build_at(
+    score: &ScoreSnapshot,
+    studio: &musa_dsp::StudioExecution,
+    assets: &crate::assets::AssetInventory,
+    sample_rate: u32,
+) -> Result<musa_dsp::PreparedAudio, ProjectError> {
     let gestures = lower_gestures(score).map_err(|e| ProjectError::Performance(e.to_string()))?;
     let instruments = musa_compiler::checked_standard_instruments()
         .map_err(|diagnostics| ProjectError::Performance(format!("{diagnostics:#?}")))?;
     let instrument_machine = musa_compiler::checked_standard_instrument_machine()
         .map_err(|diagnostics| ProjectError::Performance(format!("{diagnostics:#?}")))?;
-    let sample_rate = sample_rate();
     let rate = std::num::NonZeroU32::new(sample_rate)
         .ok_or_else(|| ProjectError::Performance("the audio sample rate must be nonzero".to_owned()))?;
     let format = musa_dsp::AudioFormat::new(rate, musa_dsp::ChannelLayout::Stereo);

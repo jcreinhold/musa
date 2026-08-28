@@ -32,7 +32,7 @@ LAYERS: dict[str, frozenset[str]] = {
     "pipeline": frozenset({"musa-compiler"}),
     "consumer": frozenset({"musa-notation", "musa-playback"}),
     "session": frozenset({"musa-project"}),
-    "shell": frozenset({"musa", "musa-lsp", "musa-wasm", "musa-desktop"}),
+    "shell": frozenset({"musa", "musa-au", "musa-lsp", "musa-wasm", "musa-desktop"}),
 }
 
 ALLOWED_DEPENDENCIES: dict[str, frozenset[str]] = {

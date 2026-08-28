@@ -325,6 +325,17 @@ impl PreparedAudio {
         }
     }
 
+    /// Silence every live voice of one prepared instrument at once.
+    ///
+    /// Allocation-free, and immediate rather than released: a host that
+    /// stops, loops, or reports a discontinuity is saying this instrument
+    /// stops *there*, and a release tail crossing that seam would be Musa
+    /// sounding somewhere the host did not put it. Scheduled playback is
+    /// untouched — this is the audition half of the plan.
+    pub fn silence_audition(&mut self, target: PreparedAuditionTarget) {
+        self.plan.live_silence(target.0);
+    }
+
     /// Advance the prepared DSP state once without advancing the score.
     ///
     /// This is the audition counterpart of [`Self::step`]: release tails and

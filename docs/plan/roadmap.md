@@ -2589,6 +2589,53 @@ Verovio behind the `Engraver` interface and is shared with the desktop UI, and `
 `@musa/web`. They consume the built artifact; no crate depends on them, and the two build systems check separately.
 
 
+## 15.16 `musa-au`
+
+The fifth shell, and the only one whose caller is not ours: a `staticlib` with a C ABI that a macOS AUv3 Music Device
+renders one checked Musa instrument through. Like the other shells it adds no semantics — `musa-project` has already
+compiled the source, verified the asset closure, and prepared the audio graph for the host's exact rate — and its whole
+job is to make that preparation reachable from Objective-C without a Rust type, an allocator, a `String`, or a panic
+crossing the boundary.
+
+It sits on `musa-project` for the same reason `musa` and `musa-lsp` do: a component opens a project, and opening a
+project is a session's work. It is the workspace's one exception to `unsafe-code = "deny"`, argued in
+`crates/musa-au/TRUST.md`, because a C ABI has no safe spelling and hiding each `unsafe` behind a helper marked `unsafe`
+would satisfy the lint while changing nothing about what is trusted.
+
+Owns:
+
+- the fixed-layout event record and the ABI version the header and the component both assert against;
+- the two-sided contract — a control-side preparation that reads files and allocates, and a render side that does
+  neither;
+- the generated header `crates/musa-au/include/musa_au.h`, committed and checked by a test rather than written by hand;
+- nothing else. Not Apple plumbing, not MIDI decoding, not a parameter tree, not a transport.
+
+Dependencies:
+
+```text
+musa-project
+```
+
+No `tracing`: a render callback may not log, and a control-side diagnostic already crosses as a string the caller owns.
+
+Public interface:
+
+```c
+uint32_t             musa_au_abi_version(void);
+MusaAuPreparation   *musa_au_prepare(const char *project, const char *piece, const char *part, uint32_t sample_rate);
+MusaAuInstrument    *musa_au_preparation_take(MusaAuPreparation *preparation);
+void                 musa_au_render(MusaAuInstrument *, const MusaAuEvent *, uint32_t, float *, float *, uint32_t);
+void                 musa_au_reset(MusaAuInstrument *instrument);
+```
+
+`crate-type = ["staticlib", "rlib"]`, so the boundary's own laws — that a different block partition is unobservable,
+that rendering allocates nothing — are ordinary Rust tests, and only packaging needs Xcode.
+
+Above it, and outside the Cargo workspace, sits `apps/musa-audio-unit`: a framework holding the component, an
+app-extension bundle that names its principal class, a containing app that grants access to a project, and an automated
+host that measures the component against Apple's own `auval`. `scripts/check-audio-unit.sh` is how that is checked
+locally, ad hoc signed, with no Developer Team and no App Group.
+
 ---
 
 # 16. Project and album organization

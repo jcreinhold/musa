@@ -227,6 +227,13 @@ impl ProcessorInstance {
         allocator.live_note_off(voice);
     }
 
+    fn live_silence(&mut self) {
+        let Self::PolySine { allocator } = self else {
+            return;
+        };
+        allocator.silence();
+    }
+
     fn instantiate(
         spec: &StudioGraphSpec,
         node: NodeId,
@@ -942,6 +949,15 @@ impl RenderPlan {
         for step in &mut self.schedule {
             if step.event_input == Some(input) {
                 step.instance.live_note_off(voice);
+            }
+        }
+    }
+
+    /// Silence every live voice of one prepared instrument at once.
+    pub(crate) fn live_silence(&mut self, input: usize) {
+        for step in &mut self.schedule {
+            if step.event_input == Some(input) {
+                step.instance.live_silence();
             }
         }
     }

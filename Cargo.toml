@@ -9,6 +9,7 @@ repository = "https://github.com/jcreinhold/musa"
 version = "0.1.0"
 
 [workspace.dependencies]
+musa-au = { path = "crates/musa-au", version = "0.1.0" }
 musa-calculus = { path = "crates/musa-calculus", version = "0.1.0" }
 musa-compiler = { path = "crates/musa-compiler", version = "0.1.0" }
 musa-dsp = { path = "crates/musa-dsp", version = "0.1.0" }

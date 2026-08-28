@@ -59,8 +59,10 @@ let them drift silently.
 | `crates/musa-project` | ProjectSession facade: documents, revisions, commands, exports |
 | `crates/musa` | thin CLI over musa-project, installed as the `musa` binary |
 | `crates/musa-lsp` | thin language server (LSP) over musa-project + musa-syntax |
+| `crates/musa-au` | Audio Unit shell: the audited C ABI a macOS AUv3 Music Device renders a checked instrument through — the one crate the workspace's `unsafe` ban excepts, argued in [`TRUST.md`](crates/musa-au/TRUST.md) |
 | `crates/musa-wasm` | wasm-bindgen shell: musa source → MEI for `@musa/web` |
 | `apps/musa-desktop` | thin Tauri shell + Svelte UI over musa-project |
+| `apps/musa-audio-unit` | the AUv3 Music Device `aumu musa Musa`, its containing app, and the automated host `scripts/check-audio-unit.sh` measures them with |
 | `packages/musa-engrave` | shared worker engraver: Verovio behind the `Engraver` interface |
 | `packages/musa-web` | `@musa/web` — typeset musa scores in the browser |
 | `editors/tree-sitter-musa` | tree-sitter grammar + editor queries, held to the real lexer by the drift law |

@@ -472,6 +472,20 @@ impl ProjectSession {
         session
     }
 
+    /// The last successful compile, for the hosted crossing.
+    ///
+    /// `crate::hosted` needs the same artifacts `install_current_plan` uses
+    /// and must not reach into the session's fields to get them; this is that
+    /// one borrow, named so it is searchable.
+    pub(crate) fn hosted_artifacts(&self) -> Option<&ValidArtifacts> {
+        self.valid.as_ref()
+    }
+
+    /// The verified asset closure behind that compile.
+    pub(crate) const fn hosted_assets(&self) -> &crate::assets::AssetInventory {
+        &self.assets
+    }
+
     /// Everything observable about the session right now.
     ///
     /// Cheap: nothing is compiled, rendered, or copied here. The transport
