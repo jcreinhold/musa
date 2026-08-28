@@ -27,8 +27,8 @@ use serde_json::Value;
 use tauri::{AppHandle, Emitter};
 
 use crate::dto::{
-    BarlinePreviewDto, ErrorDto, ErrorKindDto, ExportedDto, GroupEditPlanDto, PlacementPlanDto, PlacementReportDto,
-    ReviewFactsDto,
+    BarlinePreviewDto, DawReportDto, ErrorDto, ErrorKindDto, ExportedDto, GroupEditPlanDto, PlacementPlanDto,
+    PlacementReportDto, ReviewFactsDto,
 };
 
 /// How often the position is reported while playing (`06-frame-budgets.md` §3).
@@ -57,6 +57,8 @@ enum Job {
     Apply(Request),
     Transport(TransportRequest),
     Export(ExportRequest, PathBuf),
+    /// Package one whole bundle for a workstation, into a directory.
+    ExportDawBundle(musa_project::DawExportOptions, PathBuf),
     /// Ask what an edit would change, without making it.
     Impact(EditCommand),
     /// Preview the compiler-proved barline transaction without applying it.
@@ -176,6 +178,10 @@ impl SessionHandle {
 
     pub(crate) fn export(&self, request: ExportRequest, path: PathBuf) -> Reply {
         self.ask(Job::Export(request, path))
+    }
+
+    pub(crate) fn export_daw_bundle(&self, options: musa_project::DawExportOptions, path: PathBuf) -> Reply {
+        self.ask(Job::ExportDawBundle(options, path))
     }
 
     pub(crate) fn snapshot(&self) -> Reply {
@@ -472,6 +478,17 @@ fn perform(session: &mut Option<Project>, job: Job) -> Reply {
             std::fs::write(&path, artifact.as_bytes())
                 .map_err(|error| ErrorDto::shell(ErrorKindDto::File, format!("{}: {error}", path.display())))?;
             serde_json::to_value(ExportedDto::from(path))
+                .map_err(|error| ErrorDto::shell(ErrorKindDto::Backend, error.to_string()))
+        }
+        Job::ExportDawBundle(options, path) => {
+            let open = session.as_ref().ok_or_else(no_project)?;
+            // The project writes the directory. The shell chooses nothing
+            // about what is in it, so there is nothing here to keep in step.
+            let report = open
+                .current()
+                .export_daw_bundle(options, &path)
+                .map_err(|error| ErrorDto::from(&error))?;
+            serde_json::to_value(DawReportDto::from(&report))
                 .map_err(|error| ErrorDto::shell(ErrorKindDto::Backend, error.to_string()))
         }
         Job::Impact(command) => {

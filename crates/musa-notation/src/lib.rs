@@ -24,7 +24,9 @@ mod plan;
 mod render;
 
 pub use crate::error::{NotationError, RenderError};
-pub use crate::midi::{MidiMode, MidiOptions, render_midi};
+pub use crate::midi::{
+    MidiMode, MidiOptions, MidiOrigin, MidiTrack, RenderedMidi, render_midi, render_midi_with_origins,
+};
 pub use crate::plan::{
     ARTICULATION_PLACEMENT, BeamGroup, DYNAMIC_PLACEMENT, FrontMatter, HairpinMark, HairpinRange, KeySignature,
     MeasurePlan, NotatedItem, NotatedKind, NotationOptions, NotationPlan, PhraseMark, PhraseRange, Placement,

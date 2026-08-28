@@ -1111,6 +1111,38 @@ impl ProjectSession {
         Ok(self.travel_to(target))
     }
 
+    /// Write one workstation bundle for the last score that compiled, and
+    /// report what it contains and what it lost.
+    ///
+    /// Every artifact in the directory comes from that one compile and one
+    /// render argument record, which is what makes a MIDI track, a stem, and
+    /// a notation file in it readings of the same piece rather than three
+    /// exports taken at three moments. Nothing in it converts back into
+    /// `.musa` (`docs/rules/across-stages/06-daw-boundary.md`, Rule D1).
+    ///
+    /// The bundle is built whole before anything is written and installed in
+    /// one step, so a failure leaves `destination` exactly as it was.
+    ///
+    /// # Errors
+    /// [`ProjectError::NoValidScore`] if the piece has never compiled;
+    /// [`ProjectError::Assets`] if the destination exists and replacement was
+    /// not asked for, or its parent is not a directory; and the notation,
+    /// performance, or file-system error that stopped the export otherwise.
+    pub fn export_daw_bundle(
+        &self,
+        options: crate::DawExportOptions,
+        destination: &std::path::Path,
+    ) -> Result<crate::DawExportReport, ProjectError> {
+        let span = tracing::info_span!(
+            "export_daw_bundle",
+            profile = options.profile.name(),
+            revision = self.revision.0
+        );
+        let _entered = span.enter();
+        let valid = self.valid.as_ref().ok_or(ProjectError::NoValidScore)?;
+        crate::daw::export_bundle(&self.name, valid, &self.assets, options, destination)
+    }
+
     /// Render the mix and one aligned stem per declared part output and
     /// named bus, from the last score that compiled.
     ///

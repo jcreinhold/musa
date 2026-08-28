@@ -18,8 +18,8 @@ use serde_json::Value;
 use tauri::State;
 
 use crate::dto::{
-    CommandDto, EditDto, ErrorDto, ErrorKindDto, ExportDto, GroupEditDto, ReviewActionDto, ReviewAuditionDto,
-    TemplateDto, TransportDto,
+    CommandDto, DawBundleDto, EditDto, ErrorDto, ErrorKindDto, ExportDto, GroupEditDto, ReviewActionDto,
+    ReviewAuditionDto, TemplateDto, TransportDto,
 };
 use crate::session::SessionHandle;
 
@@ -228,6 +228,24 @@ pub fn export(request: ExportDto, session: State<'_, SessionHandle>) -> Result<V
         .path
         .ok_or_else(|| ErrorDto::shell(ErrorKindDto::File, "Choose where to save the export first"))?;
     session.export(request.target.into(), PathBuf::from(path))
+}
+
+/// Package one workstation bundle into a directory and report what it holds.
+///
+/// The directory is written whole or not at all. What comes back is the
+/// project's own report: every file, and everything the target formats could
+/// not carry.
+///
+/// # Errors
+/// If no destination was chosen, no piece is open, the piece has never
+/// compiled, or the directory cannot be written.
+#[tauri::command]
+pub fn export_daw_bundle(request: DawBundleDto, session: State<'_, SessionHandle>) -> Result<Value, ErrorDto> {
+    let path = request
+        .path
+        .clone()
+        .ok_or_else(|| ErrorDto::shell(ErrorKindDto::File, "Choose where to put the bundle first"))?;
+    session.export_daw_bundle((&request).into(), PathBuf::from(path))
 }
 
 /// Say where in the score the composer is, so a connected keyboard auditions

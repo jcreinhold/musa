@@ -10,9 +10,9 @@ mod ignore;
 use std::process::ExitCode;
 
 use musa_project::{
-    AnalysisKind, AnalysisRequest, AnalysisScope, ExportArtifact, ExportRequest, Logging, MidiMode, MusicalTime,
-    ProjectCommand, ProjectSession, Realization, TransportRequest, asset_inventory, fetch_packages, lock_assets,
-    verify_packages,
+    AnalysisKind, AnalysisRequest, AnalysisScope, DawExportOptions, DawProfile, ExportArtifact, ExportRequest, Logging,
+    MidiMode, MusicalTime, ProjectCommand, ProjectSession, Realization, TransportRequest, asset_inventory,
+    fetch_packages, lock_assets, verify_packages,
 };
 
 fn main() -> ExitCode {
@@ -86,6 +86,8 @@ fn print_usage() {
     println!("      -f                                   format even what `.musaignore` excludes");
     println!("  musa render <file.musa> --to <target>  mei | lilypond | musicxml | midi | wav");
     println!("      --to plan | performance              the debug dumps, to stdout");
+    println!("      --to daw --profile logic | garageband a whole bundle, into a directory");
+    println!("          --replace                        replace a bundle already sitting there");
     println!("      --mode score | performance           for --to midi (default: score)");
     println!("      -o <path>                            where to write it (`-` for stdout)");
     println!("  musa play <file.musa> [--loop]         live playback through the audio engine");
@@ -284,6 +286,8 @@ fn cmd_render(args: &[String], realization: &Realization) -> ExitCode {
     let mut path: Option<&str> = None;
     let mut target = "plan";
     let mut mode = "score";
+    let mut profile = "logic";
+    let mut replace = false;
     let mut output: Option<&str> = None;
     let mut index = 0;
     while index < args.len() {
@@ -299,7 +303,15 @@ fn cmd_render(args: &[String], realization: &Realization) -> ExitCode {
                 mode = args.get(index.saturating_add(1)).map_or("score", String::as_str);
                 index = index.saturating_add(2);
             }
-            "-o" => {
+            "--profile" => {
+                profile = args.get(index.saturating_add(1)).map_or("logic", String::as_str);
+                index = index.saturating_add(2);
+            }
+            "--replace" => {
+                replace = true;
+                index = index.saturating_add(1);
+            }
+            "-o" | "--output" => {
                 output = args.get(index.saturating_add(1)).map(String::as_str);
                 index = index.saturating_add(2);
             }
@@ -313,6 +325,11 @@ fn cmd_render(args: &[String], realization: &Realization) -> ExitCode {
         eprintln!("error: render needs a file");
         return ExitCode::FAILURE;
     };
+    // A bundle is a directory of several artifacts, not one; it leaves the
+    // `ExportRequest` road here rather than pretending to be a file.
+    if target == "daw" {
+        return cmd_render_daw(path, profile, replace, output, realization);
+    }
     let request = match target {
         "plan" => ExportRequest::NotationPlanDump,
         "performance" => ExportRequest::PerformanceDump,
@@ -371,6 +388,57 @@ fn cmd_render(args: &[String], realization: &Realization) -> ExitCode {
         | ExportRequest::NotationPlanDump
         | _ => write_artifact(path, &artifact, output, request.extension()),
     }
+}
+
+/// `musa render <file> --to daw --profile logic|garageband -o <dir>`
+///
+/// One directory, written whole or not at all. What is printed is the report
+/// the project handed back: the files it wrote, and everything the target
+/// formats could not say.
+fn cmd_render_daw(
+    path: &str,
+    profile: &str,
+    replace: bool,
+    output: Option<&str>,
+    realization: &Realization,
+) -> ExitCode {
+    let profile = match profile {
+        "logic" => DawProfile::Logic,
+        "garageband" => DawProfile::GarageBand,
+        other => {
+            eprintln!("error: --profile {other} is not a workstation (logic | garageband)");
+            return ExitCode::FAILURE;
+        }
+    };
+    let Some(output) = output else {
+        eprintln!("error: --to daw writes a directory; say where with -o <dir>");
+        return ExitCode::FAILURE;
+    };
+    let session = match open(path, realization) {
+        Ok(session) => session,
+        Err(code) => return code,
+    };
+    let mut options = DawExportOptions::new(profile);
+    if replace {
+        options = options.replacing();
+    }
+    let report = match session.export_daw_bundle(options, std::path::Path::new(output)) {
+        Ok(report) => report,
+        Err(error) => {
+            eprintln!("error: {path}: {error}");
+            return ExitCode::FAILURE;
+        }
+    };
+    // The losses first, on stderr, so a piped file list stays a file list and
+    // what the bundle could not carry is read even when it is.
+    for loss in report.losses() {
+        eprintln!("warning: {}: {}", loss.kind(), loss.message());
+    }
+    println!("{}", report.destination().display());
+    for file in report.files() {
+        println!("  {} ({} bytes)", file.path(), file.bytes());
+    }
+    ExitCode::SUCCESS
 }
 
 /// `musa analyze <file.musa> --kind <kind> [--format text|json] [--part <name>

@@ -7,6 +7,7 @@
 mod analysis_session_laws;
 mod assets_laws;
 mod barline_laws;
+mod daw_bundle_laws;
 mod editing_laws;
 mod elaboration_backend_compatibility;
 mod group_edit_laws;

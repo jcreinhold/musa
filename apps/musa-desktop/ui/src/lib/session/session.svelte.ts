@@ -18,6 +18,8 @@ import type { BarlinePreviewDto } from "./generated/BarlinePreviewDto";
 
 type BarlineRewritePreview = Extract<BarlinePreviewDto, { status: "rewrite" }>;
 import type { ErrorDto } from "./generated/ErrorDto";
+import type { DawProfileDto } from "./generated/DawProfileDto";
+import type { DawReportDto } from "./generated/DawReportDto";
 import type { ExportTargetDto } from "./generated/ExportTargetDto";
 import type { GroupEditDto } from "./generated/GroupEditDto";
 import type { GroupEditPlanDto } from "./generated/GroupEditPlanDto";
@@ -29,6 +31,7 @@ import type { ReviewFactsDto } from "./generated/ReviewFactsDto";
 import type { TemplateDto } from "./generated/TemplateDto";
 import type { EditDto } from "./generated/EditDto";
 import type { StudioEditDto } from "./generated/StudioEditDto";
+import { folder } from "../state/bundle";
 import type { AnalysisFacts, EditImpact, LibraryDocument, ProjectSnapshot } from "../state/snapshot";
 
 /**
@@ -86,6 +89,8 @@ export type Link = Pick<
   | "reviewPlace"
   | "transport"
   | "exportTo"
+  | "exportDawBundle"
+  | "askWhereToPut"
   | "snapshot"
   | "on"
   | "askToOpen"
@@ -140,6 +145,26 @@ export class Session {
    * document again rather than a copy of it.
    */
   draft = $state<string | null>(null);
+
+  /**
+   * What the last workstation bundle wrote, or null when none has been asked
+   * for since this piece was opened.
+   *
+   * Beside the snapshot for the same reason the library is: a bundle is a
+   * reading of the document that took no revision and changed nothing.
+   */
+  bundle = $state<DawReportDto | null>(null);
+
+  /**
+   * Whether one is being written now.
+   *
+   * There is no percentage to report and nothing to interrupt: the project
+   * builds every artifact before it writes anything and installs the
+   * directory whole or not at all, so the honest states are *working* and
+   * *done*. Cancelling is offered before the work starts, which is the last
+   * moment at which cancelling means anything.
+   */
+  bundling = $state(false);
 
   /**
    * The source column opens itself the first time a session's source goes invalid,
@@ -929,6 +954,35 @@ export class Session {
     } catch (thrown) {
       this.fail(thrown);
     }
+  }
+
+  /**
+   * Package the piece for a workstation, into a folder the user chooses.
+   *
+   * The report is kept rather than announced in a line: it names every file
+   * and everything the target formats could not carry, which is more than a
+   * margin can say and exactly what a composer needs before importing.
+   */
+  async exportDawBundle(profile: DawProfileDto): Promise<void> {
+    const link = this.#link;
+    if (!link || this.bundling) return;
+    try {
+      const path = await link.askWhereToPut(folder(this.snapshot?.name ?? null));
+      if (path === null) return;
+      this.bundling = true;
+      // Replacement is asked for, because the picker has already asked the
+      // user about a folder that exists and this is the same answer.
+      this.bundle = await link.exportDawBundle(profile, path, true);
+    } catch (thrown) {
+      this.fail(thrown);
+    } finally {
+      this.bundling = false;
+    }
+  }
+
+  /** Put the bundle report away. The bundle stays where it was written. */
+  clearBundle(): void {
+    this.bundle = null;
   }
 
   private async run(

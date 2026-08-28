@@ -83,6 +83,8 @@ export interface Surface {
   keys(open: boolean): void;
   /** Open the settings sheet. */
   settings(open: boolean): void;
+  /** Open the workstation-bundle sheet, where the target is chosen. */
+  bundle(open: boolean): void;
   /** Clear the selection, or — with nothing selected — put the source column away. */
   escape(): void;
 }
@@ -156,6 +158,9 @@ export const COMMANDS: readonly Command[] = [
   command("file.export.lilypond", "File", ({ session }) => void session.exportTo("lilyPond")),
   command("file.export.musicxml", "File", ({ session }) => void session.exportTo("musicXml")),
   command("file.export.wav", "File", ({ session }) => void session.exportTo("wav")),
+  // The one export that opens onto a choice: which workstation, and only
+  // then where. The sheet asks both and then reports what was written.
+  command("file.export.daw", "File", (surface) => surface.bundle(true)),
 
   command("edit.undo", "Edit", ({ session }) => void session.undo()),
   command("edit.redo", "Edit", ({ session }) => void session.redo()),

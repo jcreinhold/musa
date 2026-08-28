@@ -242,3 +242,108 @@ fn a_performance_swings_and_a_score_does_not() {
     assert!(played[1] > written[1], "the offbeat did not swing: {played:?}");
     assert!(played[3] > written[3], "the offbeat did not swing: {played:?}");
 }
+
+/// What the file says about itself, and what it says about where it came
+/// from. A bundle handed to a workstation depends on both: the track names
+/// are what a mixer shows, and the origins are what lets a report point at
+/// source rather than at a tick.
+mod tracks_and_origins {
+    use super::{MidiMode, MidiOptions, PROFILE_FIXTURE};
+    use midly::{MetaMessage, MidiMessage, Smf, TrackEventKind};
+    use musa_compiler::{CompileOptions, SourceDocument, compile};
+
+    fn rendered(mode: MidiMode) -> musa_notation::RenderedMidi {
+        let score = compile(
+            &SourceDocument::new(PROFILE_FIXTURE, "test.musa"),
+            &CompileOptions::default(),
+        )
+        .into_snapshot()
+        .expect("compiles");
+        let performance = musa_compiler::lower_gestures(&score).expect("lowers");
+        musa_notation::render_midi_with_origins(
+            &performance,
+            &MidiOptions {
+                mode,
+                ..MidiOptions::default()
+            },
+        )
+        .expect("renders")
+    }
+
+    #[test]
+    fn every_part_track_carries_the_part_name_the_score_wrote() {
+        let rendered = rendered(MidiMode::Score);
+        let smf = Smf::parse(rendered.bytes()).expect("parses");
+        for track in rendered.tracks().iter().skip(1) {
+            let part = track.part.as_deref().expect("a part track is named");
+            let written = smf.tracks[track.index]
+                .iter()
+                .find_map(|event| match event.kind {
+                    TrackEventKind::Meta(MetaMessage::TrackName(name)) => Some(name),
+                    TrackEventKind::Meta(_)
+                    | TrackEventKind::Midi { .. }
+                    | TrackEventKind::SysEx(_)
+                    | TrackEventKind::Escape(_) => None,
+                })
+                .expect("the track states its name");
+            assert_eq!(std::str::from_utf8(written).expect("utf-8"), part);
+        }
+    }
+
+    #[test]
+    fn the_tempo_track_is_track_zero_and_belongs_to_no_part() {
+        let rendered = rendered(MidiMode::Score);
+        let first = &rendered.tracks()[0];
+        assert_eq!(first.index, 0);
+        assert_eq!(first.part, None);
+        assert_eq!(first.channel, None);
+    }
+
+    #[test]
+    fn channel_ten_is_left_to_percussion() {
+        let rendered = rendered(MidiMode::Score);
+        assert!(
+            rendered.tracks().iter().skip(1).all(|track| track.channel != Some(9)),
+            "{:?}",
+            rendered.tracks()
+        );
+    }
+
+    #[test]
+    fn one_origin_per_written_note_on_naming_the_source_event() {
+        let rendered = rendered(MidiMode::Score);
+        let smf = Smf::parse(rendered.bytes()).expect("parses");
+        let note_ons = smf
+            .tracks
+            .iter()
+            .flat_map(|track| track.iter())
+            .filter(|event| {
+                matches!(
+                    event.kind,
+                    TrackEventKind::Midi {
+                        message: MidiMessage::NoteOn { vel, .. },
+                        ..
+                    } if vel.as_int() > 0
+                )
+            })
+            .count();
+        assert_eq!(rendered.origins().len(), note_ons);
+        assert!(rendered.origins().iter().all(|origin| origin.track > 0));
+    }
+
+    #[test]
+    fn the_two_modes_place_the_same_source_events_at_their_own_ticks() {
+        let score = rendered(MidiMode::Score);
+        let performance = rendered(MidiMode::Performance);
+        let events = |rendered: &musa_notation::RenderedMidi| {
+            let mut events = rendered
+                .origins()
+                .iter()
+                .map(|origin| (origin.track, origin.key, origin.event))
+                .collect::<Vec<_>>();
+            events.sort_unstable_by_key(|(track, key, event)| (*track, *key, event.0));
+            events
+        };
+        assert_eq!(events(&score), events(&performance));
+    }
+}

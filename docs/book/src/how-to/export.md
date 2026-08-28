@@ -8,6 +8,7 @@ musa render first.musa --to mei -o first.mei
 musa render first.musa --to musicxml -o first.musicxml
 musa render first.musa --to midi -o first.mid
 musa render first.musa --to wav -o first.wav
+musa render first.musa --to daw --profile logic -o "first for a workstation"
 ```
 
 The targets:
@@ -19,6 +20,7 @@ The targets:
 | `musicxml` | MusicXML for notation editors |
 | `midi` | A MIDI file; `--mode score` (default) or `--mode performance` |
 | `wav` | An offline render through the studio graph |
+| `daw` | A whole folder for a workstation — see [the bundle how-to](daw-bundle.md) |
 
 Text formats accept `-o -` for stdout. Binary formats (`midi`, `wav`) require `-o <path>`.
 
@@ -37,7 +39,9 @@ the music, and no raw escape into backend-specific syntax.
 ## Handing a piece to a workstation
 
 Each of these files can be imported into a digital audio workstation. Logic Pro documents importing Standard MIDI Files
-and MusicXML; GarageBand documents importing MIDI and audio. Export the ones your program reads and import them there.
+and MusicXML; GarageBand documents importing MIDI and audio. Export the ones your program reads and import them there —
+or export `--to daw`, which packages all of them at once with a manifest saying what each is and what it lost. That is
+[its own how-to](daw-bundle.md).
 
 What crosses is a *presentation* of the piece, and each format loses something specific. A MIDI file carries note
 numbers, not written pitch: spelling, voices, ties, beams, and notated durations do not survive it. A WAV carries one
@@ -50,8 +54,8 @@ What does not exist, and is not planned:
   be exact — the source stays the master record.
 - Musa does not host Audio Unit, CLAP, or VST plug-ins. Its studio is the room of the work, not a plug-in rack.
 
-Deeper integration — a single bundle with a manifest, live MIDI to a running host, and a Musa Audio Unit that Logic or
-GarageBand can load — is specified but not yet built. The contract it must meet is
+The bundle above is the first of the deeper integrations. Live MIDI to a running host and a Musa Audio Unit that Logic
+or GarageBand can load are specified but not yet built. The contract they must meet is
 [`docs/rules/across-stages/06-daw-boundary.md`](../../../rules/across-stages/06-daw-boundary.md) in the repository, and
 [the implementation map](../../../plan/code-map/spec-to-implementation-map.md) says how much of it exists. Today the
-answer is: the files above.
+answer is: the files above, and the bundle that packages them.

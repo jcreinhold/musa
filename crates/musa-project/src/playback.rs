@@ -16,6 +16,12 @@ pub(crate) fn sample_rate() -> u32 {
     PerformanceOptions::default().sample_rate
 }
 
+/// The seed every render of this project is taken with.
+///
+/// Named rather than spelled in place because an export that records the
+/// arguments it was produced under has to be able to state it.
+pub(crate) const RENDER_SEED: u64 = 0x4D55_5341;
+
 /// Exact gesture lowering → checked scheduling → prepared audio machine.
 pub(crate) fn build(
     score: &ScoreSnapshot,
@@ -72,7 +78,7 @@ pub(crate) fn build(
             format,
             schedule: policy,
             tuning: PerformanceOptions::default().tuning,
-            render_seed: 0x4D55_5341,
+            render_seed: RENDER_SEED,
             limits: musa_dsp::AudioLimits {
                 max_primitives: 10_000,
                 max_state_bytes: 1 << 30,
@@ -137,24 +143,37 @@ pub(crate) fn to_midi(
     // the file *sounds* exactly right; what it says about itself is the
     // reference part's. Sonically exact, notationally wrong, and said here
     // rather than discovered (`docs/rules/events/07-backend-contract.md`).
-    let mut warnings = Vec::new();
+    let warnings = midi_losses(score, &performance);
+    let bytes = musa_notation::render_midi(&performance, &options)
+        .map_err(|error| ProjectError::Notation(error.to_string()))?;
+    Ok((bytes, warnings.into_iter().map(|(_, said)| said).collect()))
+}
+
+/// What a Standard MIDI File cannot say about this score, each classified by
+/// the fact it loses.
+///
+/// The kind is here rather than at the reader because this is where the
+/// question is decided; a consumer that has to recognize a loss by its
+/// wording has been handed prose where it needed a fact.
+pub(crate) fn midi_losses(score: &ScoreSnapshot, performance: &musa_score::GesturePlan) -> Vec<(&'static str, String)> {
+    let mut losses = Vec::new();
     if performance.is_polytempo() {
-        warnings.push(
+        losses.push((
+            "polytempo",
             "SMF has one tempo track: the parts play at their own speeds and every note is written at \
              the moment it sounds, but the tempo the file states is the piece's and not theirs"
                 .to_owned(),
-        );
+        ));
     }
     if polymetric(score) {
-        warnings.push(
+        losses.push((
+            "polymeter",
             "SMF has one time-signature track: the parts are barred differently and the file states \
              the piece's meter, which is the barlines of one of them"
                 .to_owned(),
-        );
+        ));
     }
-    let bytes = musa_notation::render_midi(&performance, &options)
-        .map_err(|error| ProjectError::Notation(error.to_string()))?;
-    Ok((bytes, warnings))
+    losses
 }
 
 /// Whether any part is barred differently from the piece.

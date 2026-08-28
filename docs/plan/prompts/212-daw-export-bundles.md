@@ -1,7 +1,7 @@
 ---
 id: 212
 slug: daw-export-bundles
-status: pending
+status: done
 depends_on: [211]
 phase: 4
 ---

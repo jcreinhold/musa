@@ -38,6 +38,7 @@ mod autosave;
 mod barlines;
 mod command;
 mod contents;
+mod daw;
 mod diagnostic;
 mod edit;
 mod error;
@@ -82,6 +83,7 @@ pub use crate::assets::{AssetFact, AssetKind, AssetStatus, asset_inventory, lock
 pub use crate::barlines::{BarlineBlocker, BarlineBlockerReason, BarlineRewrite};
 pub use crate::command::{DocumentId, ProjectCommand, ProjectUpdate, Revision, TextEdit, TransportRequest, Validity};
 pub use crate::contents::{ContentsFacts, EntryFacts};
+pub use crate::daw::{DawExportOptions, DawExportReport, DawFile, DawLoss, DawProfile};
 pub use crate::diagnostic::{Cause, CauseLabel, Diagnostic, Fix, FixEdit, Label, Severity, Span, codes, explain};
 pub use crate::edit::{CandidateEdit, EditCommand, EditImpact, GeneratedEditMode, InsertAt, NoteSpec};
 pub use crate::error::ProjectError;

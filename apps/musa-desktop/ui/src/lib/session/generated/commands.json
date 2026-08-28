@@ -81,6 +81,15 @@
     "available": true
   },
   {
+    "id": "file.export.daw",
+    "title": "Export for a workstation",
+    "section": "file",
+    "submenu": "Export",
+    "apart": false,
+    "accelerator": null,
+    "available": true
+  },
+  {
     "id": "edit.undo",
     "title": "Undo",
     "section": "edit",

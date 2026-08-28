@@ -63,12 +63,79 @@ impl Default for MidiOptions {
 /// file full of velocity 127 is an opinion.
 const NEUTRAL_VELOCITY: u8 = 80;
 
+/// One track of the written file, and which part it carries.
+///
+/// A consumer that has to say "this MIDI track is that part" should not have
+/// to re-derive the channel rule from the file: the renderer decided it, so
+/// the renderer reports it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct MidiTrack {
+    /// Position in the file, counting the tempo track as zero.
+    pub index: usize,
+    /// The part name, or `None` for the tempo track.
+    pub part: Option<String>,
+    /// The channel its notes are written on, or `None` for the tempo track.
+    pub channel: Option<u8>,
+}
+
+/// One written note-on and the source event it came from.
+///
+/// This is the origin projection, not a second reading of the file: the
+/// renderer already resolved every gesture's written lineage in order to
+/// place the note, and this reports what it resolved.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct MidiOrigin {
+    /// Which track of the file, counting the tempo track as zero.
+    pub track: usize,
+    /// The absolute tick the note-on lands on.
+    pub tick: u32,
+    /// The MIDI key number written.
+    pub key: u8,
+    /// The source event the gesture was written from.
+    pub event: EventId,
+}
+
+/// A rendered Standard MIDI File and what the renderer decided about it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct RenderedMidi {
+    bytes: Vec<u8>,
+    tracks: Vec<MidiTrack>,
+    origins: Vec<MidiOrigin>,
+}
+
+impl RenderedMidi {
+    /// The file.
+    pub fn bytes(&self) -> &[u8] {
+        &self.bytes
+    }
+
+    /// Every track, in file order.
+    pub fn tracks(&self) -> &[MidiTrack] {
+        &self.tracks
+    }
+
+    /// Every written note-on and the source event behind it, ordered by
+    /// track and then by tick — the order they appear in the file.
+    pub fn origins(&self) -> &[MidiOrigin] {
+        &self.origins
+    }
+}
+
 /// Render a performance plan as a Standard MIDI File.
 ///
 /// # Errors
 /// [`RenderError::Unsupported`] when a written pitch falls outside MIDI's
 /// 0–127 range, which no other backend cares about.
 pub fn render_midi(performance: &GesturePlan, options: &MidiOptions) -> Result<Vec<u8>, RenderError> {
+    render_midi_with_origins(performance, options).map(|rendered| rendered.bytes)
+}
+
+/// The same file, with the track and origin facts the renderer settled while
+/// writing it.
+///
+/// # Errors
+/// The same as [`render_midi`].
+pub fn render_midi_with_origins(performance: &GesturePlan, options: &MidiOptions) -> Result<RenderedMidi, RenderError> {
     // One track per lane plus the tempo track, and the lane count is the
     // channel-assignment story: past fifteen lanes, parts start sharing a
     // channel, and that is invisible in the file.
@@ -80,13 +147,31 @@ pub fn render_midi(performance: &GesturePlan, options: &MidiOptions) -> Result<V
         Timing::Metrical(u15::new(options.ticks_per_quarter)),
     ));
     smf.tracks.push(tempo_track(performance, &ticks));
+    let mut tracks = vec![MidiTrack {
+        index: 0,
+        part: None,
+        channel: None,
+    }];
+    let mut origins = Vec::new();
     for (index, lane) in performance.lanes().iter().enumerate() {
         // Channel 10 (index 9) is percussion by convention; skipping it keeps
         // a tenth part from being silently rewritten to a drum kit.
         let slot = index % 15;
         let channel = u4::new(u8::try_from(if slot >= 9 { slot + 1 } else { slot }).unwrap_or(0));
-        smf.tracks
-            .push(lane_track(lane, performance, channel, &ticks, *options)?);
+        let track = index.saturating_add(1);
+        let (written, placed) = lane_track(lane, performance, channel, &ticks, *options)?;
+        smf.tracks.push(written);
+        tracks.push(MidiTrack {
+            index: track,
+            part: Some(lane.name().to_owned()),
+            channel: Some(channel.as_int()),
+        });
+        origins.extend(placed.into_iter().map(|(tick, key, event)| MidiOrigin {
+            track,
+            tick,
+            key,
+            event,
+        }));
     }
     let mut bytes = Vec::new();
     smf.write(&mut bytes)
@@ -96,7 +181,7 @@ pub fn render_midi(performance: &GesturePlan, options: &MidiOptions) -> Result<V
         tracks = smf.tracks.len(),
         "wrote a standard MIDI file"
     );
-    Ok(bytes)
+    Ok(RenderedMidi { bytes, tracks, origins })
 }
 
 /// How finely a gradual tempo change is sampled into constant segments, per
@@ -256,14 +341,17 @@ fn key_signature(key: musa_score::Key) -> MetaMessage<'static> {
 
 /// One track per part, named, with its notes on one channel.
 fn lane_track<'a>(
-    lane: &GestureLane,
+    lane: &'a GestureLane,
     performance: &GesturePlan,
     channel: u4,
     ticks: &Ticks,
     options: MidiOptions,
-) -> Result<Track<'a>, RenderError> {
+) -> Result<(Track<'a>, Vec<(u32, u8, EventId)>), RenderError> {
     // Absolute-tick messages first; deltas are a rendering of them.
     let mut absolute: Vec<(u64, u8, MidiMessage)> = Vec::new();
+    // Where each written note-on came from, so a consumer never has to guess
+    // which gesture a key at a tick was.
+    let mut placed: Vec<(u32, u8, EventId)> = Vec::new();
     for occurrence in lane.track().occurrences() {
         let note = occurrence.payload();
         let lineage = lane.lineage(note.instance()).ok_or_else(|| RenderError::Unsupported {
@@ -291,8 +379,10 @@ fn lane_track<'a>(
                 velocity_of(note.amplitude()),
             ),
         };
+        let onset = ticks.of(on);
+        placed.push((u32::try_from(onset).unwrap_or(u32::MAX), key, lineage.event()));
         absolute.push((
-            ticks.of(on),
+            onset,
             // Note-on sorts after note-off at the same tick, so a repeated
             // pitch retriggers instead of being cut by its predecessor.
             1,
@@ -312,7 +402,16 @@ fn lane_track<'a>(
     }
     absolute.sort_by_key(|(tick, order, message)| (*tick, *order, message_key(*message)));
 
+    placed.sort_unstable_by_key(|(tick, key, event)| (*tick, *key, event.0));
+
     let mut track = Track::new();
+    // The file says which part each track is. Logic and GarageBand show this
+    // name in their track headers, and a bundle of tracks called `Track 2` is
+    // a bundle nobody can mix.
+    track.push(TrackEvent {
+        delta: u28::new(0),
+        kind: TrackEventKind::Meta(MetaMessage::TrackName(lane.name().as_bytes())),
+    });
     let mut previous = 0u64;
     for (tick, _, message) in absolute {
         track.push(TrackEvent {
@@ -325,7 +424,7 @@ fn lane_track<'a>(
         delta: u28::new(0),
         kind: TrackEventKind::Meta(MetaMessage::EndOfTrack),
     });
-    Ok(track)
+    Ok((track, placed))
 }
 
 /// A total order among simultaneous messages, so the bytes are deterministic.

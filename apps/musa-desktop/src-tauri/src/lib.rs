@@ -56,6 +56,7 @@ pub fn run() -> tauri::Result<()> {
             commands::review_place,
             commands::transport,
             commands::export,
+            commands::export_daw_bundle,
             commands::snapshot,
             commands::audition_at,
             commands::select_midi_input,

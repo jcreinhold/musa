@@ -21,6 +21,7 @@
 - [Check and fix a piece](how-to/check.md)
 - [Format source](how-to/format.md)
 - [Export scores and audio](how-to/export.md)
+- [Import a bundle into Logic Pro or GarageBand](how-to/daw-bundle.md)
 - [Play a piece](how-to/play.md)
 - [Set up an editor](how-to/editor-setup.md)
 - [Run the desktop app](how-to/desktop.md)

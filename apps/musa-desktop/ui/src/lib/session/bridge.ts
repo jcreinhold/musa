@@ -14,6 +14,8 @@ import type { PlacementPlanDto } from "./generated/PlacementPlanDto";
 import type { PlacementReportDto } from "./generated/PlacementReportDto";
 import type { EditDto } from "./generated/EditDto";
 import type { ErrorDto } from "./generated/ErrorDto";
+import type { DawProfileDto } from "./generated/DawProfileDto";
+import type { DawReportDto } from "./generated/DawReportDto";
 import type { ExportTargetDto } from "./generated/ExportTargetDto";
 import type { GroupEditDto } from "./generated/GroupEditDto";
 import type { GroupEditPlanDto } from "./generated/GroupEditPlanDto";
@@ -97,6 +99,15 @@ export const bridge = {
   transport: (command: TransportDto) => call<ProjectSnapshot>("transport", { command }),
   exportTo: (target: ExportTargetDto, path: string | null) =>
     call<{ path: string }>("export", { request: { target, path } }),
+  /**
+   * Package one whole bundle for a workstation, into a directory.
+   *
+   * The reply is the project's own report of what it wrote. It arrives at
+   * the end because the directory is installed whole or not at all: there is
+   * no half-written bundle for this side to show progress through.
+   */
+  exportDawBundle: (profile: DawProfileDto, path: string, replace: boolean) =>
+    call<DawReportDto>("export_daw_bundle", { request: { profile, path, replace } }),
   snapshot: () => call<ProjectSnapshot>("snapshot", {}),
   /**
    * Say where in the score the composer is, so a connected keyboard auditions
@@ -145,6 +156,12 @@ export const bridge = {
     const { open } = await import("@tauri-apps/plugin-dialog");
     const chosen = await open({ multiple: false, directory: true });
     return typeof chosen === "string" ? chosen : null;
+  },
+
+  /** Ask the user where to put a folder. `null` when they cancel. */
+  async askWhereToPut(name: string): Promise<string | null> {
+    const { save } = await import("@tauri-apps/plugin-dialog");
+    return save({ defaultPath: name });
   },
 
   /** Ask the user where to write something. `null` when they cancel. */

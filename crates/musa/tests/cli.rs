@@ -818,3 +818,76 @@ fn fetch_materializes_once_and_locked_verification_stays_offline() -> std::io::R
     std::fs::remove_dir_all(&project)?;
     std::fs::remove_dir_all(&unavailable)
 }
+
+/// `musa render --to daw` writes a whole directory and says what is in it.
+///
+/// The bundle's own laws live in `musa-project`; what is checked here is the
+/// command surface — that a profile and an output directory are what it asks
+/// for, that the report reaches the terminal, and that a bundle a workstation
+/// could open is on disk afterwards.
+#[test]
+fn render_to_daw_writes_a_bundle_and_lists_it() -> std::io::Result<()> {
+    let directory = std::env::temp_dir().join(format!("musa-daw-{}", std::process::id()));
+    let _removed = std::fs::remove_dir_all(&directory);
+    let output = musa(&[
+        "render",
+        &glass_mountain(),
+        "--to",
+        "daw",
+        "--profile",
+        "logic",
+        "-o",
+        &directory.to_string_lossy(),
+    ])?;
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    for named in [
+        "score.mid",
+        "performance.mid",
+        "score.musicxml",
+        "audio/mix.wav",
+        "musa-manifest.json",
+    ] {
+        assert!(stdout.contains(named), "{named} is not in the report: {stdout}");
+        assert!(directory.join(named).is_file(), "{named} is not on disk");
+    }
+    // What the bundle could not carry is said, and said on stderr so a piped
+    // file list stays a file list.
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("warning: controller:"), "stderr: {stderr}");
+    std::fs::remove_dir_all(&directory)
+}
+
+/// The bundle needs a workstation and a directory, and says so rather than
+/// guessing either.
+#[test]
+fn render_to_daw_refuses_an_unknown_profile_or_a_missing_directory() -> std::io::Result<()> {
+    let unknown = musa(&[
+        "render",
+        &glass_mountain(),
+        "--to",
+        "daw",
+        "--profile",
+        "protools",
+        "-o",
+        "x",
+    ])?;
+    assert!(!unknown.status.success());
+    assert!(
+        String::from_utf8_lossy(&unknown.stderr).contains("is not a workstation"),
+        "stderr: {}",
+        String::from_utf8_lossy(&unknown.stderr)
+    );
+    let nowhere = musa(&["render", &glass_mountain(), "--to", "daw", "--profile", "logic"])?;
+    assert!(!nowhere.status.success());
+    assert!(
+        String::from_utf8_lossy(&nowhere.stderr).contains("writes a directory"),
+        "stderr: {}",
+        String::from_utf8_lossy(&nowhere.stderr)
+    );
+    Ok(())
+}

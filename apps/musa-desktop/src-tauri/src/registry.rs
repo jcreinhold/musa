@@ -147,6 +147,13 @@ pub const COMMANDS: &[CommandDescriptor] = &[
         command("file.export.wav", "Export WAV", Section::File, None, true),
         "Export",
     ),
+    // A fifth object, and the only one that is a directory rather than a
+    // file: the workstation bundle asks which workstation before it asks
+    // where, so it is the one export item that opens onto a choice.
+    under(
+        command("file.export.daw", "Export for a workstation", Section::File, None, true),
+        "Export",
+    ),
     command("edit.undo", "Undo", Section::Edit, Some("CmdOrCtrl+Z"), true),
     command("edit.redo", "Redo", Section::Edit, Some("CmdOrCtrl+Shift+Z"), true),
     apart(command(

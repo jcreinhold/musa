@@ -11,6 +11,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { SETTLE_MS, Session, type Link } from "../../src/lib/session/session.svelte";
 import fixture from "../../fixtures/glass-mountain.snapshot.json";
+import type { DawProfileDto } from "../../src/lib/session/generated/DawProfileDto";
 import type { ProjectSnapshot } from "../../src/lib/state/snapshot";
 import type { ReviewFactsDto } from "../../src/lib/session/generated/ReviewFactsDto";
 import type { PlacedVoiceDto } from "../../src/lib/session/generated/PlacedVoiceDto";
@@ -185,6 +186,17 @@ function recorder(): Recorder {
     reviewPlace: vi.fn(async () => REPORT),
     transport: vi.fn(async () => VALID),
     exportTo: vi.fn(async () => ({ path: "/tmp/out.mei" })),
+    exportDawBundle: vi.fn(async (profile: DawProfileDto, path: string) => ({
+      version: 1,
+      profile,
+      destination: path,
+      files: [
+        { path: "score.mid", bytes: 300, sha256: "aa" },
+        { path: "audio/mix.wav", bytes: 4096, sha256: "bb" },
+      ],
+      losses: [{ kind: "controller", message: "the MIDI files carry no continuous controllers" }],
+    })),
+    askWhereToPut: vi.fn(async () => "/tmp/piece for a workstation"),
     snapshot: vi.fn(async () => VALID),
     on: vi.fn(async () => () => {}),
     askToOpen: vi.fn(async () => "/tmp/piece.musa"),
@@ -499,6 +511,35 @@ describe("without a shell", () => {
 describe("results and failures", () => {
   beforeEach(() => {
     vi.useFakeTimers();
+  });
+
+  it("keeps the whole report a workstation bundle produced, rather than a line about it", async () => {
+    const link = recorder();
+    const session = new Session(link);
+    session.receive(VALID);
+
+    await session.exportDawBundle("logic");
+    expect(link.askWhereToPut).toHaveBeenCalledWith("glass-mountain for a workstation");
+    // The interface forwarded the choice and the destination and nothing
+    // else: the manifest is the project's to write.
+    expect(link.exportDawBundle).toHaveBeenCalledWith("logic", "/tmp/piece for a workstation", true);
+    expect(session.bundle?.files.map((file) => file.path)).toEqual(["score.mid", "audio/mix.wav"]);
+    expect(session.bundle?.losses).toHaveLength(1);
+    expect(session.bundling).toBe(false);
+
+    session.clearBundle();
+    expect(session.bundle).toBeNull();
+  });
+
+  it("writes nothing when the composer does not say where", async () => {
+    const link = recorder();
+    link.askWhereToPut = vi.fn(async () => null);
+    const session = new Session(link);
+    session.receive(VALID);
+
+    await session.exportDawBundle("garageBand");
+    expect(link.exportDawBundle).not.toHaveBeenCalled();
+    expect(session.bundle).toBeNull();
   });
 
   it("names the file an export wrote, and stops saying so after three seconds", async () => {

@@ -2464,6 +2464,7 @@ dependencies = [
  "musa-score",
  "musa-syntax",
  "num-rational",
+ "quick-xml",
  "serde",
  "serde_json",
  "sha2",

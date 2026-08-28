@@ -13,9 +13,9 @@
 use std::path::PathBuf;
 
 use musa_project::{
-    ContainerKind, EditCommand, ExportRequest, GeneratedEditMode, GroupEdit, GroupIntent, HeaderField, InsertAt,
-    NoteSpec, ProjectCommand, ProjectError, ReviewAction, ReviewAudition, Span, StudioEdit, Template, TextEdit,
-    TransportRequest, Utf16Offsets,
+    ContainerKind, DawExportOptions, DawExportReport, DawProfile, EditCommand, ExportRequest, GeneratedEditMode,
+    GroupEdit, GroupIntent, HeaderField, InsertAt, NoteSpec, ProjectCommand, ProjectError, ReviewAction,
+    ReviewAudition, Span, StudioEdit, Template, TextEdit, TransportRequest, Utf16Offsets,
 };
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
@@ -632,6 +632,119 @@ impl From<ExportTargetDto> for ExportRequest {
             ExportTargetDto::LilyPond => Self::LilyPond,
             ExportTargetDto::MusicXml => Self::MusicXml,
             ExportTargetDto::Wav => Self::Wav,
+        }
+    }
+}
+
+/// Which workstation a bundle is packaged for.
+///
+/// Packaging and guidance only: the music is the same either way
+/// (`docs/rules/across-stages/06-daw-boundary.md`).
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "../../ui/src/lib/session/generated/")]
+pub enum DawProfileDto {
+    Logic,
+    GarageBand,
+}
+
+impl From<DawProfileDto> for DawProfile {
+    fn from(profile: DawProfileDto) -> Self {
+        match profile {
+            DawProfileDto::Logic => Self::Logic,
+            DawProfileDto::GarageBand => Self::GarageBand,
+        }
+    }
+}
+
+impl From<DawProfile> for DawProfileDto {
+    fn from(profile: DawProfile) -> Self {
+        match profile {
+            DawProfile::Logic => Self::Logic,
+            DawProfile::GarageBand => Self::GarageBand,
+        }
+    }
+}
+
+/// Which workstation to package for, and where to put the directory.
+#[derive(Clone, Debug, Deserialize, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "../../ui/src/lib/session/generated/")]
+pub struct DawBundleDto {
+    pub profile: DawProfileDto,
+    /// Absent means ask the user where to put it.
+    pub path: Option<String>,
+    /// Whether a bundle already at that path may be replaced.
+    #[serde(default)]
+    pub replace: bool,
+}
+
+impl From<&DawBundleDto> for DawExportOptions {
+    fn from(request: &DawBundleDto) -> Self {
+        let options = Self::new(request.profile.into());
+        if request.replace { options.replacing() } else { options }
+    }
+}
+
+/// One file a bundle contains, as the completion state lists it.
+#[derive(Clone, Debug, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "../../ui/src/lib/session/generated/")]
+pub struct DawFileDto {
+    pub path: String,
+    pub bytes: u32,
+    pub sha256: String,
+}
+
+/// One thing the bundle could not carry.
+#[derive(Clone, Debug, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "../../ui/src/lib/session/generated/")]
+pub struct DawLossDto {
+    pub kind: String,
+    pub message: String,
+}
+
+/// What one bundle export produced, as the interface reports it.
+///
+/// Every field is the project's own answer. The interface arranges this; it
+/// does not compute a manifest of its own, which is the same rule the score
+/// view holds to about notation.
+#[derive(Clone, Debug, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "../../ui/src/lib/session/generated/")]
+pub struct DawReportDto {
+    /// The bundle schema version the project wrote.
+    pub version: u32,
+    pub profile: DawProfileDto,
+    pub destination: String,
+    pub files: Vec<DawFileDto>,
+    pub losses: Vec<DawLossDto>,
+}
+
+impl From<&DawExportReport> for DawReportDto {
+    fn from(report: &DawExportReport) -> Self {
+        Self {
+            version: u32::try_from(report.version()).unwrap_or(u32::MAX),
+            profile: report.profile().into(),
+            destination: report.destination().display().to_string(),
+            files: report
+                .files()
+                .iter()
+                .map(|file| DawFileDto {
+                    path: file.path().to_owned(),
+                    bytes: u32::try_from(file.bytes()).unwrap_or(u32::MAX),
+                    sha256: file.digest().to_owned(),
+                })
+                .collect(),
+            losses: report
+                .losses()
+                .iter()
+                .map(|loss| DawLossDto {
+                    kind: loss.kind().to_owned(),
+                    message: loss.message().to_owned(),
+                })
+                .collect(),
         }
     }
 }

@@ -16,6 +16,7 @@
   import { onMount, untrack } from "svelte";
 
   import Compose from "./screens/Compose.svelte";
+  import Bundle from "./screens/Bundle.svelte";
   import Review from "./screens/Review.svelte";
   import Contents from "./screens/Contents.svelte";
   import Sound from "./screens/Sound.svelte";
@@ -211,6 +212,7 @@
   /** The settings sheet, which is modal for the same reason the
       others are: it is a thing you go to, finish, and leave. */
   let settingsOpen = $state(false);
+  let bundleOpen = $state(false);
 
   /**
    * Origin view (`04-provenance.md` §2): a held lens, not a mode with state to
@@ -352,10 +354,17 @@
 
   /** `Esc`: the choice first, then the selection, then the source column. */
   function escape(): void {
-    if (paletteOpen || keysOpen || settingsOpen) {
+    if (paletteOpen || keysOpen || settingsOpen || bundleOpen) {
       paletteOpen = false;
       keysOpen = false;
       settingsOpen = false;
+      // Not while it is packaging: there is nothing to interrupt, and a
+      // sheet that vanished mid-write would leave the composer guessing
+      // whether the folder arrived.
+      if (!session.bundling) {
+        bundleOpen = false;
+        session.clearBundle();
+      }
       return;
     }
     if (session.groupPlan) return session.cancelGroupEdit();
@@ -555,6 +564,12 @@
     },
     keys: (open) => (keysOpen = open),
     settings: (open) => (settingsOpen = open),
+    bundle: (open) => {
+      bundleOpen = open;
+      // A closed sheet keeps no report: the folder is on disk, and the
+      // manifest in it says everything this said and outlives it.
+      if (!open) session.clearBundle();
+    },
     escape,
   };
 
@@ -921,6 +936,18 @@
 
 {#if keysOpen}
   <KeyboardSheet onclose={() => (keysOpen = false)} />
+{/if}
+
+{#if bundleOpen}
+  <Bundle
+    report={session.bundle}
+    working={session.bundling}
+    onexport={(profile) => void session.exportDawBundle(profile)}
+    onclose={() => {
+      bundleOpen = false;
+      session.clearBundle();
+    }}
+  />
 {/if}
 
 {#if settingsOpen}

@@ -43,6 +43,10 @@ midly = { version = "0.5", default-features = false, features = ["std"] }
 # Tests build realistic raw-MIDI fixtures through the facade (prompt 205c) and
 # so name the capture event types without reaching through the library.
 musa-playback = { workspace = true }
+# A bundle's notation file is *parsed* rather than searched for a substring
+# (prompt 212): the exporter already depends on this reader, and a test that
+# only grepped could not tell well-formed XML from a prefix of it.
+quick-xml = "0.41"
 
 [[bench]]
 harness = false
