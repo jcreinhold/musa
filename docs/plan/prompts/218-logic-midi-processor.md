@@ -16,8 +16,10 @@ of this path unless the trial proved a supported host surface.
 
 ## Read
 
-- Prompt 215's measured MIDI Processor contract and repaired version of this prompt; prompts 67, 72–75, 177–180,
-  212–214, 216–217; the shared MIDI packet schedule introduced by prompt 213.
+- Prompt 215's measured MIDI Processor contract in `docs/notes/research/93-the-audio-unit-shape.md` §3 and §6 — random
+  access by host position, a seek that starts at the selected index rather than replaying, MIDI emitted through the
+  host's own output block, silence under a stopped transport, and absent host context recorded rather than guessed at;
+  prompts 67, 72–75, 177–180, 212–214, 216–217; the shared MIDI packet schedule introduced by prompt 213.
 - Apple's current AU MIDI-output/render-event, musical-context, transport-state, offline-rendering, state-restoration,
   and Logic MIDI FX documentation. Treat absence from GarageBand's documented extension surface as unsupported, not as
   an invitation to use a private API.
@@ -51,17 +53,19 @@ reach into Logic's project document.
   schedule without sharing mutable RT state with the Music Device.
 - Indexed random-access event selection and active-state recovery with differential parity against parsed performance
   MIDI for linear, seeked, looped, and offline host timelines.
-- Automated host harness/`auval` checks for component `aumi:msmp:MUSA`, RT instrumentation, corrupt/missing state,
-  extension restart, and absent/malformed host context.
-- Logic setup/use documentation and a clear GarageBand unsupported statement unless prompt 215 recorded contrary
-  primary/documented evidence.
+- Automated host harness/`auval` checks for component `aumi musp Musa` (the type, subtype, and manufacturer prompt 215
+  registered and validated), RT instrumentation, corrupt/missing state, extension restart, and absent/malformed host
+  context.
+- Logic setup/use documentation and a clear GarageBand unsupported statement. Prompt 215 recorded no observation of
+  either application — its evidence is `auval` and its own harness — so a claim about one of them is made from that
+  application's current primary documentation or not at all.
 
 ## Check
 
 ```sh
 cargo nextest run -p musa-notation -p musa-project -p musa-au
 cargo clippy --all-targets -p musa-notation -p musa-project -p musa-au -- -D warnings
-xcodebuild -project apps/musa-audio-unit/MusaAudioUnit.xcodeproj -scheme MusaMIDIScheduler -configuration Debug CODE_SIGNING_ALLOWED=NO test
+xcodebuild -project apps/musa-audio-unit/MusaAudioUnit.xcodeproj -scheme MusaAudioUnit -configuration Debug CODE_SIGNING_ALLOWED=NO test
 scripts/check-audio-unit.sh midi-processor
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make fmt-check
 cargo insta test --workspace --unreferenced=reject

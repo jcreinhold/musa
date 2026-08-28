@@ -16,9 +16,10 @@ an instrument instance, and a mixer track.
 
 ## Read
 
-- Prompt 215's trial findings and prompt 216's production boundary; prompts 176b–180 and 189; governing performance
-  controls in `docs/rules/language/08-performance-and-sound.md` and Mix ownership in
-  `docs/rules/desktop/09-sound-and-mix.md`.
+- Prompt 215's trial findings in `docs/notes/research/93-the-audio-unit-shape.md` §3, which measured a parameter tree
+  projected across the process boundary, a sample-accurate ramp, a live tree replacement, and two negotiated output
+  buses; prompt 216's production boundary; prompts 176b–180 and 189; governing performance controls in
+  `docs/rules/language/08-performance-and-sound.md` and Mix ownership in `docs/rules/desktop/09-sound-and-mix.md`.
 - Apple's current `AUParameterTree`, parameter address/ramp/event, bus array, channel layout, full-state, and host
   notification documentation. Re-run the host behavior probes that prompt 215 found necessary.
 
@@ -41,10 +42,11 @@ or become canonical. Parameter ramps and point changes must agree with native co
 partition. The UI reads the same generated descriptors and may reveal the declaration in Musa desktop; it owns no
 defaults or mappings.
 
-Project only source-declared output channels and named instrument outputs that prompt 215 proved hosts can negotiate.
-Logic may receive multiple output buses; GarageBand gets a documented stereo fallback when it does not expose the same
-routing surface. Bus order and identity are stable, format negotiation is explicit, and no source bus is renamed to a
-DAW "track" in the semantic layer.
+Project only source-declared output channels and named instrument outputs that prompt 215 proved hosts can negotiate; it
+measured two, rendered independently and stable across an out-of-process load, and measured nothing about how any
+particular workstation presents them. Logic may receive multiple output buses; GarageBand gets a documented stereo
+fallback when it does not expose the same routing surface. Bus order and identity are stable, format negotiation is
+explicit, and no source bus is renamed to a DAW "track" in the semantic layer.
 
 ## Target
 

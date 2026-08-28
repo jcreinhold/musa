@@ -65,8 +65,8 @@ is where it is built.
 | Versioned DAW derivation record | implemented | prompt 212 defines version 1 — `musaManifest`/`musaOrigins`, carried by every later boundary |
 | Live CoreMIDI projection of score or performance MIDI | implemented | `musa-notation::midi_schedule` is the one decision path; `musa-playback::MidiOutput` publishes virtual sources or sends to a destination; `ProjectSession::plan_midi_output`/`start_midi_output` join them, and `musa midi` drives it. Each message is handed over as it comes due rather than host-stamped, and every report says so |
 | One declared clock authority, leader and follower | implemented | `musa-playback` `sync/`, `musa-project::ProjectSession::start_sync`; MIDI clock and MTC limits stated before a session starts |
-| Audio Unit shape trial and host measurement | absent | prompt 215; it also replaces the "not yet measured" column of the compatibility table |
-| AUv3 Music Device rendering one checked instrument | absent | prompts 216–217 |
+| Audio Unit shape trial and host measurement | `apps/musa-audio-unit-trial` | prompt 215; measured on macOS 26.6/Xcode 26.6 and reported in `docs/notes/research/93-the-audio-unit-shape.md`. It links no Musa runtime: it settles the shape, not the product |
+| AUv3 Music Device rendering one checked instrument | absent | prompts 216–217, whose contracts now follow prompt 215's measurements: assets by restored identity rather than a container lookup, `fullState` extended rather than replaced, component-owned render buffers |
 | Logic MIDI Processor projecting a checked piece | absent | prompt 218, only if prompt 215 measures the surface |
 | Whole-boundary audit against real hosts | absent | prompt 219 |
 

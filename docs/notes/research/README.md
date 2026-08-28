@@ -70,6 +70,7 @@ outline and final review that `../../rules/across-stages/05-metatheory.md` §1 c
 | Page | What it decided |
 | --- | --- |
 | [92](92-the-daw-boundary.md) | Three crossings to a workstation rather than one integration, and that Musa is hosted and does not host |
+| [93](93-the-audio-unit-shape.md) | That the hosted crossing is buildable as specified, and that a component reaches its assets through restored state rather than a container it goes looking for |
 
 ## Earlier evidence
 
@@ -84,6 +85,8 @@ A claim in one of these pages is one of three things, and says which:
 - **Cited** — a claim about music theory, with an Open Music Theory chapter given by filename.
 - **Derived** — a mathematical consequence of stated definitions, as a numbered proposition.
 - **Judged** — a design choice the evidence leaves open, saying what it chooses against.
+- **Measured** — a claim about a system outside this repository, with the command that reproduces it. A negative
+  measurement is worth as much as a positive one and is written down the same way.
 
 And two rules the design lines were held to, worth keeping because they are what made the records usable:
 

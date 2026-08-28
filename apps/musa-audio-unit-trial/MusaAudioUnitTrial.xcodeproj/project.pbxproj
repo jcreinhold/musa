@@ -1,0 +1,860 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		00000000000000000000001C /* MusaTrialABI.c in Phase */ = {isa = PBXBuildFile; fileRef = 000000000000000000000002 /* MusaTrialABI.c */; };
+		00000000000000000000001D /* TrialComponents.swift in Phase */ = {isa = PBXBuildFile; fileRef = 000000000000000000000004 /* TrialComponents.swift */; };
+		00000000000000000000001E /* TrialInstrumentAudioUnit.swift in Phase */ = {isa = PBXBuildFile; fileRef = 000000000000000000000005 /* TrialInstrumentAudioUnit.swift */; };
+		00000000000000000000001F /* TrialProcessorAudioUnit.swift in Phase */ = {isa = PBXBuildFile; fileRef = 000000000000000000000006 /* TrialProcessorAudioUnit.swift */; };
+		000000000000000000000020 /* MusaTrialABI.h in Phase */ = {isa = PBXBuildFile; fileRef = 000000000000000000000001 /* MusaTrialABI.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		000000000000000000000021 /* MusaTrialKit.h in Phase */ = {isa = PBXBuildFile; fileRef = 000000000000000000000003 /* MusaTrialKit.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		000000000000000000000022 /* InstrumentFactory.swift in Phase */ = {isa = PBXBuildFile; fileRef = 000000000000000000000007 /* InstrumentFactory.swift */; };
+		000000000000000000000023 /* MusaTrialKit.framework in Phase */ = {isa = PBXBuildFile; fileRef = 000000000000000000000016 /* MusaTrialKit.framework */; };
+		000000000000000000000024 /* ProcessorFactory.swift in Phase */ = {isa = PBXBuildFile; fileRef = 000000000000000000000008 /* ProcessorFactory.swift */; };
+		000000000000000000000025 /* MusaTrialKit.framework in Phase */ = {isa = PBXBuildFile; fileRef = 000000000000000000000016 /* MusaTrialKit.framework */; };
+		000000000000000000000026 /* main.swift in Phase */ = {isa = PBXBuildFile; fileRef = 000000000000000000000009 /* main.swift */; };
+		000000000000000000000027 /* MusaTrialKit.framework in Phase */ = {isa = PBXBuildFile; fileRef = 000000000000000000000016 /* MusaTrialKit.framework */; };
+		000000000000000000000028 /* MusaTrialKit.framework in Phase */ = {isa = PBXBuildFile; fileRef = 000000000000000000000016 /* MusaTrialKit.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		000000000000000000000029 /* Instrument.appex in Phase */ = {isa = PBXBuildFile; fileRef = 000000000000000000000017 /* Instrument.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		00000000000000000000002A /* Processor.appex in Phase */ = {isa = PBXBuildFile; fileRef = 000000000000000000000018 /* Processor.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		00000000000000000000002B /* HostSupport.swift in Phase */ = {isa = PBXBuildFile; fileRef = 00000000000000000000000B /* HostSupport.swift */; };
+		00000000000000000000002C /* InstrumentExperiments.swift in Phase */ = {isa = PBXBuildFile; fileRef = 00000000000000000000000C /* InstrumentExperiments.swift */; };
+		00000000000000000000002D /* ProcessorExperiments.swift in Phase */ = {isa = PBXBuildFile; fileRef = 00000000000000000000000D /* ProcessorExperiments.swift */; };
+		00000000000000000000002E /* SystemExperiments.swift in Phase */ = {isa = PBXBuildFile; fileRef = 00000000000000000000000E /* SystemExperiments.swift */; };
+		00000000000000000000002F /* main.swift in Phase */ = {isa = PBXBuildFile; fileRef = 00000000000000000000000F /* main.swift */; };
+		000000000000000000000030 /* MusaTrialKit.framework in Phase */ = {isa = PBXBuildFile; fileRef = 000000000000000000000016 /* MusaTrialKit.framework */; };
+		000000000000000000000031 /* AllocProbe.c in Phase */ = {isa = PBXBuildFile; fileRef = 00000000000000000000000A /* AllocProbe.c */; };
+		000000000000000000000092 /* MusaTrialDrive.h in Headers */ = {isa = PBXBuildFile; fileRef = 000000000000000000000090 /* MusaTrialDrive.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		000000000000000000000093 /* MusaTrialDrive.m in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000091 /* MusaTrialDrive.m */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		000000000000000000000050 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 000000000000000000000071 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 00000000000000000000004A;
+			remoteInfo = kit;
+		};
+		000000000000000000000051 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 000000000000000000000071 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 00000000000000000000004B;
+			remoteInfo = instr;
+		};
+		000000000000000000000052 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 000000000000000000000071 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 00000000000000000000004C;
+			remoteInfo = proc;
+		};
+		000000000000000000000053 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 000000000000000000000071 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 00000000000000000000004A;
+			remoteInfo = kit;
+		};
+		000000000000000000000054 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 000000000000000000000071 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 00000000000000000000004A;
+			remoteInfo = kit;
+		};
+		000000000000000000000055 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 000000000000000000000071 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 00000000000000000000004A;
+			remoteInfo = kit;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		000000000000000000000045 /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				000000000000000000000028 /* MusaTrialKit.framework in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		000000000000000000000046 /* Embed Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				000000000000000000000029 /* Instrument.appex in Embed Extensions */,
+				00000000000000000000002A /* Processor.appex in Embed Extensions */,
+			);
+			name = "Embed Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		000000000000000000000001 /* MusaTrialABI.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MusaTrialABI.h; sourceTree = "<group>"; };
+		000000000000000000000002 /* MusaTrialABI.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = MusaTrialABI.c; sourceTree = "<group>"; };
+		000000000000000000000003 /* MusaTrialKit.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MusaTrialKit.h; sourceTree = "<group>"; };
+		000000000000000000000004 /* TrialComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrialComponents.swift; sourceTree = "<group>"; };
+		000000000000000000000005 /* TrialInstrumentAudioUnit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrialInstrumentAudioUnit.swift; sourceTree = "<group>"; };
+		000000000000000000000006 /* TrialProcessorAudioUnit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrialProcessorAudioUnit.swift; sourceTree = "<group>"; };
+		000000000000000000000007 /* InstrumentFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstrumentFactory.swift; sourceTree = "<group>"; };
+		000000000000000000000008 /* ProcessorFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessorFactory.swift; sourceTree = "<group>"; };
+		000000000000000000000009 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
+		00000000000000000000000A /* AllocProbe.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = AllocProbe.c; sourceTree = "<group>"; };
+		00000000000000000000000B /* HostSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HostSupport.swift; sourceTree = "<group>"; };
+		00000000000000000000000C /* InstrumentExperiments.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstrumentExperiments.swift; sourceTree = "<group>"; };
+		00000000000000000000000D /* ProcessorExperiments.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessorExperiments.swift; sourceTree = "<group>"; };
+		00000000000000000000000E /* SystemExperiments.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemExperiments.swift; sourceTree = "<group>"; };
+		00000000000000000000000F /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
+		000000000000000000000010 /* App-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = App-Info.plist; sourceTree = "<group>"; };
+		000000000000000000000011 /* Instrument-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Instrument-Info.plist; sourceTree = "<group>"; };
+		000000000000000000000012 /* Processor-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Processor-Info.plist; sourceTree = "<group>"; };
+		000000000000000000000013 /* App.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = App.entitlements; sourceTree = "<group>"; };
+		000000000000000000000014 /* Instrument.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Instrument.entitlements; sourceTree = "<group>"; };
+		000000000000000000000015 /* Processor.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Processor.entitlements; sourceTree = "<group>"; };
+		000000000000000000000016 /* MusaTrialKit.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = MusaTrialKit.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		000000000000000000000017 /* Instrument.appex */ = {isa = PBXFileReference; explicitFileType = wrapper.app-extension; includeInIndex = 0; path = Instrument.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		000000000000000000000018 /* Processor.appex */ = {isa = PBXFileReference; explicitFileType = wrapper.app-extension; includeInIndex = 0; path = Processor.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		000000000000000000000019 /* MusaAudioUnitTrial.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MusaAudioUnitTrial.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		00000000000000000000001A /* musa-au-trial-harness */ = {isa = PBXFileReference; explicitFileType = compiled.mach-o.executable; includeInIndex = 0; path = musa-au-trial-harness; sourceTree = BUILT_PRODUCTS_DIR; };
+		00000000000000000000001B /* libMusaAllocProbe.dylib */ = {isa = PBXFileReference; explicitFileType = compiled.mach-o.dylib; includeInIndex = 0; path = libMusaAllocProbe.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
+		000000000000000000000090 /* MusaTrialDrive.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MusaTrialDrive.h; sourceTree = "<group>"; };
+		000000000000000000000091 /* MusaTrialDrive.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = MusaTrialDrive.m; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		00000000000000000000003E /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		000000000000000000000040 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				000000000000000000000023 /* MusaTrialKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		000000000000000000000042 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				000000000000000000000025 /* MusaTrialKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		000000000000000000000044 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				000000000000000000000027 /* MusaTrialKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		000000000000000000000048 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				000000000000000000000030 /* MusaTrialKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		000000000000000000000032 /* MusaAudioUnitTrial */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000033,
+				00000000000000000000003A,
+				00000000000000000000003B,
+			);
+			name = MusaAudioUnitTrial;
+			sourceTree = "<group>";
+		};
+		000000000000000000000033 /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000034,
+				000000000000000000000036,
+				000000000000000000000037,
+				000000000000000000000035,
+				000000000000000000000038,
+				000000000000000000000039,
+			);
+			path = Sources;
+			sourceTree = "<group>";
+		};
+		000000000000000000000034 /* TrialKit */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000003,
+				000000000000000000000001,
+				000000000000000000000002,
+				000000000000000000000004,
+				000000000000000000000005,
+				000000000000000000000006,
+				000000000000000000000090,
+				000000000000000000000091,
+			);
+			path = TrialKit;
+			sourceTree = "<group>";
+		};
+		000000000000000000000036 /* Instrument */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000007,
+			);
+			path = Instrument;
+			sourceTree = "<group>";
+		};
+		000000000000000000000037 /* Processor */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000008,
+			);
+			path = Processor;
+			sourceTree = "<group>";
+		};
+		000000000000000000000035 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000009,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		000000000000000000000038 /* Harness */ = {
+			isa = PBXGroup;
+			children = (
+				00000000000000000000000B,
+				00000000000000000000000C,
+				00000000000000000000000D,
+				00000000000000000000000E,
+				00000000000000000000000F,
+			);
+			path = Harness;
+			sourceTree = "<group>";
+		};
+		000000000000000000000039 /* AllocProbe */ = {
+			isa = PBXGroup;
+			children = (
+				00000000000000000000000A,
+			);
+			path = AllocProbe;
+			sourceTree = "<group>";
+		};
+		00000000000000000000003A /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000010,
+				000000000000000000000011,
+				000000000000000000000012,
+				000000000000000000000013,
+				000000000000000000000014,
+				000000000000000000000015,
+			);
+			path = Config;
+			sourceTree = "<group>";
+		};
+		00000000000000000000003B /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000016,
+				000000000000000000000017,
+				000000000000000000000018,
+				000000000000000000000019,
+				00000000000000000000001A,
+				00000000000000000000001B,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXHeadersBuildPhase section */
+		00000000000000000000003C /* Headers */ = {
+			isa = PBXHeadersBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				000000000000000000000021 /* MusaTrialKit.h in Headers */,
+				000000000000000000000020 /* MusaTrialABI.h in Headers */,
+				000000000000000000000092 /* MusaTrialDrive.h in Headers */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXHeadersBuildPhase section */
+
+/* Begin PBXNativeTarget section */
+		00000000000000000000004A /* MusaTrialKit */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 00000000000000000000005D /* Build configuration list for PBXNativeTarget "MusaTrialKit" */;
+			buildPhases = (
+				00000000000000000000003C,
+				00000000000000000000003D,
+				00000000000000000000003E,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = MusaTrialKit;
+			productName = MusaTrialKit;
+			productReference = 000000000000000000000016 /* MusaTrialKit */;
+			productType = "com.apple.product-type.framework";
+		};
+		00000000000000000000004B /* Instrument */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 00000000000000000000005E /* Build configuration list for PBXNativeTarget "Instrument" */;
+			buildPhases = (
+				00000000000000000000003F,
+				000000000000000000000040,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				00000000000000000000005A,
+			);
+			name = Instrument;
+			productName = Instrument;
+			productReference = 000000000000000000000017 /* Instrument */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		00000000000000000000004C /* Processor */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 00000000000000000000005F /* Build configuration list for PBXNativeTarget "Processor" */;
+			buildPhases = (
+				000000000000000000000041,
+				000000000000000000000042,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				00000000000000000000005B,
+			);
+			name = Processor;
+			productName = Processor;
+			productReference = 000000000000000000000018 /* Processor */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		00000000000000000000004D /* MusaAudioUnitTrial */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 000000000000000000000060 /* Build configuration list for PBXNativeTarget "MusaAudioUnitTrial" */;
+			buildPhases = (
+				000000000000000000000043,
+				000000000000000000000044,
+				000000000000000000000045,
+				000000000000000000000046,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				000000000000000000000056,
+				000000000000000000000057,
+				000000000000000000000058,
+			);
+			name = MusaAudioUnitTrial;
+			productName = MusaAudioUnitTrial;
+			productReference = 000000000000000000000019 /* MusaAudioUnitTrial */;
+			productType = "com.apple.product-type.application";
+		};
+		00000000000000000000004E /* MusaAUTrialHarness */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 000000000000000000000061 /* Build configuration list for PBXNativeTarget "MusaAUTrialHarness" */;
+			buildPhases = (
+				000000000000000000000047,
+				000000000000000000000048,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				000000000000000000000059,
+			);
+			name = MusaAUTrialHarness;
+			productName = MusaAUTrialHarness;
+			productReference = 00000000000000000000001A /* musa-au-trial-harness */;
+			productType = "com.apple.product-type.tool";
+		};
+		00000000000000000000004F /* MusaAllocProbe */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 000000000000000000000062 /* Build configuration list for PBXNativeTarget "MusaAllocProbe" */;
+			buildPhases = (
+				000000000000000000000049,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = MusaAllocProbe;
+			productName = MusaAllocProbe;
+			productReference = 00000000000000000000001B /* MusaAllocProbe */;
+			productType = "com.apple.product-type.library.dynamic";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		000000000000000000000071 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastUpgradeCheck = 2600;
+				TargetAttributes = {
+					00000000000000000000004A = {
+						CreatedOnToolsVersion = 26.0;
+					};
+					00000000000000000000004B = {
+						CreatedOnToolsVersion = 26.0;
+					};
+					00000000000000000000004C = {
+						CreatedOnToolsVersion = 26.0;
+					};
+					00000000000000000000004D = {
+						CreatedOnToolsVersion = 26.0;
+					};
+					00000000000000000000004E = {
+						CreatedOnToolsVersion = 26.0;
+					};
+					00000000000000000000004F = {
+						CreatedOnToolsVersion = 26.0;
+					};
+				};
+			};
+			buildConfigurationList = 00000000000000000000005C /* Build configuration list for PBXProject "MusaAudioUnitTrial" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 000000000000000000000032;
+			productRefGroup = 00000000000000000000003B /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				00000000000000000000004A /* MusaTrialKit */,
+				00000000000000000000004B /* Instrument */,
+				00000000000000000000004C /* Processor */,
+				00000000000000000000004D /* MusaAudioUnitTrial */,
+				00000000000000000000004E /* MusaAUTrialHarness */,
+				00000000000000000000004F /* MusaAllocProbe */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		00000000000000000000003D /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				00000000000000000000001C,
+				00000000000000000000001D,
+				00000000000000000000001E,
+				00000000000000000000001F,
+				000000000000000000000093,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		00000000000000000000003F /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				000000000000000000000022,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		000000000000000000000041 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				000000000000000000000024,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		000000000000000000000043 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				000000000000000000000026,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		000000000000000000000047 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				00000000000000000000002B,
+				00000000000000000000002C,
+				00000000000000000000002D,
+				00000000000000000000002E,
+				00000000000000000000002F,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		000000000000000000000049 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				000000000000000000000031,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		000000000000000000000056 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 00000000000000000000004A;
+			targetProxy = 000000000000000000000050 /* PBXContainerItemProxy */;
+		};
+		000000000000000000000057 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 00000000000000000000004B;
+			targetProxy = 000000000000000000000051 /* PBXContainerItemProxy */;
+		};
+		000000000000000000000058 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 00000000000000000000004C;
+			targetProxy = 000000000000000000000052 /* PBXContainerItemProxy */;
+		};
+		000000000000000000000059 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 00000000000000000000004A;
+			targetProxy = 000000000000000000000053 /* PBXContainerItemProxy */;
+		};
+		00000000000000000000005A /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 00000000000000000000004A;
+			targetProxy = 000000000000000000000054 /* PBXContainerItemProxy */;
+		};
+		00000000000000000000005B /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 00000000000000000000004A;
+			targetProxy = 000000000000000000000055 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		000000000000000000000063 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Manual;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_HARDENED_RUNTIME = NO;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = c11;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				ONLY_ACTIVE_ARCH = YES;
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				WARNING_CFLAGS = "-Wall";
+			};
+			name = Debug;
+		};
+		000000000000000000000064 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Manual;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = "";
+				ENABLE_HARDENED_RUNTIME = NO;
+				ENABLE_TESTABILITY = NO;
+				GCC_C_LANGUAGE_STANDARD = c11;
+				GCC_OPTIMIZATION_LEVEL = s;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				ONLY_ACTIVE_ARCH = NO;
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "";
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+				WARNING_CFLAGS = "-Wall";
+			};
+			name = Release;
+		};
+		000000000000000000000065 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				DEFINES_MODULE = YES;
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				DYLIB_INSTALL_NAME_BASE = "@rpath";
+				GENERATE_INFOPLIST_FILE = YES;
+				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = dev.musa.audiounittrial.MusaTrialKit;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+			};
+			name = Debug;
+		};
+		000000000000000000000066 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				DEFINES_MODULE = YES;
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				DYLIB_INSTALL_NAME_BASE = "@rpath";
+				GENERATE_INFOPLIST_FILE = YES;
+				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = dev.musa.audiounittrial.MusaTrialKit;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+			};
+			name = Release;
+		};
+		000000000000000000000067 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Config/Instrument.entitlements;
+				INFOPLIST_FILE = Config/Instrument-Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../../../../Frameworks",
+				);
+				OTHER_LDFLAGS = (
+					"-e",
+					_NSExtensionMain,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = dev.musa.audiounittrial.Instrument;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+			};
+			name = Debug;
+		};
+		000000000000000000000068 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Config/Instrument.entitlements;
+				INFOPLIST_FILE = Config/Instrument-Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../../../../Frameworks",
+				);
+				OTHER_LDFLAGS = (
+					"-e",
+					_NSExtensionMain,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = dev.musa.audiounittrial.Instrument;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+			};
+			name = Release;
+		};
+		000000000000000000000069 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Config/Processor.entitlements;
+				INFOPLIST_FILE = Config/Processor-Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../../../../Frameworks",
+				);
+				OTHER_LDFLAGS = (
+					"-e",
+					_NSExtensionMain,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = dev.musa.audiounittrial.Processor;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+			};
+			name = Debug;
+		};
+		00000000000000000000006A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Config/Processor.entitlements;
+				INFOPLIST_FILE = Config/Processor-Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../../../../Frameworks",
+				);
+				OTHER_LDFLAGS = (
+					"-e",
+					_NSExtensionMain,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = dev.musa.audiounittrial.Processor;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+			};
+			name = Release;
+		};
+		00000000000000000000006B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Config/App.entitlements;
+				INFOPLIST_FILE = Config/App-Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = dev.musa.audiounittrial;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Debug;
+		};
+		00000000000000000000006C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Config/App.entitlements;
+				INFOPLIST_FILE = Config/App-Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = dev.musa.audiounittrial;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Release;
+		};
+		00000000000000000000006D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path",
+				);
+				PRODUCT_NAME = musa-au-trial-harness;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		00000000000000000000006E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path",
+				);
+				PRODUCT_NAME = musa-au-trial-harness;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		00000000000000000000006F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				EXECUTABLE_PREFIX = lib;
+				PRODUCT_NAME = MusaAllocProbe;
+				SKIP_INSTALL = YES;
+			};
+			name = Debug;
+		};
+		000000000000000000000070 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				EXECUTABLE_PREFIX = lib;
+				PRODUCT_NAME = MusaAllocProbe;
+				SKIP_INSTALL = YES;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		00000000000000000000005C /* Build configuration list for PBXProject "MusaAudioUnitTrial" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				000000000000000000000063 /* Debug */,
+				000000000000000000000064 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		00000000000000000000005D /* Build configuration list for PBXNativeTarget "MusaTrialKit" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				000000000000000000000065 /* Debug */,
+				000000000000000000000066 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		00000000000000000000005E /* Build configuration list for PBXNativeTarget "Instrument" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				000000000000000000000067 /* Debug */,
+				000000000000000000000068 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		00000000000000000000005F /* Build configuration list for PBXNativeTarget "Processor" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				000000000000000000000069 /* Debug */,
+				00000000000000000000006A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		000000000000000000000060 /* Build configuration list for PBXNativeTarget "MusaAudioUnitTrial" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				00000000000000000000006B /* Debug */,
+				00000000000000000000006C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		000000000000000000000061 /* Build configuration list for PBXNativeTarget "MusaAUTrialHarness" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				00000000000000000000006D /* Debug */,
+				00000000000000000000006E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		000000000000000000000062 /* Build configuration list for PBXNativeTarget "MusaAllocProbe" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				00000000000000000000006F /* Debug */,
+				000000000000000000000070 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 000000000000000000000071 /* Project object */;
+}

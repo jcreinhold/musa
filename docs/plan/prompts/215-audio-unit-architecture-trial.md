@@ -1,7 +1,7 @@
 ---
 id: 215
 slug: audio-unit-architecture-trial
-status: pending
+status: done
 depends_on: [210, 214]
 phase: 4
 ---
