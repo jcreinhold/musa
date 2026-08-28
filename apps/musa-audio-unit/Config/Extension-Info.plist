@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-	<string>Musa Instrument</string>
+	<string>Musa</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -48,12 +48,32 @@
 					<key>version</key>
 					<integer>65536</integer>
 				</dict>
+				<dict>
+					<key>description</key>
+					<string>A checked Musa piece, scheduled as MIDI on the host timeline</string>
+					<key>manufacturer</key>
+					<string>Musa</string>
+					<key>name</key>
+					<string>Musa: Processor</string>
+					<key>sandboxSafe</key>
+					<true/>
+					<key>subtype</key>
+					<string>musp</string>
+					<key>tags</key>
+					<array>
+						<string>MIDI Processor</string>
+					</array>
+					<key>type</key>
+					<string>aumi</string>
+					<key>version</key>
+					<integer>65536</integer>
+				</dict>
 			</array>
 		</dict>
 		<key>NSExtensionPointIdentifier</key>
 		<string>com.apple.AudioUnit</string>
 		<key>NSExtensionPrincipalClass</key>
-		<string>MusaInstrumentFactory</string>
+		<string>MusaComponentFactory</string>
 	</dict>
 </dict>
 </plist>

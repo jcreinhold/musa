@@ -53,6 +53,7 @@
 mod abi;
 mod header;
 mod instrument;
+mod schedule;
 
 pub use crate::abi::{
     MUSA_AU_ABI_VERSION, MUSA_AU_MAX_OUTPUTS, MusaAuControl, MusaAuEvent, MusaAuInstrument, MusaAuPreparation,
@@ -71,6 +72,15 @@ pub use crate::abi::{
     MUSA_AU_EVENT_NOTE_OFF, MUSA_AU_EVENT_NOTE_ON, MUSA_AU_EVENT_PARAMETER, MUSA_AU_EVENT_PITCH_BEND,
 };
 pub use crate::header::header;
+pub use crate::schedule::{
+    MUSA_AU_MIDI_PERFORMANCE, MUSA_AU_MIDI_SCORE, MUSA_AU_TIMELINE_HOST, MUSA_AU_TIMELINE_PIECE, MusaAuSchedule,
+    MusaAuScheduleEvent, MusaAuSpan, musa_au_open_schedule, musa_au_schedule_active,
+    musa_au_schedule_active_scan_start, musa_au_schedule_count, musa_au_schedule_event, musa_au_schedule_extent,
+    musa_au_schedule_identity_assets, musa_au_schedule_identity_music, musa_au_schedule_identity_piece,
+    musa_au_schedule_loss, musa_au_schedule_loss_count, musa_au_schedule_lower_bound, musa_au_schedule_message,
+    musa_au_schedule_ok, musa_au_schedule_part_channel, musa_au_schedule_part_count, musa_au_schedule_part_name,
+    musa_au_schedule_release, musa_au_schedule_timeline,
+};
 
 #[cfg(test)]
 extern crate self as musa_au;

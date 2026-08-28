@@ -14,6 +14,21 @@ import Foundation
 /// real system rather than the one that reads best.
 public let musaManufacturer = "Musa"
 
+/// The MIDI Processor: `aumi musp Musa`.
+///
+/// A different component from the Music Device, not a mode of it. One
+/// projects a piece as MIDI for the host to route; the other plays MIDI the
+/// host sends. They share this framework and no mutable state.
+public var musaProcessorDescription: AudioComponentDescription {
+    AudioComponentDescription(
+        componentType: fourCharacterCode("aumi"),
+        componentSubType: fourCharacterCode("musp"),
+        componentManufacturer: fourCharacterCode(musaManufacturer),
+        componentFlags: 0,
+        componentFlagsMask: 0
+    )
+}
+
 /// The Music Device: `aumu musa Musa`.
 public var musaInstrumentDescription: AudioComponentDescription {
     AudioComponentDescription(
@@ -81,6 +96,17 @@ public enum MusaStateKey {
     public static let controlLosses = "musa.state.controlLosses"
     /// The outputs this component projected, in bus order.
     public static let outputs = "musa.state.outputs"
+    /// Which reading of the piece a processor projects: `score` or
+    /// `performance`.
+    public static let scheduleMode = "musa.state.scheduleMode"
+    /// Which timeline it counts positions on: `piece` or `host`.
+    ///
+    /// Saved because it is a choice and never a default. A document that came
+    /// back on the other timeline would be the same notes at different
+    /// moments, which is a different piece of music.
+    public static let scheduleTimeline = "musa.state.scheduleTimeline"
+    /// The parts the projection carries, each as `name` and its channel.
+    public static let parts = "musa.state.parts"
     /// Why the component is silent, when it is.
     public static let refusal = "musa.state.refusal"
 }
@@ -91,4 +117,9 @@ public enum MusaStateKey {
 /// names. A version 1 document is still read: it named a source and a part,
 /// which is everything needed to prepare, and it carried no automation
 /// addresses to preserve because that version published no parameters.
-public let musaStateVersion = 2
+///
+/// Version 3 added the MIDI Processor's reading and timeline. The two
+/// components write disjoint keys into one schema rather than two, because a
+/// host that hands the wrong dictionary back should find a key it does not
+/// understand rather than a key that means something else.
+public let musaStateVersion = 3

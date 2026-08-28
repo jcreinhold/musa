@@ -83,8 +83,64 @@ _Static_assert(offsetof(MusaAuControl, maximum) == 12, "MusaAuControl::maximum m
 _Static_assert(offsetof(MusaAuControl, default_value) == 16, "MusaAuControl::default_value moved");
 _Static_assert(offsetof(MusaAuControl, flags) == 20, "MusaAuControl::flags moved");
 
+/* Which timeline a schedule's positions are counted on. Never inferred: a
+ * processor that guessed between these would be silently deciding whether the
+ * host's tempo changes what the piece is. */
+#define MUSA_AU_TIMELINE_PIECE          0u  /* seconds, the piece's own schedule */
+#define MUSA_AU_TIMELINE_HOST           1u  /* quarter notes on the host's grid */
+
+/* Which reading of the piece a schedule projects. */
+#define MUSA_AU_MIDI_SCORE              0u  /* as written */
+#define MUSA_AU_MIDI_PERFORMANCE        1u  /* as played */
+
+/* One scheduled MIDI message, at a position on the schedule's timeline. The
+ * position is a double because a host compares it against its own sample time
+ * or beat position; the conversion from exact rational time happened once, on
+ * the control side. */
+typedef struct {
+    double   position;
+    uint32_t part;
+    uint8_t  status;
+    uint8_t  data1;
+    uint8_t  data2;
+    uint8_t  reserved; /* must be zero */
+} MusaAuScheduleEvent;
+
+_Static_assert(sizeof(MusaAuScheduleEvent) == 16, "MusaAuScheduleEvent size disagrees with the Rust definition");
+_Static_assert(offsetof(MusaAuScheduleEvent, position) == 0, "MusaAuScheduleEvent::position moved");
+_Static_assert(offsetof(MusaAuScheduleEvent, part) == 8, "MusaAuScheduleEvent::part moved");
+_Static_assert(offsetof(MusaAuScheduleEvent, status) == 12, "MusaAuScheduleEvent::status moved");
+_Static_assert(offsetof(MusaAuScheduleEvent, data1) == 13, "MusaAuScheduleEvent::data1 moved");
+_Static_assert(offsetof(MusaAuScheduleEvent, data2) == 14, "MusaAuScheduleEvent::data2 moved");
+_Static_assert(offsetof(MusaAuScheduleEvent, reserved) == 15, "MusaAuScheduleEvent::reserved moved");
+
+/* One note sounding across a position: an attack already given, a release
+ * still ahead. Both ends are here so a host that seeked into the middle of a
+ * held note never searches backwards for either. */
+typedef struct {
+    double   start;
+    double   end;
+    uint32_t part;
+    uint8_t  status;
+    uint8_t  note;
+    uint8_t  velocity;
+    uint8_t  reserved; /* must be zero */
+} MusaAuSpan;
+
+_Static_assert(sizeof(MusaAuSpan) == 24, "MusaAuSpan size disagrees with the Rust definition");
+_Static_assert(offsetof(MusaAuSpan, start) == 0, "MusaAuSpan::start moved");
+_Static_assert(offsetof(MusaAuSpan, end) == 8, "MusaAuSpan::end moved");
+_Static_assert(offsetof(MusaAuSpan, part) == 16, "MusaAuSpan::part moved");
+_Static_assert(offsetof(MusaAuSpan, status) == 20, "MusaAuSpan::status moved");
+_Static_assert(offsetof(MusaAuSpan, note) == 21, "MusaAuSpan::note moved");
+_Static_assert(offsetof(MusaAuSpan, velocity) == 22, "MusaAuSpan::velocity moved");
+_Static_assert(offsetof(MusaAuSpan, reserved) == 23, "MusaAuSpan::reserved moved");
+
 /* The result of one preparation: an instrument, or why there is not one. */
 typedef struct MusaAuPreparation MusaAuPreparation;
+
+/* One piece projected as MIDI, for a host to place on its own timeline. */
+typedef struct MusaAuSchedule MusaAuSchedule;
 
 /* A prepared instrument a host may render. */
 typedef struct MusaAuInstrument MusaAuInstrument;
@@ -181,6 +237,66 @@ void musa_au_reset(MusaAuInstrument *instrument);
 /* Bounded counters a host may read while rendering. */
 uint32_t musa_au_unbound_events(const MusaAuInstrument *instrument);
 uint64_t musa_au_rendered_frames(const MusaAuInstrument *instrument);
+
+/* === The MIDI Processor side: one piece, read by position. === */
+
+/* Open one piece as a finite schedule of MIDI messages. Never returns null.
+ * `piece` may be null, meaning the project's first piece. `mode` is
+ * MUSA_AU_MIDI_*, `timeline` is MUSA_AU_TIMELINE_*, and a value this library
+ * does not know is refused rather than defaulted. Control side: this reads
+ * files and allocates. Release with musa_au_schedule_release. */
+MusaAuSchedule *musa_au_open_schedule(const char *project, const char *piece, uint32_t mode, uint32_t timeline);
+
+/* Nonzero when the piece became a schedule; otherwise why it did not. The
+ * message is borrowed from the schedule. */
+int musa_au_schedule_ok(const MusaAuSchedule *schedule);
+const char *musa_au_schedule_message(const MusaAuSchedule *schedule);
+
+/* What the schedule was made from, and what it is counted on. Each string is
+ * borrowed from the schedule and valid only until it is released. */
+const char *musa_au_schedule_identity_music(const MusaAuSchedule *schedule);
+const char *musa_au_schedule_identity_assets(const MusaAuSchedule *schedule);
+const char *musa_au_schedule_identity_piece(const MusaAuSchedule *schedule);
+uint32_t musa_au_schedule_timeline(const MusaAuSchedule *schedule);
+
+/* The parts the piece projects. The name is borrowed; the channel is the one
+ * every message of that part carries, and is 16 past the end. */
+uint32_t musa_au_schedule_part_count(const MusaAuSchedule *schedule);
+const char *musa_au_schedule_part_name(const MusaAuSchedule *schedule, uint32_t index);
+uint32_t musa_au_schedule_part_channel(const MusaAuSchedule *schedule, uint32_t index);
+
+/* What this projection could not carry, each as one sentence. */
+uint32_t musa_au_schedule_loss_count(const MusaAuSchedule *schedule);
+const char *musa_au_schedule_loss(const MusaAuSchedule *schedule, uint32_t index);
+
+/* The whole piece: how many messages it is, and where it ends. */
+uint32_t musa_au_schedule_count(const MusaAuSchedule *schedule);
+double musa_au_schedule_extent(const MusaAuSchedule *schedule);
+
+/* === Render side of the processor: binary searches into immutable arrays.
+ * No allocation, no lock, no I/O, no logging, no destruction, and no cursor
+ * to replay after a seek. === */
+
+/* The index of the first message at or after `position`. A block is the
+ * half-open range [lower_bound(start), lower_bound(end)), so a message on a
+ * boundary is emitted by the later block, exactly once. */
+uint32_t musa_au_schedule_lower_bound(const MusaAuSchedule *schedule, double position);
+
+/* One message. Writes `out` and returns nonzero, or writes nothing and
+ * returns zero past the end. */
+int musa_au_schedule_event(const MusaAuSchedule *schedule, uint32_t index, MusaAuScheduleEvent *out);
+
+/* The notes sounding across `position`, for a host that has just seeked.
+ * Writes up to `capacity` of them and returns how many there were, which may
+ * be more than it wrote. A note attacked exactly at `position` is not one of
+ * these: the block starting there emits its own note-on. */
+uint32_t musa_au_schedule_active(MusaAuSchedule *schedule, double position, MusaAuSpan *out, uint32_t capacity);
+
+/* Instrumentation: the index the active-note search starts at. A harness
+ * reads it to see that seeking into the middle does not begin at note one. */
+uint32_t musa_au_schedule_active_scan_start(const MusaAuSchedule *schedule, double position);
+
+void musa_au_schedule_release(MusaAuSchedule *schedule);
 
 #ifdef __cplusplus
 }

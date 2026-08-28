@@ -776,7 +776,7 @@ pub fn open_hosted_instrument_at(
     })
 }
 
-fn hex(bytes: &[u8; 32]) -> String {
+pub(crate) fn hex(bytes: &[u8; 32]) -> String {
     use std::fmt::Write as _;
     bytes.iter().fold(String::with_capacity(64), |mut text, byte| {
         let _ = write!(text, "{byte:02x}");

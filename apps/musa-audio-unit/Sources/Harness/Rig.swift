@@ -197,3 +197,149 @@ final class EventList {
         storage.append(event)
     }
 }
+
+/// Driving the MIDI Processor without a workstation.
+///
+/// The host's side of `06-daw-boundary.md` §3, written out: this rig owns the
+/// transport, tells the component where it is, and collects what comes back
+/// through the MIDI output block. The component is asked and never told —
+/// there is no method here that advances it.
+final class ProcessorRig {
+    let unit: MusaProcessorAudioUnit
+    private var block: AUInternalRenderBlock!
+    private let flags = UnsafeMutablePointer<AudioUnitRenderActionFlags>.allocate(capacity: 1)
+    private let timestamp = UnsafeMutablePointer<AudioTimeStamp>.allocate(capacity: 1)
+    private var list: UnsafeMutableAudioBufferListPointer
+    private var storage: [UnsafeMutablePointer<Float>] = []
+
+    /// What this rig tells the component about its transport. A host owns
+    /// every one of these, which is the point.
+    let state: TransportState
+
+    /// The transport a host would have, in one object the render block's
+    /// captured closures can read.
+    final class TransportState {
+        var tempo = 120.0
+        var beat = 0.0
+        var samplePosition = 0.0
+        var moving = true
+        /// Whether the host offers musical context at all. A host that does
+        /// not is not a host that means 120.
+        var offersContext = true
+        var offersTransport = true
+    }
+
+    /// Where the component's messages land. Bounded and allocation-free, so
+    /// the probe measures the render block rather than the rig.
+    let sink = MusaAuMidiSink(capacity: 4096)
+
+    init(unit: MusaProcessorAudioUnit, capacity: Int, sampleRate: Double = 48_000) throws {
+        self.unit = unit
+        state = TransportState()
+        unit.maximumFramesToRender = AUAudioFrameCount(capacity)
+        flags.initialize(to: [])
+        timestamp.initialize(to: AudioTimeStamp())
+        timestamp.pointee.mFlags = .sampleTimeValid
+        list = AudioBufferList.allocate(maximumBuffers: 2)
+        for index in 0..<2 {
+            let channel = UnsafeMutablePointer<Float>.allocate(capacity: capacity)
+            channel.initialize(repeating: 0, count: capacity)
+            storage.append(channel)
+            list[index] = AudioBuffer(
+                mNumberChannels: 1,
+                mDataByteSize: UInt32(capacity * MemoryLayout<Float>.size),
+                mData: UnsafeMutableRawPointer(channel)
+            )
+        }
+        // Installed before `internalRenderBlock` is fetched, which is the
+        // ordering Apple contracts for and prompt 215 measured holding.
+        let state = self.state
+        unit.musicalContextBlock = { tempo, _, _, beat, _, _ in
+            guard state.offersContext else { return false }
+            tempo?.pointee = state.tempo
+            beat?.pointee = state.beat
+            return true
+        }
+        unit.transportStateBlock = { flags, samples, _, _ in
+            guard state.offersTransport else { return false }
+            flags?.pointee = state.moving ? .moving : AUHostTransportStateFlags(rawValue: 0)
+            samples?.pointee = state.samplePosition
+            return true
+        }
+        // Written in Objective-C, and installed once. A Swift closure here
+        // is called through a bridging thunk that copies the block per call,
+        // and the allocation probe would count the rig rather than the
+        // component; `MusaAuDrive.h` says the same about the driver.
+        unit.midiOutputEventBlock = sink.block
+        try unit.allocateRenderResources()
+        block = unit.internalRenderBlock
+    }
+
+    deinit {
+        flags.deallocate()
+        timestamp.deallocate()
+        for channel in storage { channel.deallocate() }
+        free(list.unsafeMutablePointer)
+    }
+
+    var driverBlock: AUInternalRenderBlock { block }
+    var flagsPointer: UnsafeMutablePointer<AudioUnitRenderActionFlags> { flags }
+    var timestampPointer: UnsafeMutablePointer<AudioTimeStamp> { timestamp }
+    var bufferListPointer: UnsafeMutablePointer<AudioBufferList> { list.unsafeMutablePointer }
+
+    /// A driver holding this component's render block.
+    func driver() -> MusaAuDriver { MusaAuDriver(renderBlock: block) }
+
+    func clear() { sink.reset() }
+
+    /// What the sink kept, as the harness reads it. Building this allocates,
+    /// which is why it is a function and not what the render path touches.
+    var emitted: [(AUEventSampleTime, [UInt8])] {
+        (0..<Int(sink.keptCount)).map { index in
+            let length = min(Int(sink.length(at: UInt(index))), 3)
+            var bytes: [UInt8] = []
+            bytes.reserveCapacity(length)
+            for byte in 0..<length { bytes.append(sink.byte(at: UInt(index), of: UInt(byte))) }
+            return (sink.offset(at: UInt(index)), bytes)
+        }
+    }
+
+    /// How many messages arrived, kept or not.
+    var emittedCount: Int { Int(sink.count) }
+
+    /// Render one block with the transport where the caller put it.
+    @discardableResult
+    func render(frames: Int) -> OSStatus {
+        timestamp.pointee.mSampleTime = state.samplePosition
+        for index in 0..<2 {
+            list[index].mDataByteSize = UInt32(frames * MemoryLayout<Float>.size)
+            list[index].mData = UnsafeMutableRawPointer(storage[index])
+        }
+        return block(flags, timestamp, AUAudioFrameCount(frames), 0, list.unsafeMutablePointer, nil, nil)
+    }
+
+    /// Play from `seconds` for `blocks` blocks of `frames`, advancing the
+    /// transport the way a host would, and return everything emitted with the
+    /// absolute frame it was emitted at.
+    func play(
+        fromSeconds seconds: Double,
+        frames: Int,
+        blocks: Int,
+        sampleRate: Double = 48_000
+    ) -> [(Int, [UInt8])] {
+        state.samplePosition = seconds * sampleRate
+        state.beat = seconds * state.tempo / 60.0
+        clear()
+        var collected: [(Int, [UInt8])] = []
+        for index in 0..<blocks {
+            clear()
+            render(frames: frames)
+            for (offset, bytes) in emitted {
+                collected.append((index * frames + Int(offset), bytes))
+            }
+            state.samplePosition += Double(frames)
+            state.beat += Double(frames) * state.tempo / (60.0 * sampleRate)
+        }
+        return collected
+    }
+}

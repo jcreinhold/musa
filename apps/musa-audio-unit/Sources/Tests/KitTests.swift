@@ -27,14 +27,46 @@ final class ComponentIdentityTests: XCTestCase {
         XCTAssertEqual(fourCharacterText(description.componentManufacturer), musaManufacturer)
     }
 
+    func testTheProcessorIsTheOtherRegisteredTriple() {
+        let description = musaProcessorDescription
+        XCTAssertEqual(fourCharacterText(description.componentType), "aumi")
+        XCTAssertEqual(fourCharacterText(description.componentSubType), "musp")
+        XCTAssertEqual(fourCharacterText(description.componentManufacturer), musaManufacturer)
+        // Two components, not two modes of one.
+        XCTAssertNotEqual(description.componentType, musaInstrumentDescription.componentType)
+    }
+
     func testTheStateKeysAreDistinct() {
         let keys = [
             MusaStateKey.version, MusaStateKey.abiVersion, MusaStateKey.project, MusaStateKey.access,
             MusaStateKey.piece, MusaStateKey.part, MusaStateKey.musicIdentity, MusaStateKey.assetIdentity,
             MusaStateKey.inputs, MusaStateKey.controlTable, MusaStateKey.controlLosses, MusaStateKey.outputs,
+            MusaStateKey.scheduleMode, MusaStateKey.scheduleTimeline, MusaStateKey.parts,
             MusaStateKey.refusal,
         ]
         XCTAssertEqual(Set(keys).count, keys.count)
+    }
+
+    /// The two words a document saves are the two the library knows, and the
+    /// spelling is the document's — a renamed case would silently change what
+    /// a saved project comes back as.
+    func testTheScheduleWordsAreTheOnesADocumentWrites() {
+        XCTAssertEqual(MusaScheduleMode.allCases.map(\.rawValue), ["score", "performance"])
+        XCTAssertEqual(MusaScheduleTimeline.allCases.map(\.rawValue), ["piece", "host"])
+        XCTAssertEqual(MusaScheduleMode.score.code, UInt32(MUSA_AU_MIDI_SCORE))
+        XCTAssertEqual(MusaScheduleMode.performance.code, UInt32(MUSA_AU_MIDI_PERFORMANCE))
+        XCTAssertEqual(MusaScheduleTimeline.piece.code, UInt32(MUSA_AU_TIMELINE_PIECE))
+        XCTAssertEqual(MusaScheduleTimeline.host.code, UInt32(MUSA_AU_TIMELINE_HOST))
+        XCTAssertNil(MusaScheduleTimeline(rawValue: "Host"))
+    }
+
+    /// A source nothing named is a refusal with a reason, not a crash and not
+    /// a silent empty piece.
+    func testAnUnopenableProjectIsRefusedByName() {
+        let result = MusaScheduleWorker.openNow(MusaScheduleSelection(project: "/nowhere/at/all.musa"))
+        XCTAssertNil(result.schedule)
+        XCTAssertFalse(result.refusal.isEmpty)
+        XCTAssertEqual(result.count, 0)
     }
 
     func testTheFrameworkAndTheLibraryAgreeOnTheAbi() {

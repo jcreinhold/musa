@@ -35,6 +35,25 @@ Two consequences in this repository:
    two allocations at `-Onone`. Called *inside* the measured region it read as a component cost; the harness now
    resolves the event-list head before arming the counter.
 
+Prompt 218 added a third and a fourth, both about a component that *emits*:
+
+3. **A block passed down a second Swift frame is copied.** `MusaAuDrive.h` records this in one direction — a Swift
+   closure handed to an Objective-C block parameter is copied per call. It holds in the other direction too: a helper
+   that takes `AUMIDIOutputEventBlock` as a parameter and hands it to *another* helper pays one allocation per call.
+   `MusaProcessorAudioUnit.swift`'s release path builds its packet where the block is already captured, and its comment
+   says why.
+4. **A Swift closure installed as `midiOutputEventBlock` allocates per call**, so a harness that measures a component
+   through one is measuring its own bridging thunk. `MusaAuMidiSink` in `MusaAuDrive.h` is that sink written in
+   Objective-C, keeping a bounded record without allocating, for the same reason `MusaAuDriver` is.
+
+## The counter counts the process, not the thread
+
+`AllocProbe.c` interposes `malloc` for everyone. Measuring while the section's own components are still being torn down
+— a dozen built and let go, each with a worker still retiring what it prepared — counts their allocations as the render
+block's, and the number moves between runs by a hundred either way. `processor.rt.noAllocation` waits before it measures
+and publishes an idle driver's number beside the component's; a contaminated run then says so instead of failing
+mysteriously.
+
 ## How to tell which one you are looking at
 
 Measure a loop that calls nothing, with the same counter, in the same build. If it is nonzero, the rig is the

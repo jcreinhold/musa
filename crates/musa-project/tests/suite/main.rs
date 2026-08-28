@@ -12,6 +12,7 @@ mod editing_laws;
 mod elaboration_backend_compatibility;
 mod group_edit_laws;
 mod hosted_laws;
+mod hosted_schedule_laws;
 mod large_score_generators;
 mod library_laws;
 mod live_midi_laws;

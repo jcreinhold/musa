@@ -1,7 +1,7 @@
 ---
 id: 218
 slug: logic-midi-processor
-status: pending
+status: done
 depends_on: [213, 215, 217]
 phase: 4
 ---

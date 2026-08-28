@@ -22,11 +22,12 @@ COMPONENT=${1:-}
 case "$COMPONENT" in
     instrument) ;;
     parameters-and-outputs) ;;
+    midi-processor) ;;
     *)
-        echo "usage: $(basename "$0") instrument|parameters-and-outputs" >&2
+        echo "usage: $(basename "$0") instrument|parameters-and-outputs|midi-processor" >&2
         echo "  'instrument' is the Music Device 'aumu musa Musa' as prompt 216 built it." >&2
         echo "  'parameters-and-outputs' adds prompt 217's source controls and output buses." >&2
-        echo "  Prompt 218 adds the rest." >&2
+        echo "  'midi-processor' adds prompt 218's MIDI Processor 'aumi musp Musa'." >&2
         exit 2
         ;;
 esac
@@ -36,7 +37,10 @@ CONFIG=apps/musa-audio-unit/Config
 DERIVED=${MUSA_AU_DERIVED:-target/audio-unit}
 PRODUCTS="$DERIVED/Build/Products/Debug"
 APP="$PRODUCTS/MusaAudioUnit.app"
-APPEX="$APP/Contents/PlugIns/MusaInstrument.appex"
+# One extension, publishing both components. Two extensions that each
+# declare one component register only one of them on this system; see
+# `docs/notes/toolchain/two-audio-units-one-container.md`.
+APPEX="$APP/Contents/PlugIns/MusaComponents.appex"
 REPORT=${MUSA_AU_REPORT:-$PRODUCTS/musa-au-report.json}
 SOURCE=${MUSA_AU_PROJECT:-$PWD/examples/invention.musa}
 PART=${MUSA_AU_PART:-piano}
@@ -46,6 +50,9 @@ PART=${MUSA_AU_PART:-piano}
 # measure.
 SOURCE2=${MUSA_AU_PROJECT2:-$PWD/examples/glass-mountain.musa}
 PART2=${MUSA_AU_PART2:-violin}
+# A third, because "refused rather than flattened" needs a piece that cannot
+# be laid on one quarter-note grid. Named here for the same reason.
+SOURCE3=${MUSA_AU_PROJECT3:-$PWD/examples/canon-x.musa}
 
 if ! xcodebuild -version >/dev/null 2>&1; then
     echo "xcodebuild needs a full Xcode, not just the Command Line Tools." >&2
@@ -70,7 +77,7 @@ echo "== sign =="
 # none: a registered component has to be signed, and what a Team would add is
 # the App Group container prompt 215 measured as unusable anyway.
 codesign -f -s - "$APP/Contents/Frameworks/MusaAudioUnitKit.framework" >/dev/null 2>&1
-codesign -f -s - --entitlements "$CONFIG/Instrument.entitlements" "$APPEX" >/dev/null 2>&1
+codesign -f -s - --entitlements "$CONFIG/Extension.entitlements" "$APPEX" >/dev/null 2>&1
 codesign -f -s - --entitlements "$CONFIG/App.entitlements" "$APP" >/dev/null 2>&1
 
 echo "== register =="
@@ -81,14 +88,16 @@ echo "== settle =="
 # so wait for it rather than guessing at a sleep.
 settled=0
 for _ in $(seq 1 30); do
-    if auval -a 2>/dev/null | grep -q 'aumu musa Musa'; then
+    listing=$(auval -a 2>/dev/null || true)
+    if grep -q 'aumu musa Musa' <<<"$listing" && grep -q 'aumi musp Musa' <<<"$listing"; then
         settled=1
         break
     fi
     sleep 1
 done
 if [ "$settled" -ne 1 ]; then
-    echo "the component never appeared in the Audio Unit registry" >&2
+    echo "a component never appeared in the Audio Unit registry" >&2
+    auval -a 2>/dev/null | grep -i musa >&2 || true
     exit 1
 fi
 
@@ -100,13 +109,19 @@ else
     echo "  aumu musa Musa: FAIL"
     auval_ok=0
 fi
+if auval -v aumi musp Musa >"$PRODUCTS/auval-processor.log" 2>&1; then
+    echo "  aumi musp Musa: PASS"
+else
+    echo "  aumi musp Musa: FAIL"
+    auval_ok=0
+fi
 
 echo "== harness =="
 MUSA_AU_XCODE="$(xcodebuild -version | head -1)" \
 MUSA_AU_SDK="$(xcodebuild -showsdks 2>/dev/null | grep -m1 -o 'macosx[0-9.]*')" \
 MUSA_AU_HOST="$(uname -m) $(sw_vers -productName) $(sw_vers -productVersion) $(sw_vers -buildVersion)" \
 MUSA_AU_PROJECT="$SOURCE" MUSA_AU_PART="$PART" MUSA_AU_REPORT="$REPORT" \
-MUSA_AU_PROJECT2="$SOURCE2" MUSA_AU_PART2="$PART2" \
+MUSA_AU_PROJECT2="$SOURCE2" MUSA_AU_PART2="$PART2" MUSA_AU_PROJECT3="$SOURCE3" \
 DYLD_INSERT_LIBRARIES="$PRODUCTS/libMusaAllocProbe.dylib" \
     "$PRODUCTS/musa-au-harness" || true
 
@@ -126,7 +141,7 @@ xcodebuild -project "$PROJECT" -scheme MusaAudioUnit -configuration Debug \
     ENABLE_THREAD_SANITIZER=YES build >"$TSAN_DERIVED.log" 2>&1 \
     || { tail -40 "$TSAN_DERIVED.log"; exit 1; }
 MUSA_AU_PROJECT="$SOURCE" MUSA_AU_PART="$PART" MUSA_AU_SKIP_HOSTED=1 \
-MUSA_AU_PROJECT2="$SOURCE2" MUSA_AU_PART2="$PART2" \
+MUSA_AU_PROJECT2="$SOURCE2" MUSA_AU_PART2="$PART2" MUSA_AU_PROJECT3="$SOURCE3" \
 MUSA_AU_REPORT="$TSAN_PRODUCTS/musa-au-tsan-report.json" \
     "$TSAN_PRODUCTS/musa-au-harness" >"$TSAN_LOG" 2>&1 || true
 if grep -q 'WARNING: ThreadSanitizer' "$TSAN_LOG"; then

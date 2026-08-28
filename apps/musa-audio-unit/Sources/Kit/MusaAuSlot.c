@@ -20,3 +20,22 @@ MusaAuInstrument *musa_au_slot_current(const MusaAuSlot *slot) {
 uint32_t musa_au_slot_generation(const MusaAuSlot *slot) {
     return __c11_atomic_load((_Atomic(uint32_t) *)&slot->generation, __ATOMIC_ACQUIRE);
 }
+
+void musa_au_schedule_slot_init(MusaAuScheduleSlot *slot) {
+    __c11_atomic_store(&slot->current, (MusaAuSchedule *)0, __ATOMIC_RELAXED);
+    __c11_atomic_store(&slot->generation, 0u, __ATOMIC_RELAXED);
+}
+
+MusaAuSchedule *musa_au_schedule_slot_publish(MusaAuScheduleSlot *slot, MusaAuSchedule *next) {
+    MusaAuSchedule *previous = __c11_atomic_exchange(&slot->current, next, __ATOMIC_ACQ_REL);
+    __c11_atomic_fetch_add(&slot->generation, 1u, __ATOMIC_RELEASE);
+    return previous;
+}
+
+MusaAuSchedule *musa_au_schedule_slot_current(const MusaAuScheduleSlot *slot) {
+    return __c11_atomic_load((_Atomic(MusaAuSchedule *) *)&slot->current, __ATOMIC_ACQUIRE);
+}
+
+uint32_t musa_au_schedule_slot_generation(const MusaAuScheduleSlot *slot) {
+    return __c11_atomic_load((_Atomic(uint32_t) *)&slot->generation, __ATOMIC_ACQUIRE);
+}

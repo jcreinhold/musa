@@ -47,6 +47,7 @@ mod facts;
 mod format_support;
 mod group_edit;
 mod hosted;
+mod hosted_schedule;
 mod imports;
 mod library;
 mod lock;
@@ -102,6 +103,10 @@ pub use crate::hosted::{
     HostedInput, HostedInstrument, HostedOutcome, HostedOutput, HostedOutputRole, HostedRequest,
     open_hosted_instrument, open_hosted_instrument_at,
 };
+pub use crate::hosted_schedule::{
+    HostedActiveNote, HostedSchedule, HostedScheduleEvent, HostedScheduleIdentity, HostedScheduleRequest,
+    HostedTimeline, open_hosted_schedule,
+};
 pub use crate::library::{LibraryDocument, library_document};
 pub use crate::logging::{FILTER_VARIABLE, Logging};
 pub use crate::midi::{
@@ -142,7 +147,7 @@ pub use crate::vocabulary::{format_studio_ratio, standard_instrument_contracts, 
 pub use musa_compiler::DocumentKind;
 pub use musa_compiler::standard_library_source;
 pub use musa_compiler::{EventsTokenClass, events_bindings, events_classify, events_keyword_doc};
-pub use musa_notation::MidiMode;
+pub use musa_notation::{MidiMode, MidiPart};
 pub use musa_playback::{
     ClockAuthority, LiveMidiPacket, LiveMidiPart, MidiEndpoint, MidiOutputCounters, MidiOutputMode, MidiOutputTarget,
     MidiPortReport, RESYNC_MICROS, SyncInputLosses, SyncLock, SyncOptions, SyncPosition, SyncProtocol, SyncSource,

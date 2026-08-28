@@ -15,6 +15,7 @@ new contributor would lose an afternoon rediscovering it.
 | [playwright-under-recursive-pnpm.md](playwright-under-recursive-pnpm.md) | Why `pnpm -r test` fails a screen test that passes when the UI package runs on its own |
 | [slow-test-suite.md](slow-test-suite.md) | Why the test suite appears to hang on macOS at 0% CPU, and why `cargo clean` fixes it |
 | [swift-debug-allocations.md](swift-debug-allocations.md) | Why a Swift render block allocates twice per call in a Debug build, and how to tell the rig's cost from the component's |
+| [two-audio-units-one-container.md](two-audio-units-one-container.md) | Why registering a second Audio Unit app extension takes the first one out of the registry, and what shape publishes both |
 | [tracing-in-tests.md](tracing-in-tests.md) | Why a logging law fails under `cargo test` but passes under `cargo nextest run`, and what to install instead of `with_default` |
 
 What does *not* belong here: anything that decides semantics (that is `../../rules/constitution.md`,

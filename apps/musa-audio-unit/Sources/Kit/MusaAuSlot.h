@@ -44,6 +44,23 @@ MusaAuInstrument *musa_au_slot_current(const MusaAuSlot *slot);
  * reads it to tell "not ready yet" from "ready and silent". */
 uint32_t musa_au_slot_generation(const MusaAuSlot *slot);
 
+/* The same publication, for the piece a MIDI Processor reads.
+ *
+ * A separate type rather than a void slot: the two components publish two
+ * unrelated things, and one slot holding either would be a place where a
+ * wrong cast compiles. They share no mutable state — a processor and an
+ * instrument in the same session are two components, not two views of one.
+ */
+typedef struct {
+    _Atomic(MusaAuSchedule *) current;
+    _Atomic(uint32_t) generation;
+} MusaAuScheduleSlot;
+
+void musa_au_schedule_slot_init(MusaAuScheduleSlot *slot);
+MusaAuSchedule *musa_au_schedule_slot_publish(MusaAuScheduleSlot *slot, MusaAuSchedule *next);
+MusaAuSchedule *musa_au_schedule_slot_current(const MusaAuScheduleSlot *slot);
+uint32_t musa_au_schedule_slot_generation(const MusaAuScheduleSlot *slot);
+
 #ifdef __cplusplus
 }
 #endif

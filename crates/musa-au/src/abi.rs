@@ -679,7 +679,7 @@ pub unsafe extern "C" fn musa_au_instrument_release(instrument: *mut MusaAuInstr
 }
 
 /// One NUL-terminated argument as UTF-8, refusing null and invalid encoding.
-unsafe fn borrow<'a>(value: *const c_char) -> Result<&'a str, String> {
+pub(crate) unsafe fn borrow<'a>(value: *const c_char) -> Result<&'a str, String> {
     if value.is_null() {
         return Err("a required string argument was null".to_owned());
     }

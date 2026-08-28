@@ -775,6 +775,25 @@ if skipHosted {
     )
 }
 
+// The MIDI Processor is a second registered component, and the registry is
+// where "two components, not two modes of one" is actually visible.
+if skipHosted {
+    report.unsupported(
+        "discovery.processor",
+        "Core Audio finds the registered MIDI Processor",
+        "MUSA_AU_SKIP_HOSTED was set, so nothing out of process was attempted"
+    )
+} else {
+    let processors = AVAudioUnitComponentManager.shared().components(matching: musaProcessorDescription)
+    report.check(
+        "discovery.processor",
+        "Core Audio finds the registered MIDI Processor",
+        !processors.isEmpty,
+        processors.first.map { "\($0.name) \($0.versionString)" } ?? "nothing matched aumi musp Musa",
+        numbers: ["count": Double(processors.count)]
+    )
+}
+
 if !components.isEmpty {
     if let first = instantiateOutOfProcess() {
         report.check(
@@ -827,6 +846,264 @@ if !components.isEmpty {
     }
 }
 
+// MARK: - The MIDI Processor
+
+/// The piece a processor projects. The same source the instrument uses, read
+/// whole rather than one part at a time.
+func processorSelection(
+    timeline: MusaScheduleTimeline = .piece,
+    mode: MusaScheduleMode = .performance,
+    project: String? = nil
+) -> MusaScheduleSelection {
+    MusaScheduleSelection(project: project ?? projectPath, piece: nil, mode: mode, timeline: timeline)
+}
+
+func makeProcessor() throws -> MusaProcessorAudioUnit {
+    try MusaProcessorAudioUnit(componentDescription: musaProcessorDescription, options: [])
+}
+
+/// A three-byte channel message as a comparable tuple.
+func spelling(_ bytes: [UInt8]) -> String { bytes.map { String($0) }.joined(separator: ".") }
+
+do {
+    let unit = try makeProcessor()
+    let refusal = unit.selectAndWait(processorSelection())
+    report.check(
+        "processor.opened",
+        "A checked piece opens as a finite schedule",
+        refusal.isEmpty && unit.isReady && unit.messageCount > 0,
+        refusal.isEmpty
+            ? "\(unit.messageCount) messages across \(unit.parts.count) part(s), ending at \(unit.extent)"
+            : refusal,
+        numbers: ["messages": Double(unit.messageCount), "parts": Double(unit.parts.count)]
+    )
+    report.check(
+        "processor.parts",
+        "Every part names itself and its channel",
+        !unit.parts.isEmpty && unit.parts.allSatisfy { !$0.name.isEmpty && $0.channel < 16 },
+        unit.parts.map { "\($0.name)@\($0.channel)" }.joined(separator: ", ")
+    )
+    report.check(
+        "processor.losses",
+        "What a MIDI effect cannot carry is a sentence, not a shrug",
+        !unit.projectionLosses.isEmpty && unit.projectionLosses.allSatisfy { $0.contains(" ") },
+        unit.projectionLosses.joined(separator: " | ")
+    )
+    report.check(
+        "processor.cableName",
+        "The one MIDI cable is named for the piece",
+        unit.midiOutputNames.count == 1 && unit.midiOutputNames[0].hasPrefix("Musa"),
+        unit.midiOutputNames.joined(separator: ", ")
+    )
+
+    let rig = try ProcessorRig(unit: unit, capacity: 4_096)
+    let whole = Int((unit.extent * 48_000 / 512).rounded(.up)) + 2
+
+    // Every message, exactly once, under a partition the host chose.
+    let coarse = rig.play(fromSeconds: 0, frames: 512, blocks: whole)
+    let fine = rig.play(fromSeconds: 0, frames: 137, blocks: Int((unit.extent * 48_000 / 137).rounded(.up)) + 2)
+    report.check(
+        "processor.block.exactlyOnce",
+        "The whole piece comes out once, in order, whatever the block size",
+        coarse.count == unit.messageCount && fine.count == unit.messageCount
+            && coarse.map { spelling($0.1) } == fine.map { spelling($0.1) },
+        "\(coarse.count) at 512 frames, \(fine.count) at 137, of \(unit.messageCount) scheduled",
+        numbers: ["coarse": Double(coarse.count), "fine": Double(fine.count)]
+    )
+    report.check(
+        "processor.block.everyPacketIsThreeBytes",
+        "Everything emitted is a whole channel message",
+        coarse.allSatisfy { $0.1.count == 3 && $0.1[0] & 0x80 != 0 },
+        "\(coarse.count) packets"
+    )
+
+    // A seek reads from where the host is, not from the beginning.
+    unit.clearTrace()
+    let middle = unit.extent / 2
+    _ = rig.play(fromSeconds: middle, frames: 512, blocks: 1)
+    let searched = unit.lastSearchStart
+    report.check(
+        "processor.seek.doesNotReplay",
+        "A seek into the middle starts at the middle",
+        searched > 0 && searched < Int64(unit.messageCount),
+        "the search began at index \(searched) of \(unit.messageCount), and \(unit.index(at: middle)) is where that position is",
+        numbers: ["searchStart": Double(searched)]
+    )
+    report.check(
+        "processor.seek.noWholePieceScan",
+        "Re-entry skips the notes that already finished",
+        unit.lastScanStart >= 0,
+        "the active-note scan began at span \(unit.lastScanStart)",
+        numbers: ["scanStart": Double(unit.lastScanStart)]
+    )
+    report.check(
+        "processor.seek.reentersHeldNotes",
+        "Notes the seek landed inside are attacked again, and nothing else is",
+        unit.lastReentered >= 0 && unit.reentryOverflow == 0,
+        "\(unit.lastReentered) re-entered, \(unit.reentryOverflow) more than there were slots for",
+        numbers: ["reentered": Double(unit.lastReentered)]
+    )
+
+    // A stopped transport is silence, and it releases what was sounding.
+    rig.state.moving = false
+    rig.clear()
+    rig.render(frames: 512)
+    let stopped = rig.emitted
+    report.check(
+        "processor.transport.stopped",
+        "A stopped transport emits no music",
+        stopped.allSatisfy { $0.1.first.map { $0 & 0xF0 == 0x80 } ?? false },
+        stopped.isEmpty ? "nothing at all" : "\(stopped.count) note-offs and no note-ons"
+    )
+    rig.state.moving = true
+
+    // A host that offers no musical context is not a host that means 120.
+    let hostUnit = try makeProcessor()
+    let hostRefusal = hostUnit.selectAndWait(processorSelection(timeline: .host))
+    if hostRefusal.isEmpty {
+        let hostRig = try ProcessorRig(unit: hostUnit, capacity: 4_096)
+        hostRig.state.offersContext = false
+        hostRig.clear()
+        hostRig.render(frames: 512)
+        report.check(
+            "processor.context.missing",
+            "No musical context means no guess",
+            hostRig.emitted.isEmpty && hostUnit.sawMissingContext,
+            hostRig.emitted.isEmpty
+                ? "nothing was emitted and the absence was recorded"
+                : "\(hostRig.emitted.count) messages came out of a host that offered no tempo"
+        )
+        hostRig.state.offersContext = true
+        let onHost = hostRig.play(fromSeconds: 0, frames: 512, blocks: whole)
+        report.check(
+            "processor.timeline.host",
+            "The host's timeline carries the same messages the piece's does",
+            onHost.map { spelling($0.1) } == coarse.map { spelling($0.1) },
+            "\(onHost.count) on the host's grid against \(coarse.count) on the piece's"
+        )
+    } else {
+        report.check("processor.timeline.host", "The host's timeline carries the same messages", false, hostRefusal)
+        report.check("processor.context.missing", "No musical context means no guess", false, hostRefusal)
+    }
+
+    // Document state: the choices come back, and a future version does not.
+    let saved = unit.fullStateForDocument
+    let restored = try makeProcessor()
+    restored.fullStateForDocument = saved
+    report.check(
+        "processor.state.roundTrip",
+        "A saved document names the reading and the timeline it was made with",
+        (saved?[MusaStateKey.scheduleMode] as? String) == "performance"
+            && (saved?[MusaStateKey.scheduleTimeline] as? String) == "piece"
+            && (saved?[MusaStateKey.version] as? Int) == musaStateVersion,
+        "mode \(saved?[MusaStateKey.scheduleMode] as? String ?? "-"), "
+            + "timeline \(saved?[MusaStateKey.scheduleTimeline] as? String ?? "-")"
+    )
+    let future = try makeProcessor()
+    var ahead = saved ?? [:]
+    ahead[MusaStateKey.version] = musaStateVersion + 1
+    future.fullStateForDocument = ahead
+    report.check(
+        "processor.state.fromTheFuture",
+        "A document from a later version is refused rather than half-read",
+        !future.isReady && future.refusal.contains("version"),
+        future.refusal
+    )
+    let confused = try makeProcessor()
+    var wrongWord = saved ?? [:]
+    wrongWord[MusaStateKey.scheduleTimeline] = "whatever the host feels like"
+    confused.fullStateForDocument = wrongWord
+    report.check(
+        "processor.state.unknownTimeline",
+        "A timeline word this component does not know is refused, not defaulted",
+        !confused.isReady && confused.refusal.contains("timeline"),
+        confused.refusal
+    )
+
+    // The render block allocates nothing.
+    //
+    // The transport block is withdrawn for this measurement so the driver's
+    // own advancing sample time is what moves the piece, and the messages
+    // land in the rig's Objective-C sink, which keeps a bounded record
+    // without allocating.
+    //
+    // The probe counts the process, not the thread, so this section's own
+    // leavings — a dozen components built and let go, each with a worker
+    // still retiring what it prepared — are counted too if the measurement
+    // begins while they are still being torn down. Waiting first, and
+    // publishing an idle driver's number beside the component's, is what
+    // makes the number about the render block.
+    let driver = rig.driver()
+    rig.state.offersTransport = false
+    rig.timestampPointer.pointee.mSampleTime = middle * 48_000
+    let rounds: UInt32 = 64
+    Thread.sleep(forTimeInterval: 0.5)
+    let idleDriver = MusaAuDriver.empty()
+    let baseline = AllocationProbe.measure {
+        _ = idleDriver.run(
+            with: rig.flagsPointer, timestamp: rig.timestampPointer, frames: 512,
+            outputBusNumber: 0, outputData: rig.bufferListPointer, events: nil, rounds: rounds
+        )
+    }
+    // Warmed twice: the first call to each of the schedule's entry points
+    // binds a lazy symbol, and that is a cost of the first block ever
+    // rendered rather than of rendering.
+    _ = driver.run(
+        with: rig.flagsPointer, timestamp: rig.timestampPointer, frames: 512,
+        outputBusNumber: 0, outputData: rig.bufferListPointer, events: nil, rounds: 2
+    )
+    let measured = AllocationProbe.measure {
+        _ = driver.run(
+            with: rig.flagsPointer, timestamp: rig.timestampPointer, frames: 512,
+            outputBusNumber: 0, outputData: rig.bufferListPointer, events: nil, rounds: rounds
+        )
+    }
+    if let measured, let baseline {
+        report.check(
+            "processor.rt.noAllocation",
+            "The render block allocates nothing",
+            measured == 0 && baseline == 0,
+            "\(measured) allocations across \(rounds) blocks, \(rig.emittedCount) messages emitted, baseline \(baseline)",
+            numbers: ["allocations": Double(measured), "baseline": Double(baseline), "blocks": Double(rounds)]
+        )
+    } else {
+        report.unsupported(
+            "processor.rt.noAllocation",
+            "The render block allocates nothing",
+            "the allocation probe is not in this process"
+        )
+    }
+}
+
+// A polytempo piece has no one quarter-note grid to lay on the host's.
+do {
+    let polytempo = ProcessInfo.processInfo.environment["MUSA_AU_PROJECT3"] ?? ""
+    if polytempo.isEmpty {
+        report.unsupported(
+            "processor.polytempo.refused",
+            "A polytempo piece is refused on the host's timeline",
+            "MUSA_AU_PROJECT3 names no polytempo fixture"
+        )
+    } else {
+        let unit = try makeProcessor()
+        let refusal = unit.selectAndWait(processorSelection(timeline: .host, project: polytempo))
+        report.check(
+            "processor.polytempo.refused",
+            "A polytempo piece is refused on the host's timeline rather than flattened",
+            !unit.isReady && refusal.contains("polytempo"),
+            refusal
+        )
+        let own = try makeProcessor()
+        let played = own.selectAndWait(processorSelection(timeline: .piece, project: polytempo))
+        report.check(
+            "processor.polytempo.playsOnItsOwn",
+            "The same piece plays on its own timeline, where every part keeps its speed",
+            played.isEmpty && own.messageCount > 0,
+            played.isEmpty ? "\(own.messageCount) messages" : played
+        )
+    }
+}
+
 // MARK: - Write it down
 
 let environment = [
@@ -838,5 +1115,6 @@ let environment = [
     "MUSA_AU_XCODE": ProcessInfo.processInfo.environment["MUSA_AU_XCODE"] ?? "",
     "MUSA_AU_SDK": ProcessInfo.processInfo.environment["MUSA_AU_SDK"] ?? "",
     "MUSA_AU_HOST": ProcessInfo.processInfo.environment["MUSA_AU_HOST"] ?? "",
+    "polytempo": ProcessInfo.processInfo.environment["MUSA_AU_PROJECT3"] ?? "",
 ]
 try report.json(environment: environment).write(to: URL(fileURLWithPath: reportPath))

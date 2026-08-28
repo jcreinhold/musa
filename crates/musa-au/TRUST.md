@@ -18,17 +18,18 @@ opposite reason it looks like it would require it.
 ## The four invariants every entry point keeps
 
 1. **Nothing unwinds into C.** A panic crossing an `extern "C"` frame is undefined behavior. `musa_au_prepare`,
-   `musa_au_render`, `musa_au_render_outputs`, and `musa_au_reset` catch; the accessors cannot panic because they only
-   read already-built values.
+   `musa_au_render`, `musa_au_render_outputs`, `musa_au_reset`, and `musa_au_open_schedule` catch; the accessors cannot
+   panic because they only read already-built values, and the schedule's two search entry points cannot because they are
+   `partition_point` over slices they own.
 2. **Every pointer is checked for null once, at the boundary.** `as_ref`/`as_mut` do it for handles; `borrow` does it
    for strings. Past that line the code holds references and the ordinary rules apply.
 3. **Nothing borrowed escapes.** Every `const char *` handed out is owned by the object that produced it and lives
    exactly as long as that object. The generated header says so beside each accessor, and the Swift side copies before
    releasing.
-4. **Layout is asserted on both sides.** `MusaAuEvent` and `MusaAuControl` are `#[repr(C)]`, the generated header
-   carries `_Static_assert`s for each one's size and every field offset, and a currency test regenerates the header and
-   compares it byte for byte. A layout disagreement is a compile error on one side or a test failure on the other, never
-   a rendered artifact.
+4. **Layout is asserted on both sides.** `MusaAuEvent`, `MusaAuControl`, `MusaAuScheduleEvent`, and `MusaAuSpan` are
+   `#[repr(C)]`, the generated header carries `_Static_assert`s for each one's size and every field offset, and a
+   currency test regenerates the header and compares it byte for byte. A layout disagreement is a compile error on one
+   side or a test failure on the other, never a rendered artifact.
 
 ## What the caller must guarantee
 
@@ -39,7 +40,17 @@ Stated once in `lib.rs` and per function where it adds something:
 - `events` addresses `count` initialized `MusaAuEvent` values, or is null when `count` is zero;
 - `left` and `right` each address `frames` writable floats and do not alias;
 - `channels` addresses `channel_count` non-null pointers, each to `frames` writable floats, none aliasing another;
+- `out` addresses `capacity` writable `MusaAuSpan` values, or is null when `capacity` is zero;
 - one handle is not used from two threads at once.
+
+The last one is not a formality for a `MusaAuSchedule`. Every other handle is read-only once built, so two threads
+reading one would be harmless in practice; `musa_au_schedule_active` is not. It fills an internal scratch buffer, sized
+once on the control side to the schedule's own event count, before copying out of it — so two render threads sharing one
+handle would overwrite each other's answer. The component publishes one schedule to one render block through an atomic
+slot and retires the old one on the worker, which is what keeps this true.
+
+The scratch is why `musa_au_schedule_active` takes `*mut` and the other search does not: a render block that had to
+allocate a landing place for the answer would be a render block that allocates.
 
 ## The one place a pointer is written through more than once
 
@@ -51,6 +62,10 @@ outright, because a caller that has not said which channel it means must not hav
 itself goes through one private `write_frame`, which indexes the copied array with `get` and returns rather than writing
 when an index is not there. `tests/suite/controls.rs` renders a partition of the same frames into one, two, and three
 outputs and compares bus zero, which is the observable half of the same claim.
+
+`tests/suite/schedule.rs` does the same for the schedule handle — an unknown reading, an unknown timeline, a source that
+does not compile, a released handle, a capacity of zero, and a buffer too small to hold a chord, which reports what it
+could not hold rather than a shorter chord.
 
 `tests/suite/boundary.rs` exercises the negative half of each of these that can be exercised from Rust — null handles,
 null strings, non-UTF-8 strings, a zero-length block, a null event pointer with a nonzero count, a taken preparation

@@ -15,12 +15,14 @@
 		000000000000000000000025 /* MusaPreparation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000005 /* MusaPreparation.swift */; };
 		000000000000000000000026 /* MusaMIDI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000006 /* MusaMIDI.swift */; };
 		000000000000000000000027 /* MusaInstrumentAudioUnit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000007 /* MusaInstrumentAudioUnit.swift */; };
-		000000000000000000000028 /* InstrumentFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000009 /* InstrumentFactory.swift */; };
+		0000000000000000000000B2 /* MusaSchedule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000000B0 /* MusaSchedule.swift */; };
+		0000000000000000000000B3 /* MusaProcessorAudioUnit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000000B1 /* MusaProcessorAudioUnit.swift */; };
+		000000000000000000000028 /* ComponentFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000009 /* ComponentFactory.swift */; };
 		000000000000000000000029 /* MusaAudioUnitKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 000000000000000000000013 /* MusaAudioUnitKit.framework */; };
 		00000000000000000000002A /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000000A /* main.swift */; };
 		00000000000000000000002B /* MusaAudioUnitKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 000000000000000000000013 /* MusaAudioUnitKit.framework */; };
 		00000000000000000000002C /* MusaAudioUnitKit.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 000000000000000000000013 /* MusaAudioUnitKit.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
-		00000000000000000000002D /* MusaInstrument.appex in Embed Extensions */ = {isa = PBXBuildFile; fileRef = 000000000000000000000014 /* MusaInstrument.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		00000000000000000000002D /* MusaComponents.appex in Embed Extensions */ = {isa = PBXBuildFile; fileRef = 000000000000000000000014 /* MusaComponents.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		00000000000000000000002E /* Report.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000000B /* Report.swift */; };
 		00000000000000000000002F /* Rig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000000C /* Rig.swift */; };
 		000000000000000000000030 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000000D /* main.swift */; };
@@ -53,7 +55,7 @@
 			containerPortal = 0000000000000000000000A0 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = 000000000000000000000061;
-			remoteInfo = MusaInstrument;
+			remoteInfo = MusaComponents;
 		};
 		000000000000000000000076 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -89,7 +91,7 @@
 			dstPath = "";
 			dstSubfolderSpec = 13;
 			files = (
-				00000000000000000000002D /* MusaInstrument.appex in Embed Extensions */,
+				00000000000000000000002D /* MusaComponents.appex in Embed Extensions */,
 			);
 			name = "Embed Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -104,24 +106,26 @@
 		000000000000000000000005 /* MusaPreparation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusaPreparation.swift; sourceTree = "<group>"; };
 		000000000000000000000006 /* MusaMIDI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusaMIDI.swift; sourceTree = "<group>"; };
 		000000000000000000000007 /* MusaInstrumentAudioUnit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusaInstrumentAudioUnit.swift; sourceTree = "<group>"; };
+		0000000000000000000000B0 /* MusaSchedule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusaSchedule.swift; sourceTree = "<group>"; };
+		0000000000000000000000B1 /* MusaProcessorAudioUnit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusaProcessorAudioUnit.swift; sourceTree = "<group>"; };
 		000000000000000000000008 /* musa_au.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = musa_au.h; path = ../../../../crates/musa-au/include/musa_au.h; sourceTree = "<group>"; };
 		000000000000000000000018 /* MusaAuDrive.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MusaAuDrive.h; sourceTree = "<group>"; };
 		000000000000000000000019 /* MusaAuDrive.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = MusaAuDrive.m; sourceTree = "<group>"; };
 		00000000000000000000001A /* Probe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Probe.swift; sourceTree = "<group>"; };
 		00000000000000000000001B /* AllocProbe.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = AllocProbe.c; path = ../../../musa-audio-unit-trial/Sources/AllocProbe/AllocProbe.c; sourceTree = "<group>"; };
 		00000000000000000000001C /* libMusaAllocProbe.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = libMusaAllocProbe.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
-		000000000000000000000009 /* InstrumentFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstrumentFactory.swift; sourceTree = "<group>"; };
+		000000000000000000000009 /* ComponentFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComponentFactory.swift; sourceTree = "<group>"; };
 		00000000000000000000000A /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
 		00000000000000000000000B /* Report.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Report.swift; sourceTree = "<group>"; };
 		00000000000000000000000C /* Rig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Rig.swift; sourceTree = "<group>"; };
 		00000000000000000000000D /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
 		00000000000000000000000E /* KitTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KitTests.swift; sourceTree = "<group>"; };
 		00000000000000000000000F /* App-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "App-Info.plist"; sourceTree = "<group>"; };
-		000000000000000000000010 /* Instrument-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Instrument-Info.plist"; sourceTree = "<group>"; };
+		000000000000000000000010 /* Extension-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Extension-Info.plist"; sourceTree = "<group>"; };
 		000000000000000000000011 /* App.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = App.entitlements; sourceTree = "<group>"; };
-		000000000000000000000012 /* Instrument.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Instrument.entitlements; sourceTree = "<group>"; };
+		000000000000000000000012 /* Extension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Extension.entitlements; sourceTree = "<group>"; };
 		000000000000000000000013 /* MusaAudioUnitKit.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = MusaAudioUnitKit.framework; sourceTree = BUILT_PRODUCTS_DIR; };
-		000000000000000000000014 /* MusaInstrument.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = MusaInstrument.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		000000000000000000000014 /* MusaComponents.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = MusaComponents.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		000000000000000000000015 /* MusaAudioUnit.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MusaAudioUnit.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		000000000000000000000016 /* musa-au-harness */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = "musa-au-harness"; sourceTree = BUILT_PRODUCTS_DIR; };
 		000000000000000000000017 /* MusaAudioUnitKitTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MusaAudioUnitKitTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -183,16 +187,18 @@
 				000000000000000000000005 /* MusaPreparation.swift */,
 				000000000000000000000006 /* MusaMIDI.swift */,
 				000000000000000000000007 /* MusaInstrumentAudioUnit.swift */,
+				0000000000000000000000B0 /* MusaSchedule.swift */,
+				0000000000000000000000B1 /* MusaProcessorAudioUnit.swift */,
 			);
 			path = Sources/Kit;
 			sourceTree = "<group>";
 		};
-		000000000000000000000041 /* Instrument */ = {
+		000000000000000000000041 /* Extension */ = {
 			isa = PBXGroup;
 			children = (
-				000000000000000000000009 /* InstrumentFactory.swift */,
+				000000000000000000000009 /* ComponentFactory.swift */,
 			);
-			path = Sources/Instrument;
+			path = Sources/Extension;
 			sourceTree = "<group>";
 		};
 		000000000000000000000042 /* App */ = {
@@ -227,9 +233,9 @@
 			isa = PBXGroup;
 			children = (
 				00000000000000000000000F /* App-Info.plist */,
-				000000000000000000000010 /* Instrument-Info.plist */,
+				000000000000000000000010 /* Extension-Info.plist */,
 				000000000000000000000011 /* App.entitlements */,
-				000000000000000000000012 /* Instrument.entitlements */,
+				000000000000000000000012 /* Extension.entitlements */,
 			);
 			path = Config;
 			sourceTree = "<group>";
@@ -238,7 +244,7 @@
 			isa = PBXGroup;
 			children = (
 				000000000000000000000013 /* MusaAudioUnitKit.framework */,
-				000000000000000000000014 /* MusaInstrument.appex */,
+				000000000000000000000014 /* MusaComponents.appex */,
 				000000000000000000000015 /* MusaAudioUnit.app */,
 				000000000000000000000016 /* musa-au-harness */,
 				000000000000000000000017 /* MusaAudioUnitKitTests.xctest */,
@@ -251,7 +257,7 @@
 			isa = PBXGroup;
 			children = (
 				000000000000000000000040 /* Kit */,
-				000000000000000000000041 /* Instrument */,
+				000000000000000000000041 /* Extension */,
 				000000000000000000000042 /* App */,
 				000000000000000000000043 /* Harness */,
 				000000000000000000000044 /* Tests */,
@@ -295,9 +301,9 @@
 			productReference = 000000000000000000000013 /* MusaAudioUnitKit.framework */;
 			productType = "com.apple.product-type.framework";
 		};
-		000000000000000000000061 /* MusaInstrument */ = {
+		000000000000000000000061 /* MusaComponents */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 000000000000000000000082 /* Build configuration list for PBXNativeTarget "MusaInstrument" */;
+			buildConfigurationList = 000000000000000000000082 /* Build configuration list for PBXNativeTarget "MusaComponents" */;
 			buildPhases = (
 				000000000000000000000054,
 				000000000000000000000055,
@@ -307,9 +313,9 @@
 			dependencies = (
 				000000000000000000000071 /* PBXTargetDependency */,
 			);
-			name = MusaInstrument;
-			productName = MusaInstrument;
-			productReference = 000000000000000000000014 /* MusaInstrument.appex */;
+			name = MusaComponents;
+			productName = MusaComponents;
+			productReference = 000000000000000000000014 /* MusaComponents.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
 		000000000000000000000062 /* MusaAudioUnit */ = {
@@ -424,7 +430,7 @@
 			projectRoot = "";
 			targets = (
 				000000000000000000000060 /* MusaAudioUnitKit */,
-				000000000000000000000061 /* MusaInstrument */,
+				000000000000000000000061 /* MusaComponents */,
 				000000000000000000000062 /* MusaAudioUnit */,
 				000000000000000000000063 /* MusaAuHarness */,
 				000000000000000000000064 /* MusaAudioUnitKitTests */,
@@ -462,6 +468,8 @@
 				000000000000000000000025 /* MusaPreparation.swift in Sources */,
 				000000000000000000000026 /* MusaMIDI.swift in Sources */,
 				000000000000000000000027 /* MusaInstrumentAudioUnit.swift in Sources */,
+				0000000000000000000000B2 /* MusaSchedule.swift in Sources */,
+				0000000000000000000000B3 /* MusaProcessorAudioUnit.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -469,7 +477,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				000000000000000000000028 /* InstrumentFactory.swift in Sources */,
+				000000000000000000000028 /* ComponentFactory.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -523,7 +531,7 @@
 		};
 		000000000000000000000075 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 000000000000000000000061 /* MusaInstrument */;
+			target = 000000000000000000000061 /* MusaComponents */;
 			targetProxy = 000000000000000000000074 /* PBXContainerItemProxy */;
 		};
 		000000000000000000000077 /* PBXTargetDependency */ = {
@@ -684,8 +692,8 @@
 		000000000000000000000094 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				CODE_SIGN_ENTITLEMENTS = Config/Instrument.entitlements;
-				INFOPLIST_FILE = "Config/Instrument-Info.plist";
+				CODE_SIGN_ENTITLEMENTS = Config/Extension.entitlements;
+				INFOPLIST_FILE = "Config/Extension-Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../../../../Frameworks",
@@ -694,7 +702,7 @@
 					"-e",
 					_NSExtensionMain,
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = dev.musa.audiounit.MusaInstrument;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.musa.audiounit.MusaComponents;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 			};
@@ -703,8 +711,8 @@
 		000000000000000000000095 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				CODE_SIGN_ENTITLEMENTS = Config/Instrument.entitlements;
-				INFOPLIST_FILE = "Config/Instrument-Info.plist";
+				CODE_SIGN_ENTITLEMENTS = Config/Extension.entitlements;
+				INFOPLIST_FILE = "Config/Extension-Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../../../../Frameworks",
@@ -713,7 +721,7 @@
 					"-e",
 					_NSExtensionMain,
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = dev.musa.audiounit.MusaInstrument;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.musa.audiounit.MusaComponents;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 			};
@@ -840,7 +848,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		000000000000000000000082 /* Build configuration list for PBXNativeTarget "MusaInstrument" */ = {
+		000000000000000000000082 /* Build configuration list for PBXNativeTarget "MusaComponents" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				000000000000000000000094 /* Debug */,

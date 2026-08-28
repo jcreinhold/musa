@@ -82,7 +82,38 @@ PARAMETERS_AND_OUTPUTS = INSTRUMENT + [
     "bus.independent",
 ]
 
-SETS = {"instrument": INSTRUMENT, "parameters-and-outputs": PARAMETERS_AND_OUTPUTS}
+# What prompt 218 added: the piece itself, read by position. A schedule that
+# is queried rather than replayed, a seek that starts where the host is, notes
+# re-entered at a seek, a stopped transport that is silent, a host with no
+# tempo that gets no guess, and a polytempo piece refused rather than
+# flattened onto one grid.
+MIDI_PROCESSOR = PARAMETERS_AND_OUTPUTS + [
+    "discovery.processor",
+    "processor.opened",
+    "processor.parts",
+    "processor.losses",
+    "processor.cableName",
+    "processor.block.exactlyOnce",
+    "processor.block.everyPacketIsThreeBytes",
+    "processor.seek.doesNotReplay",
+    "processor.seek.noWholePieceScan",
+    "processor.seek.reentersHeldNotes",
+    "processor.transport.stopped",
+    "processor.context.missing",
+    "processor.timeline.host",
+    "processor.state.roundTrip",
+    "processor.state.fromTheFuture",
+    "processor.state.unknownTimeline",
+    "processor.rt.noAllocation",
+    "processor.polytempo.refused",
+    "processor.polytempo.playsOnItsOwn",
+]
+
+SETS = {
+    "instrument": INSTRUMENT,
+    "parameters-and-outputs": PARAMETERS_AND_OUTPUTS,
+    "midi-processor": MIDI_PROCESSOR,
+}
 
 # Claims this machine cannot answer, with the reason each is allowed to stand
 # unanswered. Nothing else may be `unsupported`.
@@ -95,9 +126,10 @@ def main() -> int:
         return 2
     path = Path(sys.argv[1])
     auval_ok = sys.argv[2] == "1"
-    required = SETS.get(sys.argv[3])
+    component = sys.argv[3]
+    required = SETS.get(component)
     if required is None:
-        print(f"no finding set named {sys.argv[3]}", file=sys.stderr)
+        print(f"no finding set named {component}", file=sys.stderr)
         return 2
     if not path.exists() or not path.read_text().strip():
         print(f"no report at {path}", file=sys.stderr)
@@ -135,6 +167,14 @@ def main() -> int:
     if baseline not in (0, 0.0):
         problems.append(f"rt.allocation.baseline: the harness itself allocated {baseline}; no number below it counts")
 
+    # The same rule for the MIDI Processor's own number, measured against its
+    # own idle baseline rather than the instrument's.
+    schedule_baseline = findings.get("processor.rt.noAllocation", {}).get("numbers", {}).get("baseline")
+    if "processor.rt.noAllocation" in required and schedule_baseline not in (0, 0.0):
+        problems.append(
+            f"processor.rt.noAllocation: the harness itself allocated {schedule_baseline}; no number below it counts"
+        )
+
     if not auval_ok:
         problems.append("auval rejected the component; see the auval log beside the report")
 
@@ -145,7 +185,8 @@ def main() -> int:
         return 1
 
     passed = sum(1 for finding in findings.values() if finding["outcome"] == "pass")
-    print(f"\n{passed} findings passed, auval validated aumu musa Musa")
+    validated = "aumu musa Musa and aumi musp Musa" if component == "midi-processor" else "aumu musa Musa"
+    print(f"\n{passed} findings passed, auval validated {validated}")
     return 0
 
 
