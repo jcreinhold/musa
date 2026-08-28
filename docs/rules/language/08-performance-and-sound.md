@@ -346,3 +346,25 @@ chains remain external. The deciding question is semantic ownership, not whether
 The Sound and Mix workspaces project these declarations with progressive disclosure. They may offer knobs and graph
 views, but every edit rewrites `.musa` source and every semantic control is shown by its musical name before its private
 implementation mapping.
+
+## 10. Rendering inside a host
+
+A checked source-declared instrument may be rendered by a workstation instead of by Musa's own engine. Being hosted
+changes who calls the render loop; it changes nothing about what the instrument *is*.
+
+The host supplies sample time, scheduled MIDI and parameter events, and its musical and transport context. Those are
+inputs at the performance edge, in the sense of §7: they reach the prepared machine through the same schedule and the
+same exact-to-physical boundary as native playback, and a host block remains an optimization rather than the semantics
+(§8). The same prepared machine, the same seed, and the same options must produce the same frames whether Musa or a host
+advanced them.
+
+What the host may see of a source value is a projection, held to §0's ownership test. A component's parameters are
+exactly the controls the source declares public (§§3–4, 6): each carries one stable source identity and a value kind
+that matches its declaration, and a differential law compares the projected tree against the checked value. A DSP node,
+a private primitive configuration, a routing edge, and a host-side convenience knob are not controls and never appear. A
+saved component state names the project, source, and lock identities it was made from, and restoring it against a
+different closure is a refusal rather than an approximation.
+
+Musa produces such components; it hosts none. The complete boundary — the three crossings, who owns time on each, the
+derivation record every artifact carries, and the losses that must be refused or recorded — is
+`../across-stages/06-daw-boundary.md`, which governs wherever this section and a transport disagree.

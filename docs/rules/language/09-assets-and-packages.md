@@ -359,3 +359,14 @@ contract failure, and preparation-budget excess. None degrades silently to the d
    changing instrument assignment affects note-driven samples but not clip or fixed-media lanes.
 
 Prompts 182–188 implement these laws; prompts 189–192 measure preparation cost and audit deterministic artifacts.
+
+## 9. Closure inside a host process
+
+A Musa component loaded by a workstation resolves the same locked closure as `musa` itself: the same pinned packages,
+the same verified asset bytes, the same digests (§§1–2). A host process does not get a relaxed closure because loading
+one would be convenient, and a component never fetches, downloads, or writes package or asset data from inside a host.
+
+Resolution and verification happen when the component is loaded or its state is restored — on the control side, never in
+a render callback (`../across-stages/06-daw-boundary.md` §7). A closure that cannot be verified is a refusal that names
+the missing or mismatched identity, and a saved state whose closure identity differs from the one now present is refused
+rather than resolved to whatever is at hand (§8's reproducibility laws are what such a silent substitution would break).

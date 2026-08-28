@@ -65,6 +65,12 @@ outline and final review that `../../rules/across-stages/05-metatheory.md` §1 c
 | [90](90-midi-transcription-trial.md) | The measured transcription trial: a bounded structural search with ranked alternatives, and no probability model |
 | [91](91-keyboard-composition-closure.md) | The conformance, performance, correction-count, and accessibility closure that retired step entry |
 
+## The sound ecosystem
+
+| Page | What it decided |
+| --- | --- |
+| [92](92-the-daw-boundary.md) | Three crossings to a workstation rather than one integration, and that Musa is hosted and does not host |
+
 ## Earlier evidence
 
 [`kernel-hypothesis/06-evidence-log.md`](kernel-hypothesis/06-evidence-log.md) — the repertoire evidence behind the

@@ -54,3 +54,22 @@ horizontal console. `prefers-reduced-motion` changes nothing because these works
 
 No workbench element uses a free-form node canvas, skeuomorphic hardware, hidden mutable preset state, or an editable
 generic property grid over private machine internals.
+
+## 5. Handing the work to a workstation
+
+Export is a File action, not a workspace: nothing about carrying a piece into Logic Pro or GarageBand belongs on the
+Sound or Mix surface, because none of it is a declaration the composer edits. What this page owns is the *status*
+language the interface uses when such an export runs or a live projection is connected.
+
+An export names what it produced, in artifacts rather than in progress: the destination, the files, and what could not
+be carried. Losses are shown as the named list the boundary recorded (`../across-stages/06-daw-boundary.md` §6), never
+as a generic warning that some information may have been lost, and never behind a link the composer has to go looking
+for. An export that refused says which fact it refused on.
+
+A live projection states its one clock authority — *following Logic* or *leading* — beside the connection, in those
+terms. It never presents two transports as if both were in charge, and it never silently becomes the leader because a
+message stopped arriving; losing the clock is a state with its own sentence, like losing a keyboard
+(`10-keyboard-composition.md` §8).
+
+Nothing about a workstation may appear as a source-owned fact. A host's track, a bundle's file name, and a component's
+saved state are not declarations, are not editable here, and never acquire the authority that a source token has.

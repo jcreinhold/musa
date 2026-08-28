@@ -266,6 +266,11 @@ native audio stack models plugin hosting through its own node graph and runtime.
 
 A built-in DSP system is sufficient for the initial goal and guarantees zero setup.
 
+This non-goal is about one direction. **Musa does not host other people's plug-ins.** Being *hosted* is a different
+piece of work with one documented render contract, and it is in scope: Logic Pro and GarageBand may load a Musa Audio
+Unit that renders a checked source-declared instrument. `docs/rules/across-stages/06-daw-boundary.md` §3 owns that
+split.
+
 ### A general-purpose embedded language
 
 Do not add unrestricted recursion, arbitrary I/O, threads, user-defined mutable state, or metaprogramming initially.
@@ -1481,6 +1486,28 @@ key/controller transitions rather than written pitch, voice, meter, ties, rests,
 proposal writes source. The bounded recent-phrase buffer behind **Keep that** is memory-only, disclosed, clearable, and
 never an audio recorder or project history.
 
+Outgoing live MIDI to another program is a separate boundary with its own clock rule; see §12.6.
+
+## 12.6 The workstation boundary
+
+A digital audio workstation is a consumer of Musa's results, not a stage of its pipeline. There are three crossings to
+one, and they are separate features with separate guarantees:
+
+1. **Export** — a deterministic directory of open interchange files, frame-aligned audio, a versioned manifest, and an
+   origin/loss sidecar (prompts 211–212).
+2. **Live** — a timestamped CoreMIDI projection of the checked score or performance, under exactly one declared clock
+   authority (prompts 213–214).
+3. **Hosted** — macOS Audio Unit *production*: a Music Device that renders one checked instrument, and a Logic MIDI
+   Processor that projects a checked piece onto the host timeline (prompts 215–218).
+
+`.musa` and its locked closure stay canonical; every artifact above is a presentation carrying exact identity, origins,
+and a named list of what it could not carry. Musa writes and reads no proprietary session document, claims no round trip
+back into source, and hosts no third-party plug-in.
+
+The governing contract is `docs/rules/across-stages/06-daw-boundary.md`, which fixes identity, time ownership, the
+derivation record, the loss discipline, and the Logic/GarageBand compatibility table. Where this section and that page
+disagree, the rules win.
+
 ---
 
 # 13. Sound synthesis and DSP
@@ -1538,6 +1565,10 @@ Use `rtrb`, a wait-free single-producer/single-consumer ring buffer, for control
 real-time boundary. citeturn193176search1
 
 A second queue should return retired plans to the control thread so large structures are not destroyed in the callback.
+
+A host's render block is this callback under someone else's scheduler: an Audio Unit renders under exactly these rules,
+plus whatever the host's own contract adds. Preparation, asset decoding, and closure verification stay on the control
+side there too (`docs/rules/across-stages/06-daw-boundary.md` §7).
 
 ## 13.3 Graph specification versus render plan
 
@@ -2765,9 +2796,13 @@ Only after the native system is stable:
 - sample playback;
 - SoundFont or similar basic orchestral support;
 - audio-file clips for ambience;
-- optional CLAP hosting;
-- optional Audio Unit bridge on macOS;
+- portable export bundles for Logic Pro and GarageBand;
+- live CoreMIDI performance under one declared clock authority;
+- Audio Unit **production** on macOS — a Music Device, and a Logic MIDI Processor if a host probe measures the surface;
 - MusicXML import.
+
+Hosting third-party Audio Units, CLAP, or VST plug-ins is not on this list and is not deferred: §4 rejects it. The three
+crossings above are specified by §12.6 and governed by `docs/rules/across-stages/06-daw-boundary.md`.
 
 Audio recording and full waveform editing should remain outside the project unless the product’s purpose materially
 changes.

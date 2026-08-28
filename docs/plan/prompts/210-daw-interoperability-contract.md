@@ -1,7 +1,7 @@
 ---
 id: 210
 slug: daw-interoperability-contract
-status: pending
+status: done
 depends_on: [209]
 phase: 4
 ---

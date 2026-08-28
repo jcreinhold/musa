@@ -10,9 +10,11 @@ It does not replace the detailed specifications for each stage:
 
 - `docs/rules/language/` defines the one source language;
 - `docs/rules/events/` defines finite event tracks;
-- `docs/rules/desktop/` defines the desktop interface; and
+- `docs/rules/desktop/` defines the desktop interface;
 - [03-machine-calculus.md](03-machine-calculus.md) defines machines, their step, their preparation, and the checked
-  scheduler that connects a track to a running source.
+  scheduler that connects a track to a running source; and
+- [06-daw-boundary.md](06-daw-boundary.md) defines the boundary to a digital audio workstation, which is a consumer of
+  those results rather than a stage among them.
 
 The rules and their implementation status are separate claims. [The implementation
 map](../../plan/code-map/spec-to-implementation-map.md) marks each boundary implemented, partial, or absent, while
@@ -26,6 +28,7 @@ map](../../plan/code-map/spec-to-implementation-map.md) marks each boundary impl
 4. [03-machine-calculus.md](03-machine-calculus.md) defines machines, one step, preparation, and scheduling.
 5. [04-identity-and-realization.md](04-identity-and-realization.md) defines equality, encoding, hashes, and caches.
 6. [05-metatheory.md](05-metatheory.md) says what has been proved and what remains open.
+7. [06-daw-boundary.md](06-daw-boundary.md) defines what may cross to a digital audio workstation, and on whose terms.
 
 Failed designs and proof reviews remain in `docs/notes/research/`. They explain why some rules here are stricter than an
 ordinary implementation sketch — in particular why the audio side is a calculus of machines rather than a graph with a

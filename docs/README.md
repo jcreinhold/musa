@@ -17,7 +17,7 @@ Read top to bottom. A document is bound by everything above it and binds everyth
    decisions every part of musa follows, and what falls out of them. Nothing overrides these; they change only through
    the amendment procedure in [`rules/README.md`](rules/README.md).
 2. [`rules/across-stages/`](rules/across-stages/README.md) — the rules no single stage owns: what data exists, when it
-   is valid, how one stage produces the next, what equality means.
+   is valid, how one stage produces the next, what equality means, and what may cross to a digital audio workstation.
 3. [`rules/events/`](rules/events/README.md), [`rules/desktop/`](rules/desktop/README.md),
    [`rules/language/`](rules/language/README.md), and [`rules/style-guide.md`](rules/style-guide.md) — the per-stage
    specifications. Each owns its stage and defers to `across-stages/` at the boundaries. The language specification has

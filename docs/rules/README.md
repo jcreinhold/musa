@@ -63,6 +63,8 @@ Research notes preserve the full arguments; this index does not duplicate them. 
   ([note 53](../notes/research/language-design-closure/53-one-theory.md));
 - keyboard audition and finite reviewed MIDI capture in place of step entry
   ([note 88](../notes/research/88-keyboard-capture-not-step-entry.md));
+- three named crossings to a digital audio workstation, produced rather than hosted
+  ([note 92](../notes/research/92-the-daw-boundary.md));
 - the dependent-core admission and its measured correction
   ([notes 42](../notes/research/language-design-closure/42-dependent-core-decision.md) and
   [50](../notes/research/language-design-closure/50-the-course-correction-audit.md)); and

@@ -52,6 +52,28 @@ is gone, and audition, Capture, Keep that, Review, and Accept are the only route
 | Revision-safe Accept, Discard, and Keep that | implemented | `musa-project::review_placement`; the anchor is a part/voice name pair, and placing writes one revision or none |
 | Removal of step entry | implemented | prompt 209 deleted `MidiEntry`, `EntryBuffer`, the desktop `NoteEntry`/`N` mode, the empty-step click, and the `musa://midi` event |
 
+## The workstation boundary
+
+The governing contract is `docs/rules/across-stages/06-daw-boundary.md`, added by prompt 210. It fixes identity, time
+ownership, the derivation record, and the loss discipline before any transport exists; every row here is therefore
+**absent**, and the prompt named is where it is built.
+
+| Capability | State | Planned owner |
+| --- | --- | --- |
+| Frame-aligned part, bus, and master stems | absent | prompt 211, over the existing checked routing graph in `musa-dsp`/`musa-project` |
+| Deterministic export bundle, manifest, and origin/loss sidecar | absent | prompt 212, packaging the existing `ExportRequest` targets plus prompt 211's audio |
+| Versioned DAW derivation record | absent | prompt 212 defines version 1; every later boundary carries it |
+| Live CoreMIDI projection of score or performance MIDI | absent | prompt 213, reusing the Standard MIDI exporter's musical decisions |
+| One declared clock authority, leader and follower | absent | prompt 214; MIDI clock and MTC losses stated before a session starts |
+| Audio Unit shape trial and host measurement | absent | prompt 215; it also replaces the "not yet measured" column of the compatibility table |
+| AUv3 Music Device rendering one checked instrument | absent | prompts 216–217 |
+| Logic MIDI Processor projecting a checked piece | absent | prompt 218, only if prompt 215 measures the surface |
+| Whole-boundary audit against real hosts | absent | prompt 219 |
+
+Three things are **declined** rather than absent, and no prompt will implement them: hosting third-party Audio Unit,
+CLAP, or VST plug-ins; writing or reading a proprietary session document; and any round trip from a workstation back
+into `.musa` source.
+
 ## Trusted boundary
 
 `musa-calculus` owns the only implementation of core evaluation, conversion, and checking. Elaboration may create
