@@ -26,6 +26,7 @@ pub struct InstrumentControlContract {
     kind: String,
     namespace: String,
     name: String,
+    summary: String,
     update_rate: String,
     default_ratio: Option<Ratio<i64>>,
     default_symbol: Option<String>,
@@ -43,6 +44,16 @@ impl InstrumentControlContract {
 
     pub fn name(&self) -> &str {
         &self.name
+    }
+
+    /// The one-sentence description the source key declares.
+    ///
+    /// Projected because a host that shows this control has to say what it
+    /// means, and the only place that sentence exists is the declaration.
+    /// An interface writing its own would be `08-performance-and-sound.md`
+    /// §0's forbidden second schema, one tooltip at a time.
+    pub fn summary(&self) -> &str {
+        &self.summary
     }
 
     pub fn update_rate(&self) -> &str {
@@ -546,7 +557,7 @@ fn control(datum: SourceDatum<'_>, path: &str) -> Result<InstrumentControlContra
     if constructor(requirement_kind) != Some(kind.as_str()) {
         return Err(malformed(path, "one shared control-kind index"));
     }
-    let [key_kind, namespace, name, _, update_rate] = fields::<5>(key, "Key", path)?;
+    let [key_kind, namespace, name, summary, update_rate] = fields::<5>(key, "Key", path)?;
     if constructor(key_kind) != Some(kind.as_str()) {
         return Err(malformed(path, "a key at the requirement's control kind"));
     }
@@ -556,6 +567,7 @@ fn control(datum: SourceDatum<'_>, path: &str) -> Result<InstrumentControlContra
         kind,
         namespace: text(namespace, &format!("{path}.namespace"))?,
         name: text(name, &format!("{path}.name"))?,
+        summary: text(summary, &format!("{path}.summary"))?,
         update_rate: constructor(update_rate)
             .ok_or_else(|| malformed(&format!("{path}.update_rate"), "an UpdateRate constructor"))?
             .to_owned(),

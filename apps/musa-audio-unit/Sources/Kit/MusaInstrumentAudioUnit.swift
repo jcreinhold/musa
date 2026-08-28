@@ -31,6 +31,18 @@ public final class MusaInstrumentAudioUnit: AUAudioUnit {
     private var musicIdentity = ""
     private var assetIdentity = ""
     private var inputs: [String] = []
+    /// The source-declared controls this component publishes as parameters,
+    /// the ones it could not, and the table their addresses came from.
+    /// Control side only.
+    private var controls: [MusaControl] = []
+    private var controlLosses: [String] = []
+    private var controlTable = ""
+    /// The outputs the selected instrument reaches, bus zero first.
+    private var outputs: [MusaOutput] = []
+    /// A projection whose bus array could not be published yet, because the
+    /// host had render resources allocated when it arrived. Apple's contract
+    /// is that a bus array changes while deallocated, so it waits.
+    private var deferredOutputs: [MusaOutput]?
     /// Why this component is silent. Empty when it is not.
     public private(set) var refusal = "no source has been selected"
 
@@ -38,18 +50,55 @@ public final class MusaInstrumentAudioUnit: AUAudioUnit {
     private var accessBookmark: Data?
     private var accessedURL: URL?
 
-    /// The component's own channel buffers.
+    /// The component's own channel buffers: every projected output, one
+    /// stereo pair each, for one block.
     ///
-    /// Preallocated because prompt 215 measured a host handing the render
-    /// block an `AudioBufferList` with null `mData` and expecting the
-    /// component's memory. Allocating them in the block is the version of
-    /// this that works until the first time it does not.
-    private var left: UnsafeMutablePointer<Float>?
-    private var right: UnsafeMutablePointer<Float>?
+    /// Preallocated for two measured reasons. Prompt 215 found a host handing
+    /// the render block an `AudioBufferList` with null `mData` and expecting
+    /// the component's memory, so there has to be some. And a multi-output
+    /// Audio Unit is asked for one bus per render call at the same timestamp,
+    /// so the frame every bus shares has to already exist when the first of
+    /// those calls returns.
+    private var outputStorage: UnsafeMutablePointer<Float>?
     private var capacity: AUAudioFrameCount = 0
+    private var outputChannels: UnsafeMutablePointer<UnsafeMutablePointer<Float>?>
+    /// Which buses have been served since the last full render, as a bit per
+    /// bus, and how many frames that render produced.
+    private let servedBuses = UnsafeMutablePointer<UInt32>.allocate(capacity: 1)
+    private let servedFrames = UnsafeMutablePointer<UInt32>.allocate(capacity: 1)
+    /// How many buses the last allocation sized the storage for.
+    private var allocatedBuses = 1
+
+    /// A parameter change made through the tree rather than scheduled by the
+    /// host, waiting for the render thread to pick it up.
+    ///
+    /// A host automating a parameter sends render events, which are already
+    /// sample-accurate. A knob — in a host's generic view, or in the
+    /// containing app — arrives through `implementorValueObserver` on
+    /// whatever thread turned it, and there is no event list to put it in.
+    /// So it is staged: the control side writes the value and then bumps a
+    /// counter, and the render block applies it at the start of the next
+    /// block when the counter has moved. No lock, no allocation, and no
+    /// chance of the render thread reading a value that was never written.
+    private let stagedValue: UnsafeMutablePointer<Float>
+    private let stagedAddress: UnsafeMutablePointer<UInt64>
+    private let stagedGeneration: UnsafeMutablePointer<UInt32>
+    private let appliedGeneration: UnsafeMutablePointer<UInt32>
+    private let stagedCount = UnsafeMutablePointer<UInt32>.allocate(capacity: 1)
+
+    /// How many controls this component can stage a knob turn for.
+    ///
+    /// Every admitted control still becomes a parameter and every one of them
+    /// is still automatable, because automation is an event and needs no slot
+    /// here. This bounds only the staging table, which must be allocated once
+    /// and never resized under a live render block. A source declaring more
+    /// public controls than this records a projection loss saying so rather
+    /// than silently having a knob that does nothing.
+    private static let stagingCapacity = 64
 
     private let outputBus: AUAudioUnitBus
     private var busses: AUAudioUnitBusArray!
+    private var storedParameterTree: AUParameterTree?
 
     /// Where the host's event list is decoded into. Preallocated for the same
     /// reason the channel buffers are: a block that built an array would
@@ -77,9 +126,25 @@ public final class MusaInstrumentAudioUnit: AUAudioUnit {
         let format = AVAudioFormat(standardFormatWithSampleRate: 48_000, channels: 2)!
         outputBus = try AUAudioUnitBus(format: format)
         outputBus.maximumChannelCount = 2
+        outputBus.name = "main"
+        outputChannels = UnsafeMutablePointer<UnsafeMutablePointer<Float>?>.allocate(
+            capacity: Int(MUSA_AU_MAX_OUTPUTS) * 2
+        )
+        outputChannels.initialize(repeating: nil, count: Int(MUSA_AU_MAX_OUTPUTS) * 2)
+        stagedValue = UnsafeMutablePointer<Float>.allocate(capacity: Self.stagingCapacity)
+        stagedValue.initialize(repeating: 0, count: Self.stagingCapacity)
+        stagedAddress = UnsafeMutablePointer<UInt64>.allocate(capacity: Self.stagingCapacity)
+        stagedAddress.initialize(repeating: 0, count: Self.stagingCapacity)
+        stagedGeneration = UnsafeMutablePointer<UInt32>.allocate(capacity: Self.stagingCapacity)
+        stagedGeneration.initialize(repeating: 0, count: Self.stagingCapacity)
+        appliedGeneration = UnsafeMutablePointer<UInt32>.allocate(capacity: Self.stagingCapacity)
+        appliedGeneration.initialize(repeating: 0, count: Self.stagingCapacity)
         try super.init(componentDescription: componentDescription, options: options)
         musa_au_slot_init(slot)
         overflow.initialize(to: 0)
+        servedBuses.initialize(to: 0)
+        servedFrames.initialize(to: 0)
+        stagedCount.initialize(to: 0)
         eventBuffer = UnsafeMutablePointer<MusaAuEvent>.allocate(capacity: Self.eventCapacity)
         busses = AUAudioUnitBusArray(audioUnit: self, busType: .output, busses: [outputBus])
         maximumFramesToRender = 4096
@@ -92,8 +157,15 @@ public final class MusaInstrumentAudioUnit: AUAudioUnit {
         slot.deallocate()
         overflow.deallocate()
         eventBuffer?.deallocate()
-        left?.deallocate()
-        right?.deallocate()
+        outputStorage?.deallocate()
+        outputChannels.deallocate()
+        servedBuses.deallocate()
+        servedFrames.deallocate()
+        stagedValue.deallocate()
+        stagedAddress.deallocate()
+        stagedGeneration.deallocate()
+        appliedGeneration.deallocate()
+        stagedCount.deallocate()
         accessedURL?.stopAccessingSecurityScopedResource()
     }
 
@@ -101,17 +173,97 @@ public final class MusaInstrumentAudioUnit: AUAudioUnit {
 
     override public var outputBusses: AUAudioUnitBusArray { busses }
 
-    /// This component publishes no parameters, and that is a decision.
+    /// The parameters this component publishes: the loaded instrument's
+    /// source-declared public controls, and nothing else.
     ///
     /// Rule D2: a plug-in parameter is exactly a source-declared exposed
-    /// control, never a DSP node. Projecting those controls — with stable
-    /// addresses, dependent kinds, and precise losses — is prompt 217's whole
-    /// Target. Inventing a `gain` here so the tree is not empty would break
-    /// D2 to make a screenshot look finished, so the tree is empty until 217
-    /// fills it from the instrument's own signature.
+    /// control, never a DSP node, an internal edge, or a host-side
+    /// convenience knob. Every descriptor below was generated from the
+    /// declaration — identifier, name, domain, default, and whether a ramp
+    /// means anything — so there is no catalogue in Swift to fall out of step
+    /// with the source. Before a source is selected the tree is `nil`,
+    /// because there is no instrument whose controls these would be.
     override public var parameterTree: AUParameterTree? {
-        get { nil }
+        get { storedParameterTree }
         set { _ = newValue }
+    }
+
+    /// The controls this component published, with the sentence each
+    /// declaration wrote.
+    ///
+    /// `AUParameter` has a name and no description, so the summary cannot
+    /// ride along in the tree. It is published here and saved in the document
+    /// instead, which is what lets an interface be generated from project
+    /// facts rather than from a hand-written table.
+    public var publishedControls: [MusaControl] { controls }
+
+    /// The declared controls that could not become parameters, each already a
+    /// sentence naming which and why (§6: recorded, never implied).
+    public var projectionLosses: [String] { controlLosses }
+
+    /// The outputs this component projected, in bus order.
+    public var projectedOutputs: [MusaOutput] { outputs }
+
+    /// The address table the published parameters were derived under.
+    public var publishedControlTable: String { controlTable }
+
+    /// Build the tree for one projection, and wire a knob turn to the render
+    /// thread.
+    private func makeParameterTree(_ controls: [MusaControl]) -> AUParameterTree? {
+        guard !controls.isEmpty else { return nil }
+        let parameters = controls.map { control -> AUParameter in
+            var flags: AudioUnitParameterOptions = [.flag_IsReadable, .flag_IsWritable]
+            // Only where the declaration says the control is continuous. A
+            // per-note control is not a slower continuous one, and telling a
+            // host it may ramp one would be this component inventing a
+            // smoothing the source never declared.
+            if control.continuous {
+                flags.insert(.flag_CanRamp)
+            }
+            let parameter = AUParameterTree.createParameter(
+                withIdentifier: control.parameterIdentifier,
+                name: control.display,
+                address: AUParameterAddress(control.address),
+                min: control.minimum,
+                max: control.maximum,
+                // Generic: the domain is a normalized exact rational in
+                // `[0,1]`, which is not decibels, hertz, or a percentage, and
+                // labelling it as one of those would be a claim about the
+                // mapping that only the instrument makes.
+                unit: .generic,
+                unitName: nil,
+                flags: flags,
+                valueStrings: nil,
+                dependentParameters: nil
+            )
+            parameter.value = control.defaultValue
+            return parameter
+        }
+        let tree = AUParameterTree.createTree(withChildren: parameters)
+        tree.implementorValueObserver = { [weak self] parameter, value in
+            self?.stage(parameter.address, value)
+        }
+        // No `implementorValueProvider`: the tree already caches what was
+        // last set, and a provider that read `parameter.value` to answer
+        // would be calling itself.
+        return tree
+    }
+
+    /// Hand the render thread a value a knob just produced.
+    private func stage(_ address: AUParameterAddress, _ value: AUValue) {
+        let staged = Int(stagedCount.pointee)
+        var index = 0
+        while index < staged {
+            if stagedAddress[index] == UInt64(address) {
+                stagedValue[index] = value
+                // The value first, then the counter. The render thread reads
+                // them in the other order, so a counter it has seen move is a
+                // value that was already written.
+                stagedGeneration[index] = stagedGeneration[index] &+ 1
+                return
+            }
+            index += 1
+        }
     }
 
     override public var canProcessInPlace: Bool { false }
@@ -169,11 +321,83 @@ public final class MusaInstrumentAudioUnit: AUAudioUnit {
         inputs = result.inputs
         refusal = result.refusal
         guard let instrument = result.instrument else { return }
+        controls = result.controls
+        controlLosses = result.controlLosses
+        controlTable = result.controlTable
+        // The table this preparation settled on is what the next one must be
+        // given, so a restart keeps every address a host automated against.
+        selection?.controlTable = result.controlTable
+        if controls.count > Self.stagingCapacity {
+            controlLosses.append(
+                "\(controls.count) declared controls is more than this component can stage a knob turn for "
+                    + "(\(Self.stagingCapacity)); every one is still automatable by the host"
+            )
+        }
+        publishStaging(controls)
+        storedParameterTree = makeParameterTree(controls)
+        publishOutputs(result.outputs)
         // Publish, then retire what was there. In that order: the block must
         // never see the old pointer after it has been freed, and it can only
         // stop seeing it by the publish happening first.
         let previous = musa_au_slot_publish(slot, instrument)
         preparer.retire(previous)
+    }
+
+    /// Give the staging table this projection's addresses.
+    ///
+    /// Called on the control side while the render block may be running. The
+    /// count is written last and lowered first, so the render thread never
+    /// reads a slot whose address has not been written.
+    private func publishStaging(_ controls: [MusaControl]) {
+        stagedCount.pointee = 0
+        let staged = min(controls.count, Self.stagingCapacity)
+        var index = 0
+        while index < staged {
+            stagedAddress[index] = controls[index].address
+            stagedValue[index] = controls[index].defaultValue
+            // Equal generations mean "nothing to apply": preparation already
+            // put every declared default where it belongs, and re-applying
+            // one here would overwrite a value the instrument's own
+            // implementation wrote.
+            stagedGeneration[index] = 0
+            appliedGeneration[index] = 0
+            index += 1
+        }
+        stagedCount.pointee = UInt32(staged)
+    }
+
+    /// Publish the projected outputs as host buses.
+    ///
+    /// Bus zero is the piece's main output and never moves. The rest are the
+    /// declared points this part reaches, under the names the source gave
+    /// them: `06-daw-boundary.md` §3 keeps a part, an instrument, and a mixer
+    /// track distinct, so nothing here is renamed to a workstation's word.
+    private func publishOutputs(_ projected: [MusaOutput]) {
+        guard projected.map(\.name) != outputs.map(\.name) else { return }
+        guard !renderResourcesAllocated else {
+            // Apple's contract: a bus array changes while deallocated. The
+            // host will deallocate before it renders the new selection.
+            deferredOutputs = projected
+            return
+        }
+        deferredOutputs = nil
+        outputs = projected
+        let extra = projected.dropFirst().prefix(Int(MUSA_AU_MAX_OUTPUTS) - 1)
+        outputBus.name = projected.first?.name ?? "main"
+        var made: [AUAudioUnitBus] = [outputBus]
+        for output in extra {
+            guard let format = AVAudioFormat(standardFormatWithSampleRate: outputBus.format.sampleRate, channels: 2),
+                  let bus = try? AUAudioUnitBus(format: format)
+            else {
+                continue
+            }
+            bus.maximumChannelCount = 2
+            bus.name = output.name
+            made.append(bus)
+        }
+        willChangeValue(forKey: "outputBusses")
+        busses = AUAudioUnitBusArray(audioUnit: self, busType: .output, busses: made)
+        didChangeValue(forKey: "outputBusses")
     }
 
     /// Whether this component has something to render.
@@ -194,17 +418,34 @@ public final class MusaInstrumentAudioUnit: AUAudioUnit {
     // MARK: - Resources
 
     override public func allocateRenderResources() throws {
-        try super.allocateRenderResources()
-        let frames = maximumFramesToRender
-        if capacity < frames || left == nil {
-            left?.deallocate()
-            right?.deallocate()
-            left = UnsafeMutablePointer<Float>.allocate(capacity: Int(frames))
-            right = UnsafeMutablePointer<Float>.allocate(capacity: Int(frames))
-            capacity = frames
+        if let deferred = deferredOutputs {
+            publishOutputs(deferred)
         }
-        left?.initialize(repeating: 0, count: Int(capacity))
-        right?.initialize(repeating: 0, count: Int(capacity))
+        try super.allocateRenderResources()
+        // Only ever grows. `auval` lowers `maximumFramesToRender` for its
+        // 22050 Hz pass and then renders 137 frames at 96000 without raising
+        // it again; a component whose buffers shrank to match would answer
+        // that with `kAudioUnitErr_TooManyFramesToProcess` and fail
+        // validation. Holding the high-water mark costs one buffer and is
+        // what every host actually expects.
+        let frames = max(capacity, maximumFramesToRender)
+        let wanted = max(1, min(busses?.count ?? 1, Int(MUSA_AU_MAX_OUTPUTS)))
+        if outputStorage == nil || allocatedBuses != wanted || capacity < frames {
+            outputStorage?.deallocate()
+            let floats = wanted * 2 * Int(frames)
+            let storage = UnsafeMutablePointer<Float>.allocate(capacity: floats)
+            storage.initialize(repeating: 0, count: floats)
+            outputStorage = storage
+            allocatedBuses = wanted
+            capacity = frames
+            var channel = 0
+            while channel < wanted * 2 {
+                outputChannels[channel] = storage.advanced(by: channel * Int(frames))
+                channel += 1
+            }
+        }
+        servedBuses.pointee = 0
+        servedFrames.pointee = 0
         // The host may have negotiated a different rate than the one this
         // instrument was prepared for. Preparation is exact for one rate
         // (§4), so this is a new preparation, not a resample.
@@ -221,6 +462,10 @@ public final class MusaInstrumentAudioUnit: AUAudioUnit {
         if let instrument = musa_au_slot_current(slot) {
             musa_au_reset(instrument)
         }
+        // What was rendered for the buses a host has not collected yet is
+        // about a state this component no longer has. Forgetting it makes the
+        // next call a fresh render rather than a stale frame.
+        servedBuses.pointee = 0
     }
 
     // MARK: - Render
@@ -230,17 +475,28 @@ public final class MusaInstrumentAudioUnit: AUAudioUnit {
         // number. Capturing `self` would put ARC traffic on the render
         // thread, which is the same class of mistake as allocating on it.
         let slot = self.slot
-        let left = self.left
-        let right = self.right
         let scratch = self.eventBuffer
         let overflow = self.overflow
         let capacity = self.capacity
         let eventCapacity = Self.eventCapacity
+        let channels = self.outputChannels
+        let buses = self.allocatedBuses
+        let served = self.servedBuses
+        let servedFrames = self.servedFrames
+        let stagedValue = self.stagedValue
+        let stagedAddress = self.stagedAddress
+        let stagedGeneration = self.stagedGeneration
+        let appliedGeneration = self.appliedGeneration
+        let stagedCount = self.stagedCount
 
-        return { _, _, frameCount, _, outputData, events, _ in
+        return { _, _, frameCount, outputBusNumber, outputData, events, _ in
             let frames = Int(frameCount)
-            guard let left, let right, let scratch, frames <= Int(capacity) else {
+            guard let scratch, frames <= Int(capacity) else {
                 return kAudioUnitErr_TooManyFramesToProcess
+            }
+            let bus = Int(outputBusNumber)
+            guard bus < buses, let left = channels[bus * 2], let right = channels[bus * 2 + 1] else {
+                return kAudioUnitErr_InvalidParameter
             }
             let buffers = UnsafeMutableAudioBufferListPointer(outputData)
 
@@ -250,6 +506,8 @@ public final class MusaInstrumentAudioUnit: AUAudioUnit {
                 // entitled to a few hundred milliseconds of quiet while the
                 // worker compiles, and an error here would make it think the
                 // component was broken.
+                memset(UnsafeMutableRawPointer(left), 0, frames * MemoryLayout<Float>.size)
+                memset(UnsafeMutableRawPointer(right), 0, frames * MemoryLayout<Float>.size)
                 var index = 0
                 while index < buffers.count {
                     let buffer = buffers[index]
@@ -261,22 +519,77 @@ public final class MusaInstrumentAudioUnit: AUAudioUnit {
                 return noErr
             }
 
-            var count = 0
-            var event = events
-            while let current = event {
-                if current.pointee.head.eventType == .MIDI, count < eventCapacity {
-                    let midi = current.pointee.MIDI
-                    if let decoded = musaDecodeMIDI(midi, frameCount) {
-                        scratch[count] = decoded
+            // A multi-output component is asked for one bus per call at the
+            // same timestamp, so the cycle's whole frame is produced on the
+            // first of those calls and the rest are reads of it. A bus asked
+            // for twice, or a different frame count, is a new cycle: that is
+            // what makes a host taking only bus zero render every block
+            // rather than repeat one.
+            let mask: UInt32 = bus < 32 ? (1 << UInt32(bus)) : 0
+            let fresh = served.pointee == 0 || (served.pointee & mask) != 0 || servedFrames.pointee != frameCount
+            if fresh {
+                var count = 0
+                // Knob turns first, at the start of the block, before
+                // anything the host scheduled inside it.
+                var staged = 0
+                let stagedTotal = Int(stagedCount.pointee)
+                while staged < stagedTotal, count < eventCapacity {
+                    let generation = stagedGeneration[staged]
+                    if generation != appliedGeneration[staged] {
+                        appliedGeneration[staged] = generation
+                        scratch[count] = musaParameterEvent(
+                            frame: 0,
+                            address: stagedAddress[staged],
+                            value: stagedValue[staged],
+                            ramp: 0
+                        )
                         count += 1
                     }
-                } else if current.pointee.head.eventType == .MIDI {
-                    overflow.pointee = overflow.pointee &+ 1
+                    staged += 1
                 }
-                event = UnsafePointer(current.pointee.head.next)
-            }
 
-            musa_au_render(instrument, scratch, UInt32(count), left, right, frameCount)
+                var event = events
+                while let current = event {
+                    let kind = current.pointee.head.eventType
+                    if kind == .MIDI {
+                        if count < eventCapacity, let decoded = musaDecodeMIDI(current.pointee.MIDI, frameCount) {
+                            scratch[count] = decoded
+                            count += 1
+                        } else if count >= eventCapacity {
+                            overflow.pointee = overflow.pointee &+ 1
+                        }
+                    } else if kind == .parameter || kind == .parameterRamp {
+                        if count < eventCapacity {
+                            let parameter = current.pointee.parameter
+                            let time = parameter.eventSampleTime
+                            let offset = time < 0 ? 0 : UInt32(min(time, Int64(frameCount)))
+                            scratch[count] = musaParameterEvent(
+                                frame: offset,
+                                address: parameter.parameterAddress,
+                                value: parameter.value,
+                                ramp: parameter.rampDurationSampleFrames
+                            )
+                            count += 1
+                        } else {
+                            overflow.pointee = overflow.pointee &+ 1
+                        }
+                    }
+                    event = UnsafePointer(current.pointee.head.next)
+                }
+
+                musa_au_render_outputs(
+                    instrument,
+                    scratch,
+                    UInt32(count),
+                    channels,
+                    UInt32(buses * 2),
+                    frameCount
+                )
+                served.pointee = mask
+                servedFrames.pointee = frameCount
+            } else {
+                served.pointee |= mask
+            }
 
             // Fill whatever the host gave us, and hand it our own memory when
             // it gave us none. Prompt 215 measured a host doing exactly that.
@@ -353,6 +666,9 @@ public final class MusaInstrumentAudioUnit: AUAudioUnit {
             MusaStateKey.musicIdentity: musicIdentity,
             MusaStateKey.assetIdentity: assetIdentity,
             MusaStateKey.inputs: inputs,
+            MusaStateKey.controlTable: controlTable,
+            MusaStateKey.controlLosses: controlLosses,
+            MusaStateKey.outputs: outputs.map(\.name),
             MusaStateKey.refusal: refusal,
         ]
         if let selection {
@@ -374,7 +690,12 @@ public final class MusaInstrumentAudioUnit: AUAudioUnit {
         else {
             return
         }
-        if let version = state[MusaStateKey.version] as? Int, version != musaStateVersion {
+        // A document from a version this component has never seen cannot be
+        // read half-way: its keys may mean something else. An older one can,
+        // and does — version 1 named a source and a part and published no
+        // parameters, so it has no addresses to preserve and the projection
+        // simply derives them.
+        if let version = state[MusaStateKey.version] as? Int, version > musaStateVersion {
             refusal = "this state is version \(version); this component writes version \(musaStateVersion)"
             return
         }
@@ -394,7 +715,10 @@ public final class MusaInstrumentAudioUnit: AUAudioUnit {
                 part: part,
                 sampleRate: outputBus.format.sampleRate,
                 expectedMusicIdentity: state[MusaStateKey.musicIdentity] as? String,
-                expectedAssetIdentity: state[MusaStateKey.assetIdentity] as? String
+                expectedAssetIdentity: state[MusaStateKey.assetIdentity] as? String,
+                // The saved table, so every address a host automated against
+                // comes back pointing at the control it was written for.
+                controlTable: (state[MusaStateKey.controlTable] as? String).flatMap { $0.isEmpty ? nil : $0 }
             ),
             bookmark: bookmark
         )

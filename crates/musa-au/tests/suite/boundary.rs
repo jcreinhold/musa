@@ -53,7 +53,15 @@ fn every_accessor_tolerates_a_null_handle() {
 #[test]
 fn a_null_path_is_diagnosed() {
     let part = c"piano";
-    let preparation = unsafe { musa_au_prepare(std::ptr::null(), std::ptr::null(), part.as_ptr(), RATE) };
+    let preparation = unsafe {
+        musa_au_prepare(
+            std::ptr::null(),
+            std::ptr::null(),
+            part.as_ptr(),
+            RATE,
+            std::ptr::null(),
+        )
+    };
     assert!(!preparation.is_null());
     assert_eq!(unsafe { musa_au_preparation_ok(preparation) }, 0);
     let message = unsafe { std::ffi::CStr::from_ptr(musa_au_preparation_message(preparation)) };
@@ -70,7 +78,8 @@ fn a_path_that_is_not_utf8_is_refused() {
     // 0xFF is not a valid UTF-8 byte in any position.
     let path = CString::new(vec![b'/', 0xFF, b'x']).expect("no interior NUL");
     let part = c"piano";
-    let preparation = unsafe { musa_au_prepare(path.as_ptr(), std::ptr::null(), part.as_ptr(), RATE) };
+    let preparation =
+        unsafe { musa_au_prepare(path.as_ptr(), std::ptr::null(), part.as_ptr(), RATE, std::ptr::null()) };
     assert_eq!(unsafe { musa_au_preparation_ok(preparation) }, 0);
     let message = unsafe { std::ffi::CStr::from_ptr(musa_au_preparation_message(preparation)) };
     assert!(message.to_string_lossy().contains("UTF-8"), "{message:?}");
@@ -81,7 +90,15 @@ fn a_path_that_is_not_utf8_is_refused() {
 #[test]
 fn a_zero_sample_rate_is_refused() {
     let fixture = Fixture::new();
-    let preparation = unsafe { musa_au_prepare(fixture.project.as_ptr(), std::ptr::null(), fixture.part.as_ptr(), 0) };
+    let preparation = unsafe {
+        musa_au_prepare(
+            fixture.project.as_ptr(),
+            std::ptr::null(),
+            fixture.part.as_ptr(),
+            0,
+            std::ptr::null(),
+        )
+    };
     assert_eq!(unsafe { musa_au_preparation_ok(preparation) }, 0);
     unsafe { musa_au_preparation_release(preparation) };
 }
@@ -91,7 +108,15 @@ fn a_zero_sample_rate_is_refused() {
 fn an_absent_part_is_refused_by_name() {
     let fixture = Fixture::new();
     let part = c"contrabassoon";
-    let preparation = unsafe { musa_au_prepare(fixture.project.as_ptr(), std::ptr::null(), part.as_ptr(), RATE) };
+    let preparation = unsafe {
+        musa_au_prepare(
+            fixture.project.as_ptr(),
+            std::ptr::null(),
+            part.as_ptr(),
+            RATE,
+            std::ptr::null(),
+        )
+    };
     assert_eq!(unsafe { musa_au_preparation_ok(preparation) }, 0);
     let message = unsafe { std::ffi::CStr::from_ptr(musa_au_preparation_message(preparation)) };
     assert!(message.to_string_lossy().contains("contrabassoon"), "{message:?}");
@@ -102,8 +127,15 @@ fn an_absent_part_is_refused_by_name() {
 #[test]
 fn a_preparation_yields_one_instrument() {
     let fixture = Fixture::new();
-    let preparation =
-        unsafe { musa_au_prepare(fixture.project.as_ptr(), std::ptr::null(), fixture.part.as_ptr(), RATE) };
+    let preparation = unsafe {
+        musa_au_prepare(
+            fixture.project.as_ptr(),
+            std::ptr::null(),
+            fixture.part.as_ptr(),
+            RATE,
+            std::ptr::null(),
+        )
+    };
     let first = unsafe { musa_au_preparation_take(preparation) };
     assert!(!first.is_null());
     let second = unsafe { musa_au_preparation_take(preparation) };
@@ -143,22 +175,8 @@ fn an_unknown_event_kind_is_counted() {
     let mut left = [0.0f32; 8];
     let mut right = [0.0f32; 8];
     let events = [
-        MusaAuEvent {
-            frame: 0,
-            voice: 1,
-            kind: MUSA_AU_EVENT_NOTE_ON,
-            data1: 60,
-            data2: 100,
-            reserved: 0,
-        },
-        MusaAuEvent {
-            frame: 1,
-            voice: 0,
-            kind: 200,
-            data1: 0,
-            data2: 0,
-            reserved: 0,
-        },
+        MusaAuEvent::midi(0, 1, MUSA_AU_EVENT_NOTE_ON, 60, 100),
+        MusaAuEvent::midi(1, 0, 200, 0, 0),
     ];
     unsafe {
         musa_au_render(instrument, events.as_ptr(), 2, left.as_mut_ptr(), right.as_mut_ptr(), 8);
@@ -177,14 +195,7 @@ fn an_event_past_the_block_is_still_applied() {
     let instrument = prepare(&fixture);
     let mut left = [0.0f32; 4];
     let mut right = [0.0f32; 4];
-    let events = [MusaAuEvent {
-        frame: 4_000,
-        voice: 1,
-        kind: 200,
-        data1: 0,
-        data2: 0,
-        reserved: 0,
-    }];
+    let events = [MusaAuEvent::midi(4_000, 1, 200, 0, 0)];
     unsafe {
         musa_au_render(instrument, events.as_ptr(), 1, left.as_mut_ptr(), right.as_mut_ptr(), 4);
     }

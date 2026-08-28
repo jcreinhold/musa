@@ -55,16 +55,20 @@ mod header;
 mod instrument;
 
 pub use crate::abi::{
-    MUSA_AU_ABI_VERSION, MusaAuEvent, MusaAuInstrument, MusaAuPreparation, musa_au_abi_version,
-    musa_au_instrument_release, musa_au_preparation_identity_assets, musa_au_preparation_identity_music,
-    musa_au_preparation_identity_part, musa_au_preparation_identity_piece, musa_au_preparation_input,
-    musa_au_preparation_input_count, musa_au_preparation_message, musa_au_preparation_ok, musa_au_preparation_release,
-    musa_au_preparation_take, musa_au_prepare, musa_au_render, musa_au_rendered_frames, musa_au_reset,
-    musa_au_unbound_events,
+    MUSA_AU_ABI_VERSION, MUSA_AU_MAX_OUTPUTS, MusaAuControl, MusaAuEvent, MusaAuInstrument, MusaAuPreparation,
+    musa_au_abi_version, musa_au_instrument_release, musa_au_preparation_control, musa_au_preparation_control_count,
+    musa_au_preparation_control_display, musa_au_preparation_control_identity, musa_au_preparation_control_kind,
+    musa_au_preparation_control_summary, musa_au_preparation_control_table, musa_au_preparation_control_update_rate,
+    musa_au_preparation_identity_assets, musa_au_preparation_identity_music, musa_au_preparation_identity_part,
+    musa_au_preparation_identity_piece, musa_au_preparation_input, musa_au_preparation_input_count,
+    musa_au_preparation_loss, musa_au_preparation_loss_count, musa_au_preparation_message, musa_au_preparation_ok,
+    musa_au_preparation_output, musa_au_preparation_output_count, musa_au_preparation_output_role,
+    musa_au_preparation_release, musa_au_preparation_take, musa_au_prepare, musa_au_render, musa_au_render_outputs,
+    musa_au_rendered_frames, musa_au_reset, musa_au_unbound_events,
 };
 pub use crate::abi::{
-    MUSA_AU_EVENT_CHANNEL_PRESSURE, MUSA_AU_EVENT_CONTROLLER, MUSA_AU_EVENT_KEY_PRESSURE, MUSA_AU_EVENT_NOTE_OFF,
-    MUSA_AU_EVENT_NOTE_ON, MUSA_AU_EVENT_PITCH_BEND,
+    MUSA_AU_CONTROL_CONTINUOUS, MUSA_AU_EVENT_CHANNEL_PRESSURE, MUSA_AU_EVENT_CONTROLLER, MUSA_AU_EVENT_KEY_PRESSURE,
+    MUSA_AU_EVENT_NOTE_OFF, MUSA_AU_EVENT_NOTE_ON, MUSA_AU_EVENT_PARAMETER, MUSA_AU_EVENT_PITCH_BEND,
 };
 pub use crate::header::header;
 

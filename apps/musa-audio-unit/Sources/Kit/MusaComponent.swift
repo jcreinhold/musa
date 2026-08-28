@@ -64,9 +64,31 @@ public enum MusaStateKey {
     public static let assetIdentity = "musa.state.assetIdentity"
     /// The MIDI dimensions the instrument's source binds.
     public static let inputs = "musa.state.inputs"
+    /// The address table this component's parameters were published under.
+    ///
+    /// Saved because an address is what a host's automation lane points at.
+    /// A document that carried only the source path would come back with
+    /// whatever addresses this version of the projection happened to derive,
+    /// and every automation lane written against the old ones would move to
+    /// the wrong control — silently, which is the worst way for it to
+    /// happen. The table is the library's own encoding, opaque here.
+    public static let controlTable = "musa.state.controlTable"
+    /// The controls the source declares that could not become parameters,
+    /// each already a sentence saying which and why.
+    ///
+    /// `06-daw-boundary.md` §6: a loss is refused or recorded, never left as
+    /// "some information may be lost".
+    public static let controlLosses = "musa.state.controlLosses"
+    /// The outputs this component projected, in bus order.
+    public static let outputs = "musa.state.outputs"
     /// Why the component is silent, when it is.
     public static let refusal = "musa.state.refusal"
 }
 
 /// The version of the document schema above.
-public let musaStateVersion = 1
+///
+/// Version 2 added the control table, the projection losses, and the output
+/// names. A version 1 document is still read: it named a source and a part,
+/// which is everything needed to prepare, and it carried no automation
+/// addresses to preserve because that version published no parameters.
+public let musaStateVersion = 2

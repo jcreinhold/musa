@@ -32,8 +32,9 @@ mod studio_source;
 mod voice;
 
 pub use crate::audio::{
-    AudioOptions, AudioPrepareError, AudioRoute, AudioRouteKind, AudioTap, AudioTapRole, AuditionEvent,
-    AuditionOutcome, PreparedAudio, PreparedAuditionTarget, prepare_execution, prepare_execution_with_media,
+    AudioOptions, AudioPrepareError, AudioRoute, AudioRouteKind, AudioTap, AudioTapRole, AuditionControl,
+    AuditionControlLoss, AuditionControlRefusal, AuditionEvent, AuditionOutcome, PreparedAudio, PreparedAuditionTarget,
+    prepare_execution, prepare_execution_with_media,
 };
 pub use crate::instrument_source::{
     InstrumentAuditionBinding, InstrumentContract, InstrumentContracts, InstrumentContractsError,

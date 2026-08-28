@@ -40,6 +40,38 @@ if let instrument = result.instrument {
     print("  music:  \(result.musicIdentity)")
     print("  assets: \(result.assetIdentity)")
     print("  binds:  \(result.inputs.joined(separator: ", "))")
+
+    // Every line below is generated from what the source declared. There is
+    // no catalogue of Musa controls in this app: a control it cannot name is
+    // a control the source did not write, and a control the source adds
+    // appears here without anything being edited.
+    print("  controls:")
+    if result.controls.isEmpty {
+        print("    (this instrument declares no public controls)")
+    }
+    for control in result.controls {
+        let ramp = control.continuous ? "ramps" : "steps"
+        print("    \(control.display) — \(control.summary)")
+        print(
+            "      \(control.identity)  \(control.kind)/\(control.updateRate), \(ramp), "
+                + "\(control.minimum)…\(control.maximum), default \(control.defaultValue)"
+        )
+        print("      address 0x\(String(control.address, radix: 16, uppercase: false))")
+    }
+    // §6: a loss is named, never implied.
+    for loss in result.controlLosses {
+        print("    not a host parameter: \(loss)")
+    }
+    print("  outputs:")
+    for (index, output) in result.outputs.enumerated() {
+        let role: String
+        switch output.role {
+        case .main: role = "the piece's main output"
+        case .part: role = "this part's own output"
+        case .bus: role = "a studio bus this part reaches"
+        }
+        print("    bus \(index): \(output.name) — \(role)")
+    }
     if let bookmark = try? URL(fileURLWithPath: project).bookmarkData(options: [.withSecurityScope]) {
         print("  access: \(bookmark.count) bytes of security-scoped bookmark")
     }

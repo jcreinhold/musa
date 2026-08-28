@@ -30,7 +30,7 @@ func musaDecodeMIDI(_ event: AUMIDIEvent, _ frameCount: AUAudioFrameCount) -> Mu
     let offset = event.eventSampleTime < 0 ? 0 : UInt32(min(event.eventSampleTime, Int64(frameCount)))
 
     func made(_ kind: UInt8, _ first: UInt8, _ second: UInt8) -> MusaAuEvent {
-        MusaAuEvent(frame: offset, voice: UInt32(data1), kind: kind, data1: first, data2: second, reserved: 0)
+        musaEvent(frame: offset, voice: UInt32(data1), kind: kind, data1: first, data2: second)
     }
 
     switch status {
@@ -42,33 +42,54 @@ func musaDecodeMIDI(_ event: AUMIDIEvent, _ frameCount: AUAudioFrameCount) -> Mu
     case 0xA0:
         return made(UInt8(MUSA_AU_EVENT_KEY_PRESSURE), data1, data2)
     case 0xB0:
-        return MusaAuEvent(
-            frame: offset,
-            voice: 0,
-            kind: UInt8(MUSA_AU_EVENT_CONTROLLER),
-            data1: data1,
-            data2: data2,
-            reserved: 0
-        )
+        return musaEvent(frame: offset, voice: 0, kind: UInt8(MUSA_AU_EVENT_CONTROLLER), data1: data1, data2: data2)
     case 0xD0:
-        return MusaAuEvent(
-            frame: offset,
-            voice: 0,
-            kind: UInt8(MUSA_AU_EVENT_CHANNEL_PRESSURE),
-            data1: data1,
-            data2: 0,
-            reserved: 0
-        )
+        return musaEvent(frame: offset, voice: 0, kind: UInt8(MUSA_AU_EVENT_CHANNEL_PRESSURE), data1: data1, data2: 0)
     case 0xE0:
-        return MusaAuEvent(
-            frame: offset,
-            voice: 0,
-            kind: UInt8(MUSA_AU_EVENT_PITCH_BEND),
-            data1: data1,
-            data2: data2,
-            reserved: 0
-        )
+        return musaEvent(frame: offset, voice: 0, kind: UInt8(MUSA_AU_EVENT_PITCH_BEND), data1: data1, data2: data2)
     default:
         return nil
     }
+}
+
+/// One MIDI-shaped event, with the fields a parameter event uses left empty.
+///
+/// The wire struct carries both kinds, so every construction has to say
+/// something about `address`, `ramp`, and `value`. Saying it once here keeps
+/// a decoder from quietly meaning a parameter address of whatever was next
+/// on the stack.
+@inline(__always)
+func musaEvent(frame: UInt32, voice: UInt32, kind: UInt8, data1: UInt8, data2: UInt8) -> MusaAuEvent {
+    MusaAuEvent(
+        address: 0,
+        frame: frame,
+        voice: voice,
+        ramp: 0,
+        value: 0,
+        kind: kind,
+        data1: data1,
+        data2: data2,
+        reserved: 0
+    )
+}
+
+/// One host parameter change, at a sample offset inside this block.
+///
+/// `06-daw-boundary.md` §3: this is an ephemeral performance overlay. It
+/// carries a source-declared control's address and a normalized value, and it
+/// reaches the instrument through the mapping the source already declared.
+/// Nothing here writes `.musa`.
+@inline(__always)
+func musaParameterEvent(frame: UInt32, address: UInt64, value: Float, ramp: UInt32) -> MusaAuEvent {
+    MusaAuEvent(
+        address: address,
+        frame: frame,
+        voice: 0,
+        ramp: ramp,
+        value: value,
+        kind: UInt8(MUSA_AU_EVENT_PARAMETER),
+        data1: 0,
+        data2: 0,
+        reserved: 0
+    )
 }

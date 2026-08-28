@@ -61,8 +61,15 @@ impl Fixture {
 
 /// A prepared instrument, or the reason there is not one.
 pub(crate) fn prepare(fixture: &Fixture) -> *mut musa_au::MusaAuInstrument {
-    let preparation =
-        unsafe { musa_au_prepare(fixture.project.as_ptr(), std::ptr::null(), fixture.part.as_ptr(), RATE) };
+    let preparation = unsafe {
+        musa_au_prepare(
+            fixture.project.as_ptr(),
+            std::ptr::null(),
+            fixture.part.as_ptr(),
+            RATE,
+            std::ptr::null(),
+        )
+    };
     assert!(!preparation.is_null(), "preparation is never null");
     let ok = unsafe { musa_au_preparation_ok(preparation) };
     assert_eq!(ok, 1, "{}", unsafe { message(preparation) });
@@ -80,7 +87,12 @@ pub(crate) unsafe fn message(preparation: *const musa_au::MusaAuPreparation) -> 
 
 /// Render `frames` in blocks of `block`, applying `events` at absolute
 /// offsets from the start.
-fn render(instrument: *mut musa_au::MusaAuInstrument, events: &[MusaAuEvent], frames: usize, block: usize) -> Vec<f32> {
+pub(crate) fn render(
+    instrument: *mut musa_au::MusaAuInstrument,
+    events: &[MusaAuEvent],
+    frames: usize,
+    block: usize,
+) -> Vec<f32> {
     let mut out = Vec::with_capacity(frames.saturating_mul(2));
     let mut left = vec![0.0f32; block];
     let mut right = vec![0.0f32; block];
@@ -123,30 +135,9 @@ fn render(instrument: *mut musa_au::MusaAuInstrument, events: &[MusaAuEvent], fr
 
 fn phrase() -> Vec<MusaAuEvent> {
     vec![
-        MusaAuEvent {
-            frame: 0,
-            voice: 1,
-            kind: MUSA_AU_EVENT_NOTE_ON,
-            data1: 60,
-            data2: 100,
-            reserved: 0,
-        },
-        MusaAuEvent {
-            frame: 733,
-            voice: 2,
-            kind: MUSA_AU_EVENT_NOTE_ON,
-            data1: 67,
-            data2: 64,
-            reserved: 0,
-        },
-        MusaAuEvent {
-            frame: 1500,
-            voice: 1,
-            kind: MUSA_AU_EVENT_NOTE_OFF,
-            data1: 60,
-            data2: 0,
-            reserved: 0,
-        },
+        MusaAuEvent::midi(0, 1, MUSA_AU_EVENT_NOTE_ON, 60, 100),
+        MusaAuEvent::midi(733, 2, MUSA_AU_EVENT_NOTE_ON, 67, 64),
+        MusaAuEvent::midi(1500, 1, MUSA_AU_EVENT_NOTE_OFF, 60, 0),
     ]
 }
 
@@ -195,6 +186,7 @@ fn the_abi_renders_what_the_session_renders() {
     };
 
     let mut native = musa_project::open_hosted_instrument(&musa_project::HostedRequest {
+        table: None,
         project: std::path::PathBuf::from(fixture.project.to_str().expect("valid UTF-8")),
         piece: None,
         part: "piano".to_owned(),
@@ -271,8 +263,15 @@ fn a_reset_stops_every_voice() {
 #[test]
 fn a_preparation_states_its_identity() {
     let fixture = Fixture::new();
-    let preparation =
-        unsafe { musa_au_prepare(fixture.project.as_ptr(), std::ptr::null(), fixture.part.as_ptr(), RATE) };
+    let preparation = unsafe {
+        musa_au_prepare(
+            fixture.project.as_ptr(),
+            std::ptr::null(),
+            fixture.part.as_ptr(),
+            RATE,
+            std::ptr::null(),
+        )
+    };
     let music = unsafe { std::ffi::CStr::from_ptr(musa_au_preparation_identity_music(preparation)) };
     let part = unsafe { std::ffi::CStr::from_ptr(musa_au_preparation_identity_part(preparation)) };
     assert!(

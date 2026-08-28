@@ -80,22 +80,8 @@ fn slow_rendering_allocates_nothing() {
     let mut left = vec![0.0f32; 512];
     let mut right = vec![0.0f32; 512];
     let events = [
-        MusaAuEvent {
-            frame: 3,
-            voice: 1,
-            kind: musa_au::MUSA_AU_EVENT_NOTE_ON,
-            data1: 60,
-            data2: 100,
-            reserved: 0,
-        },
-        MusaAuEvent {
-            frame: 200,
-            voice: 1,
-            kind: musa_au::MUSA_AU_EVENT_PITCH_BEND,
-            data1: 0,
-            data2: 96,
-            reserved: 0,
-        },
+        MusaAuEvent::midi(3, 1, musa_au::MUSA_AU_EVENT_NOTE_ON, 60, 100),
+        MusaAuEvent::midi(200, 1, musa_au::MUSA_AU_EVENT_PITCH_BEND, 0, 96),
     ];
 
     let empty = measure(|| {

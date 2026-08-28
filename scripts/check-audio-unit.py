@@ -17,7 +17,7 @@ from pathlib import Path
 
 # Every claim the component must make. A report missing one of these is a
 # report that stopped early.
-REQUIRED = [
+INSTRUMENT = [
     # The component and the library are one build.
     "abi.version",
     "rt.probe",
@@ -40,7 +40,7 @@ REQUIRED = [
     "render.unsupportedMessage",
     "render.formatChange",
     "bus.count",
-    "param.tree.empty",
+    "bus.names",
     # The render thread.
     "rt.allocation.baseline",
     "rt.allocation.silence",
@@ -62,17 +62,43 @@ REQUIRED = [
     "instantiate.afterTermination",
 ]
 
+# What prompt 217 added: the parameters are exactly the source's declared
+# controls, their addresses survive a document, a host's automation reaches
+# the declared mapping without the block size mattering, and the buses are the
+# points the part actually reaches.
+PARAMETERS_AND_OUTPUTS = INSTRUMENT + [
+    "param.tree.declared",
+    "param.ranges",
+    "param.losses",
+    "param.setValue",
+    "param.scheduled",
+    "param.ramp",
+    "param.blockPartition",
+    "param.unknownAddress",
+    "param.addressesStable",
+    "state.controlTable",
+    "bus.identity",
+    "bus.mainUnchanged",
+    "bus.independent",
+]
+
+SETS = {"instrument": INSTRUMENT, "parameters-and-outputs": PARAMETERS_AND_OUTPUTS}
+
 # Claims this machine cannot answer, with the reason each is allowed to stand
 # unanswered. Nothing else may be `unsupported`.
 MAY_BE_UNSUPPORTED: dict[str, str] = {}
 
 
 def main() -> int:
-    if len(sys.argv) != 3:
-        print("usage: check-audio-unit.py <report.json> <auval-ok>", file=sys.stderr)
+    if len(sys.argv) != 4:
+        print("usage: check-audio-unit.py <report.json> <auval-ok> <component>", file=sys.stderr)
         return 2
     path = Path(sys.argv[1])
     auval_ok = sys.argv[2] == "1"
+    required = SETS.get(sys.argv[3])
+    if required is None:
+        print(f"no finding set named {sys.argv[3]}", file=sys.stderr)
+        return 2
     if not path.exists() or not path.read_text().strip():
         print(f"no report at {path}", file=sys.stderr)
         return 1
@@ -84,7 +110,7 @@ def main() -> int:
     for name, value in sorted(report.get("environment", {}).items()):
         print(f"  {name}: {value}")
 
-    for identifier in REQUIRED:
+    for identifier in required:
         finding = findings.get(identifier)
         if finding is None:
             problems.append(f"{identifier}: the report does not contain this finding")
@@ -97,7 +123,7 @@ def main() -> int:
         problems.append(f"{identifier}: {finding['outcome']} — {finding['detail']}")
 
     for identifier, finding in sorted(findings.items()):
-        if identifier in REQUIRED or identifier in MAY_BE_UNSUPPORTED:
+        if identifier in required or identifier in MAY_BE_UNSUPPORTED:
             continue
         if finding["outcome"] == "fail":
             problems.append(f"{identifier}: fail — {finding['detail']}")

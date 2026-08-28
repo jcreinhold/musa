@@ -98,8 +98,9 @@ pub use crate::facts::{
 pub use crate::format_support::{FormatSupportFacts, format_support, format_supports};
 pub use crate::group_edit::{GroupBarEffect, GroupDefinition, GroupEdit, GroupEditPlan, GroupIntent};
 pub use crate::hosted::{
-    HostedIdentity, HostedInput, HostedInstrument, HostedOutcome, HostedRequest, open_hosted_instrument,
-    open_hosted_instrument_at,
+    HOSTED_TABLE_VERSION, HostedControl, HostedControlAddress, HostedControlLoss, HostedControlTable, HostedIdentity,
+    HostedInput, HostedInstrument, HostedOutcome, HostedOutput, HostedOutputRole, HostedRequest,
+    open_hosted_instrument, open_hosted_instrument_at,
 };
 pub use crate::library::{LibraryDocument, library_document};
 pub use crate::logging::{FILTER_VARIABLE, Logging};

@@ -18,7 +18,7 @@ extern "C" {
 /* The version this library was built as. A host bundle and this library are
  * built together, so an extension reads it once at load and refuses rather
  * than rendering through a layout it was not compiled against. */
-#define MUSA_AU_ABI_VERSION 1u
+#define MUSA_AU_ABI_VERSION 2u
 
 /* Event kinds. `data1` and `data2` mean what the comment beside each says. */
 #define MUSA_AU_EVENT_NOTE_ON           1u  /* data1 note, data2 attack velocity */
@@ -27,6 +27,14 @@ extern "C" {
 #define MUSA_AU_EVENT_PITCH_BEND        4u  /* data1 low seven bits, data2 high seven */
 #define MUSA_AU_EVENT_CHANNEL_PRESSURE  5u  /* data1 pressure */
 #define MUSA_AU_EVENT_KEY_PRESSURE      6u  /* data1 note, data2 pressure */
+#define MUSA_AU_EVENT_PARAMETER         7u  /* address, value, ramp */
+
+/* Bit zero of a control's flags: the source declares it continuous, so a ramp
+ * towards a new value is something the declaration supports. */
+#define MUSA_AU_CONTROL_CONTINUOUS      1u
+
+/* The greatest number of outputs one render call may fill. */
+#define MUSA_AU_MAX_OUTPUTS             8u
 
 /* One host event, at a sample offset inside the block being rendered.
  *
@@ -35,21 +43,45 @@ extern "C" {
  * is the host's own identity for the voice a note-on begins and a note-off
  * ends, because Musa pairs them by identity rather than by pitch. */
 typedef struct {
+    uint64_t address; /* parameter events only; zero is never an address */
     uint32_t frame;
     uint32_t voice;
+    uint32_t ramp;    /* parameter events only; frames to reach `value` */
+    float    value;   /* parameter events only */
     uint8_t  kind;
     uint8_t  data1;
     uint8_t  data2;
     uint8_t  reserved; /* must be zero */
 } MusaAuEvent;
 
-_Static_assert(sizeof(MusaAuEvent) == 12, "MusaAuEvent size disagrees with the Rust definition");
-_Static_assert(offsetof(MusaAuEvent, frame) == 0, "MusaAuEvent::frame moved");
-_Static_assert(offsetof(MusaAuEvent, voice) == 4, "MusaAuEvent::voice moved");
-_Static_assert(offsetof(MusaAuEvent, kind) == 8, "MusaAuEvent::kind moved");
-_Static_assert(offsetof(MusaAuEvent, data1) == 9, "MusaAuEvent::data1 moved");
-_Static_assert(offsetof(MusaAuEvent, data2) == 10, "MusaAuEvent::data2 moved");
-_Static_assert(offsetof(MusaAuEvent, reserved) == 11, "MusaAuEvent::reserved moved");
+_Static_assert(sizeof(MusaAuEvent) == 32, "MusaAuEvent size disagrees with the Rust definition");
+_Static_assert(offsetof(MusaAuEvent, address) == 0, "MusaAuEvent::address moved");
+_Static_assert(offsetof(MusaAuEvent, frame) == 8, "MusaAuEvent::frame moved");
+_Static_assert(offsetof(MusaAuEvent, voice) == 12, "MusaAuEvent::voice moved");
+_Static_assert(offsetof(MusaAuEvent, ramp) == 16, "MusaAuEvent::ramp moved");
+_Static_assert(offsetof(MusaAuEvent, value) == 20, "MusaAuEvent::value moved");
+_Static_assert(offsetof(MusaAuEvent, kind) == 24, "MusaAuEvent::kind moved");
+_Static_assert(offsetof(MusaAuEvent, data1) == 25, "MusaAuEvent::data1 moved");
+_Static_assert(offsetof(MusaAuEvent, data2) == 26, "MusaAuEvent::data2 moved");
+_Static_assert(offsetof(MusaAuEvent, reserved) == 27, "MusaAuEvent::reserved moved");
+
+/* One exposed control's numbers, as a host builds a parameter from them. The
+ * strings beside it are separate accessors: they are borrowed from the
+ * preparation and this struct is returned by value. */
+typedef struct {
+    uint64_t address;
+    float    minimum;
+    float    maximum;
+    float    default_value;
+    uint32_t flags;
+} MusaAuControl;
+
+_Static_assert(sizeof(MusaAuControl) == 24, "MusaAuControl size disagrees with the Rust definition");
+_Static_assert(offsetof(MusaAuControl, address) == 0, "MusaAuControl::address moved");
+_Static_assert(offsetof(MusaAuControl, minimum) == 8, "MusaAuControl::minimum moved");
+_Static_assert(offsetof(MusaAuControl, maximum) == 12, "MusaAuControl::maximum moved");
+_Static_assert(offsetof(MusaAuControl, default_value) == 16, "MusaAuControl::default_value moved");
+_Static_assert(offsetof(MusaAuControl, flags) == 20, "MusaAuControl::flags moved");
 
 /* The result of one preparation: an instrument, or why there is not one. */
 typedef struct MusaAuPreparation MusaAuPreparation;
@@ -64,7 +96,8 @@ uint32_t musa_au_abi_version(void);
 /* Compile, verify, and prepare one part's instrument. Never returns null.
  * `piece` may be null, meaning the project's first piece. Release the result
  * with musa_au_preparation_release whether or not it succeeded. */
-MusaAuPreparation *musa_au_prepare(const char *project, const char *piece, const char *part, uint32_t sample_rate);
+MusaAuPreparation *musa_au_prepare(const char *project, const char *piece, const char *part, uint32_t sample_rate,
+                                   const char *table);
 
 /* Nonzero when the preparation produced an instrument. */
 int musa_au_preparation_ok(const MusaAuPreparation *preparation);
@@ -87,6 +120,34 @@ const char *musa_au_preparation_identity_part(const MusaAuPreparation *preparati
 uint32_t musa_au_preparation_input_count(const MusaAuPreparation *preparation);
 const char *musa_au_preparation_input(const MusaAuPreparation *preparation, uint32_t index);
 
+/* The source-declared controls this instrument exposes as host parameters.
+ * These are exactly the controls the source declares public: a DSP node, a
+ * graph edge, or a host convenience knob is never one of them. Each string is
+ * borrowed from the preparation. `musa_au_preparation_control` writes `out`
+ * and returns nonzero, or writes nothing and returns zero past the end. */
+uint32_t musa_au_preparation_control_count(const MusaAuPreparation *preparation);
+int musa_au_preparation_control(const MusaAuPreparation *preparation, uint32_t index, MusaAuControl *out);
+const char *musa_au_preparation_control_identity(const MusaAuPreparation *preparation, uint32_t index);
+const char *musa_au_preparation_control_display(const MusaAuPreparation *preparation, uint32_t index);
+const char *musa_au_preparation_control_summary(const MusaAuPreparation *preparation, uint32_t index);
+const char *musa_au_preparation_control_kind(const MusaAuPreparation *preparation, uint32_t index);
+const char *musa_au_preparation_control_update_rate(const MusaAuPreparation *preparation, uint32_t index);
+
+/* Declared controls this boundary could not carry, each as one sentence. */
+uint32_t musa_au_preparation_loss_count(const MusaAuPreparation *preparation);
+const char *musa_au_preparation_loss(const MusaAuPreparation *preparation, uint32_t index);
+
+/* The complete parameter-address table, for the host document to carry back
+ * to the next musa_au_prepare. */
+const char *musa_au_preparation_control_table(const MusaAuPreparation *preparation);
+
+/* The outputs the source declares for this part. Index zero is the main
+ * output and is always present; the rest are the declared points this part
+ * reaches. The role is 0 main, 1 a part output, 2 a declared bus. */
+uint32_t musa_au_preparation_output_count(const MusaAuPreparation *preparation);
+const char *musa_au_preparation_output(const MusaAuPreparation *preparation, uint32_t index);
+uint32_t musa_au_preparation_output_role(const MusaAuPreparation *preparation, uint32_t index);
+
 /* Take the instrument out, leaving the preparation empty. Null if the
  * preparation failed or was already taken. The instrument outlives the
  * preparation. */
@@ -106,6 +167,13 @@ void musa_au_instrument_release(MusaAuInstrument *instrument);
  * and must not alias. */
 void musa_au_render(MusaAuInstrument *instrument, const MusaAuEvent *events, uint32_t count, float *left,
                     float *right, uint32_t frames);
+
+/* Render one block into every negotiated output. `channels` holds two
+ * pointers per output — left then right, bus zero first — and `channel_count`
+ * is how many are supplied; an odd count renders nothing. Bus zero is exactly
+ * what musa_au_render would have produced. */
+void musa_au_render_outputs(MusaAuInstrument *instrument, const MusaAuEvent *events, uint32_t count,
+                            float *const *channels, uint32_t channel_count, uint32_t frames);
 
 /* Return the instrument to its prepared silence. */
 void musa_au_reset(MusaAuInstrument *instrument);

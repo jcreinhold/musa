@@ -1,7 +1,7 @@
 ---
 id: 217
 slug: audio-unit-controls-and-outputs
-status: pending
+status: done
 depends_on: [216]
 phase: 4
 ---

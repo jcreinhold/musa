@@ -23,7 +23,10 @@
 
 use std::path::{Path, PathBuf};
 
-use musa_dsp::{AuditionEvent, AuditionOutcome, MidiAuditionInputKind, PreparedAudio, PreparedAuditionTarget};
+use musa_dsp::{
+    AudioRouteKind, AuditionControlRefusal, AuditionEvent, AuditionOutcome, MidiAuditionInputKind, PreparedAudio,
+    PreparedAuditionTarget,
+};
 
 use crate::error::ProjectError;
 
@@ -41,6 +44,15 @@ pub struct HostedRequest {
     /// The rate the host will render at. Preparation is exact for this rate
     /// and for no other: a host that changes it asks for a new preparation.
     pub sample_rate: u32,
+    /// The parameter-address table a restored document carried, encoded by
+    /// [`HostedControlTable::encode`].
+    ///
+    /// `None` is a component that has never been saved. Anything else is a
+    /// promise a host already made to its automation lanes, and preparation
+    /// keeps it: an address that was assigned stays assigned to the same
+    /// source identity, and one whose control is gone stays retired rather
+    /// than being handed to a different control.
+    pub table: Option<String>,
 }
 
 /// What a restored document must name for a preparation to be the same one.
@@ -155,6 +167,250 @@ impl HostedOutcome {
     }
 }
 
+/// The version of the parameter-address table this crate writes.
+///
+/// It changes when the table's encoding or its address derivation changes,
+/// which is what makes a table from a future component recognizable as one
+/// this component must not silently reinterpret.
+pub const HOSTED_TABLE_VERSION: u32 = 1;
+
+const HOSTED_TABLE_HEADER: &str = "musa-control-table";
+
+/// One admitted control, projected as a host parameter.
+///
+/// Rule D2: this is a source-declared exposed control and nothing else. The
+/// address is stable across formatting, summary edits, tree rebuilds, and
+/// extension restarts, because it is assigned from the control's canonical
+/// source identity through a table that is saved with the document.
+#[derive(Clone, Debug, PartialEq)]
+pub struct HostedControl {
+    /// The 64-bit address a host automates. Never zero.
+    pub address: u64,
+    /// The canonical source identity: `namespace::name`.
+    pub identity: String,
+    /// The name the source key declares, for a host to display.
+    pub display: String,
+    /// The sentence the source key declares, for an accessible description.
+    pub summary: String,
+    /// The source value kind.
+    pub kind: String,
+    /// The source update rate, spelled as the declaration spells it.
+    pub update_rate: String,
+    /// The inclusive ends of the control's declared domain.
+    pub minimum: f32,
+    /// The upper end of that domain.
+    pub maximum: f32,
+    /// The declared default, inside that domain.
+    pub default: f32,
+    /// Whether the source declares this control continuous, and so whether a
+    /// host ramp means anything for it.
+    pub continuous: bool,
+}
+
+/// One source-declared control this boundary cannot carry, and why.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct HostedControlLoss {
+    /// The canonical source identity of the control that stayed behind.
+    pub identity: String,
+    /// Its source value kind.
+    pub kind: String,
+    /// One clause naming the refusal.
+    pub reason: String,
+}
+
+impl std::fmt::Display for HostedControlLoss {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "`{}` ({}) is not a host parameter: {}",
+            self.identity, self.kind, self.reason
+        )
+    }
+}
+
+/// One output a host may negotiate, in stable source order.
+///
+/// Bus zero is always the main output — what a single-output host hears, and
+/// what every host hears on bus zero whether or not it enabled the others.
+/// The rest are the declared points this part's signal reaches on its way
+/// there. None of them is a mixer track: `08-performance-and-sound.md` §6
+/// keeps part, bus, and track three different things, and this projection
+/// renames nothing.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct HostedOutput {
+    /// The source name, or `main` for bus zero.
+    pub name: String,
+    /// What the source declared this to be.
+    pub role: HostedOutputRole,
+}
+
+/// What one projected output is, in source terms.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum HostedOutputRole {
+    /// The main output: everything this part's routing delivers.
+    Main,
+    /// This part's own instrument chain, before any bus it sends to.
+    Part,
+    /// A named bus or room the part reaches by a declared edge.
+    Bus,
+}
+
+/// One entry of the parameter-address table.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct HostedControlAddress {
+    /// The canonical source identity the address belongs to.
+    pub identity: String,
+    /// The address, which is never zero and never shared.
+    pub address: u64,
+}
+
+/// The versioned, collision-detecting parameter-address table.
+///
+/// A hash is how an address is *proposed*; this table is what makes it
+/// unique. It holds every identity that has ever been assigned an address in
+/// this document, including controls the source no longer declares, so that a
+/// removed control's address is retired rather than handed to a different
+/// control that a host would then automate by mistake.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct HostedControlTable {
+    entries: Vec<HostedControlAddress>,
+}
+
+impl HostedControlTable {
+    /// Every entry, sorted by identity.
+    #[must_use]
+    pub fn entries(&self) -> &[HostedControlAddress] {
+        &self.entries
+    }
+
+    /// The address assigned to one identity, if it has ever had one.
+    #[must_use]
+    pub fn address_of(&self, identity: &str) -> Option<u64> {
+        self.entries
+            .binary_search_by(|entry| entry.identity.as_str().cmp(identity))
+            .ok()
+            .and_then(|index| self.entries.get(index))
+            .map(|entry| entry.address)
+    }
+
+    /// Extend this table to cover `identities`, keeping every promise it made.
+    ///
+    /// An identity already in the table keeps its address. A new one is given
+    /// the first address its own derivation proposes that no entry already
+    /// holds — the collision detection the design asks for, and the reason a
+    /// hash alone is not enough. Nothing is ever removed.
+    #[must_use]
+    pub fn extended(&self, identities: &[String]) -> Self {
+        let mut entries = self.entries.clone();
+        let mut used: std::collections::BTreeSet<u64> = entries.iter().map(|entry| entry.address).collect();
+        for identity in identities {
+            if entries.iter().any(|entry| &entry.identity == identity) {
+                continue;
+            }
+            let mut salt = 0u64;
+            let mut address = derive_address(identity, salt);
+            while used.contains(&address) {
+                salt = salt.wrapping_add(1);
+                address = derive_address(identity, salt);
+            }
+            used.insert(address);
+            entries.push(HostedControlAddress {
+                identity: identity.clone(),
+                address,
+            });
+        }
+        entries.sort_by(|left, right| left.identity.cmp(&right.identity));
+        Self { entries }
+    }
+
+    /// The table as one property-list-safe string.
+    #[must_use]
+    pub fn encode(&self) -> String {
+        use std::fmt::Write as _;
+        let mut text = format!("{HOSTED_TABLE_HEADER} {HOSTED_TABLE_VERSION}\n");
+        for entry in &self.entries {
+            let _ = writeln!(text, "{:016x}\t{}", entry.address, entry.identity);
+        }
+        text
+    }
+
+    /// Read a table a document saved.
+    ///
+    /// # Errors
+    /// Returns the reason as a sentence when the header, the version, or the
+    /// body is not what this component writes, and — the point of the type —
+    /// when two entries share an address or an identity. A table that failed
+    /// its own uniqueness check is not a table a host's automation can be
+    /// restored against.
+    pub fn decode(text: &str) -> Result<Self, String> {
+        let mut lines = text.lines();
+        let header = lines.next().ok_or_else(|| "the control table is empty".to_owned())?;
+        let (name, version) = header
+            .split_once(' ')
+            .ok_or_else(|| format!("`{header}` is not a control-table header"))?;
+        if name != HOSTED_TABLE_HEADER {
+            return Err(format!("`{name}` is not a control table"));
+        }
+        let version: u32 = version
+            .parse()
+            .map_err(|_| format!("`{version}` is not a control-table version"))?;
+        if version != HOSTED_TABLE_VERSION {
+            return Err(format!(
+                "this table is version {version}; this component writes version {HOSTED_TABLE_VERSION}"
+            ));
+        }
+        let mut entries = Vec::new();
+        for line in lines.filter(|line| !line.is_empty()) {
+            let (address, identity) = line
+                .split_once('\t')
+                .ok_or_else(|| format!("`{line}` is not an address and an identity"))?;
+            let address = u64::from_str_radix(address, 16).map_err(|_| format!("`{address}` is not an address"))?;
+            if address == 0 {
+                return Err(format!("`{identity}` is recorded at address zero, which names nothing"));
+            }
+            if entries
+                .iter()
+                .any(|entry: &HostedControlAddress| entry.address == address)
+            {
+                return Err(format!("address {address:016x} is recorded twice"));
+            }
+            if entries.iter().any(|entry| entry.identity == identity) {
+                return Err(format!("`{identity}` is recorded twice"));
+            }
+            entries.push(HostedControlAddress {
+                identity: identity.to_owned(),
+                address,
+            });
+        }
+        entries.sort_by(|left, right| left.identity.cmp(&right.identity));
+        Ok(Self { entries })
+    }
+}
+
+/// Propose one address for a canonical identity.
+///
+/// FNV-1a over the version, the salt, and the identity. Written out rather
+/// than taken from a hasher whose output is documented as unstable: this
+/// number is saved in host documents, so it has to mean the same thing in
+/// next year's build.
+fn derive_address(identity: &str, salt: u64) -> u64 {
+    const OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
+    const PRIME: u64 = 0x0000_0100_0000_01b3;
+    let mut hash = OFFSET;
+    for byte in u64::from(HOSTED_TABLE_VERSION)
+        .to_be_bytes()
+        .into_iter()
+        .chain(salt.to_be_bytes())
+        .chain(identity.bytes())
+    {
+        hash ^= u64::from(byte);
+        hash = hash.wrapping_mul(PRIME);
+    }
+    // Zero is reserved: a host that reads an address of zero has read an
+    // uninitialized field, and it must not find a parameter there.
+    if hash == 0 { PRIME } else { hash }
+}
+
 /// A prepared instrument, ready for a host to render.
 ///
 /// Immutable in everything a host may not change: the closure it was prepared
@@ -165,6 +421,19 @@ pub struct HostedInstrument {
     target: PreparedAuditionTarget,
     identity: HostedIdentity,
     inputs: Vec<HostedInput>,
+    controls: Vec<HostedControl>,
+    losses: Vec<HostedControlLoss>,
+    table: HostedControlTable,
+    /// Address to control index, sorted, so the render side finds a
+    /// parameter by binary search rather than by scanning names.
+    addresses: Vec<(u64, usize)>,
+    outputs: Vec<HostedOutput>,
+    /// Tap index per projected output past bus zero, parallel to
+    /// `outputs[1..]`.
+    output_taps: Vec<usize>,
+    /// Preallocated room for one frame of every prepared tap, so that
+    /// reporting extra buses allocates nothing on the render side.
+    tap_frame: Vec<[f32; 2]>,
 }
 
 impl std::fmt::Debug for HostedInstrument {
@@ -191,6 +460,76 @@ impl HostedInstrument {
     #[must_use]
     pub fn inputs(&self) -> &[HostedInput] {
         &self.inputs
+    }
+
+    /// The source-declared controls this instrument exposes as parameters.
+    ///
+    /// Generated, in the order the source signature declares them. There is
+    /// no catalogue anywhere else — an interface that added a control here
+    /// would be adding one to the instrument, which is a source edit.
+    #[must_use]
+    pub fn controls(&self) -> &[HostedControl] {
+        &self.controls
+    }
+
+    /// Every declared control this boundary could not carry, and why.
+    #[must_use]
+    pub fn control_losses(&self) -> &[HostedControlLoss] {
+        &self.losses
+    }
+
+    /// The complete parameter-address table, to be saved with the document.
+    #[must_use]
+    pub const fn control_table(&self) -> &HostedControlTable {
+        &self.table
+    }
+
+    /// The outputs a host may negotiate, bus zero first.
+    #[must_use]
+    pub fn outputs(&self) -> &[HostedOutput] {
+        &self.outputs
+    }
+
+    /// Drive one exposed control by its host address. Real-time safe.
+    ///
+    /// This is an ephemeral performance overlay and nothing more: it writes
+    /// no source, changes no declaration, and survives nothing. `ramp_frames`
+    /// asks for a linear approach over that many frames and is honoured only
+    /// where the source declares the control continuous.
+    ///
+    /// An address this instrument does not publish is [`HostedOutcome::Unbound`]
+    /// rather than an error — a host restoring an old automation lane is
+    /// entitled to send one, and the honest answer is that nothing here
+    /// answers to it.
+    pub fn set_control(&mut self, address: u64, value: f32, ramp_frames: u64) -> HostedOutcome {
+        let Ok(found) = self.addresses.binary_search_by_key(&address, |entry| entry.0) else {
+            return HostedOutcome::Unbound;
+        };
+        let Some(&(_, index)) = self.addresses.get(found) else {
+            return HostedOutcome::Unbound;
+        };
+        HostedOutcome::from_dsp(self.audio.audition_control(self.target, index, value, ramp_frames))
+    }
+
+    /// Advance one frame and also report every projected output past bus zero.
+    ///
+    /// `into` is filled from the front, one stereo frame per entry of
+    /// [`Self::outputs`] after the first; the return value is bus zero. It is
+    /// the same frame [`Self::step`] would have produced — the extra outputs
+    /// are reads of buffers this frame already wrote — so a host that
+    /// negotiates one bus and a host that negotiates all of them hear the
+    /// same main output. Real-time safe.
+    pub fn step_outputs(&mut self, into: &mut [[f32; 2]]) -> [f32; 2] {
+        let master = self.audio.audition_step_with_taps(&mut self.tap_frame);
+        for (slot, tap) in into.iter_mut().zip(self.output_taps.iter()) {
+            *slot = self.tap_frame.get(*tap).copied().unwrap_or([0.0; 2]);
+        }
+        if into.len() > self.output_taps.len() {
+            for slot in into.iter_mut().skip(self.output_taps.len()) {
+                *slot = [0.0; 2];
+            }
+        }
+        master
     }
 
     /// Begin one voice. Real-time safe.
@@ -298,12 +637,125 @@ pub fn open_hosted_instrument(request: &HostedRequest) -> Result<HostedInstrumen
         part: request.part.clone(),
         sample_rate: request.sample_rate,
     };
+    let losses = audio
+        .audition_control_losses(target)
+        .iter()
+        .map(|loss| HostedControlLoss {
+            identity: format!("{}::{}", loss.namespace(), loss.name()),
+            kind: loss.kind().to_owned(),
+            reason: refusal_reason(loss.refusal()).to_owned(),
+        })
+        .collect();
+    // The table a document carried is a promise, so a table this component
+    // cannot read is a refusal rather than a fresh start: silently assigning
+    // new addresses would leave the host automating parameters that moved.
+    let restored = match request.table.as_deref() {
+        Some(text) => HostedControlTable::decode(text)
+            .map_err(|reason| ProjectError::Performance(format!("the restored control table is unusable: {reason}")))?,
+        None => HostedControlTable::default(),
+    };
+    let identities: Vec<String> = (0..audio.audition_control_count(target))
+        .filter_map(|index| audio.audition_control_at(target, index))
+        .map(|control| format!("{}::{}", control.namespace(), control.name()))
+        .collect();
+    let table = restored.extended(&identities);
+    let mut controls = Vec::with_capacity(identities.len());
+    for (index, identity) in identities.iter().enumerate() {
+        let (Some(control), Some(default)) = (
+            audio.audition_control_at(target, index),
+            audio.audition_control_default(target, index),
+        ) else {
+            continue;
+        };
+        let address = table.address_of(identity).ok_or_else(|| {
+            ProjectError::Performance(format!("`{identity}` was admitted but given no parameter address"))
+        })?;
+        controls.push(HostedControl {
+            address,
+            identity: identity.clone(),
+            display: control.name().to_owned(),
+            summary: control.summary().to_owned(),
+            kind: control.kind().to_owned(),
+            update_rate: control.update_rate().to_owned(),
+            minimum: 0.0,
+            maximum: 1.0,
+            default,
+            continuous: control.is_continuous(),
+        });
+    }
+    let mut addresses: Vec<(u64, usize)> = controls
+        .iter()
+        .enumerate()
+        .map(|(index, control)| (control.address, index))
+        .collect();
+    addresses.sort_unstable_by_key(|entry| entry.0);
+    let (outputs, output_taps) = project_outputs(&audio, &request.part);
+    let tap_frame = vec![[0.0; 2]; audio.taps().len()];
     Ok(HostedInstrument {
         audio,
         target,
         identity,
         inputs,
+        controls,
+        losses,
+        table,
+        addresses,
+        outputs,
+        output_taps,
+        tap_frame,
     })
+}
+
+const fn refusal_reason(refusal: AuditionControlRefusal) -> &'static str {
+    refusal.reason()
+}
+
+/// Which declared points this part's signal reaches, in stable source order.
+///
+/// Bus zero is the main output, and it is always there. The rest are the taps
+/// the studio already publishes, kept only where a declared edge actually
+/// carries this part to them: a Music Device rendering `violin` has no
+/// business publishing `strings`, and reachability rather than a hand-written
+/// list is what says so.
+fn project_outputs(audio: &PreparedAudio, part: &str) -> (Vec<HostedOutput>, Vec<usize>) {
+    use std::collections::BTreeSet;
+
+    let mut reached: BTreeSet<&str> = BTreeSet::new();
+    reached.insert(part);
+    // The routing is finite and acyclic in the source, but this walk does not
+    // need to know that: it stops when a pass adds nothing.
+    loop {
+        let mut grew = false;
+        for route in audio.routes() {
+            let carries = matches!(route.kind(), AudioRouteKind::Route | AudioRouteKind::Send);
+            if carries && reached.contains(route.source()) && !reached.contains(route.destination()) {
+                reached.insert(route.destination());
+                grew = true;
+            }
+        }
+        if !grew {
+            break;
+        }
+    }
+    let mut outputs = vec![HostedOutput {
+        name: "main".to_owned(),
+        role: HostedOutputRole::Main,
+    }];
+    let mut taps = Vec::new();
+    for (index, tap) in audio.taps().iter().enumerate() {
+        if !reached.contains(tap.name()) {
+            continue;
+        }
+        outputs.push(HostedOutput {
+            name: tap.name().to_owned(),
+            role: match tap.role() {
+                musa_dsp::AudioTapRole::Part => HostedOutputRole::Part,
+                musa_dsp::AudioTapRole::Bus => HostedOutputRole::Bus,
+            },
+        });
+        taps.push(index);
+    }
+    (outputs, taps)
 }
 
 /// The same, for a project already located by a directory alone.
@@ -320,6 +772,7 @@ pub fn open_hosted_instrument_at(
         piece: None,
         part: part.to_owned(),
         sample_rate,
+        table: None,
     })
 }
 

@@ -14,12 +14,19 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+# What the run is required to have measured. The harness measures everything
+# it can either way; this chooses which findings may be missing without the
+# run counting as a pass, so that a boundary built in one prompt cannot be
+# quietly un-built in the next.
 COMPONENT=${1:-}
 case "$COMPONENT" in
     instrument) ;;
+    parameters-and-outputs) ;;
     *)
-        echo "usage: $(basename "$0") instrument" >&2
-        echo "  'instrument' is the Music Device 'aumu musa Musa'; prompts 217-218 add the rest." >&2
+        echo "usage: $(basename "$0") instrument|parameters-and-outputs" >&2
+        echo "  'instrument' is the Music Device 'aumu musa Musa' as prompt 216 built it." >&2
+        echo "  'parameters-and-outputs' adds prompt 217's source controls and output buses." >&2
+        echo "  Prompt 218 adds the rest." >&2
         exit 2
         ;;
 esac
@@ -33,6 +40,12 @@ APPEX="$APP/Contents/PlugIns/MusaInstrument.appex"
 REPORT=${MUSA_AU_REPORT:-$PRODUCTS/musa-au-report.json}
 SOURCE=${MUSA_AU_PROJECT:-$PWD/examples/invention.musa}
 PART=${MUSA_AU_PART:-piano}
+# A second fixture, because "the outputs this part reaches" is only more than
+# one thing when there is a studio behind the part. Named here rather than
+# found by the harness: a harness that went looking would be choosing what to
+# measure.
+SOURCE2=${MUSA_AU_PROJECT2:-$PWD/examples/glass-mountain.musa}
+PART2=${MUSA_AU_PART2:-violin}
 
 if ! xcodebuild -version >/dev/null 2>&1; then
     echo "xcodebuild needs a full Xcode, not just the Command Line Tools." >&2
@@ -93,6 +106,7 @@ MUSA_AU_XCODE="$(xcodebuild -version | head -1)" \
 MUSA_AU_SDK="$(xcodebuild -showsdks 2>/dev/null | grep -m1 -o 'macosx[0-9.]*')" \
 MUSA_AU_HOST="$(uname -m) $(sw_vers -productName) $(sw_vers -productVersion) $(sw_vers -buildVersion)" \
 MUSA_AU_PROJECT="$SOURCE" MUSA_AU_PART="$PART" MUSA_AU_REPORT="$REPORT" \
+MUSA_AU_PROJECT2="$SOURCE2" MUSA_AU_PART2="$PART2" \
 DYLD_INSERT_LIBRARIES="$PRODUCTS/libMusaAllocProbe.dylib" \
     "$PRODUCTS/musa-au-harness" || true
 
@@ -112,6 +126,7 @@ xcodebuild -project "$PROJECT" -scheme MusaAudioUnit -configuration Debug \
     ENABLE_THREAD_SANITIZER=YES build >"$TSAN_DERIVED.log" 2>&1 \
     || { tail -40 "$TSAN_DERIVED.log"; exit 1; }
 MUSA_AU_PROJECT="$SOURCE" MUSA_AU_PART="$PART" MUSA_AU_SKIP_HOSTED=1 \
+MUSA_AU_PROJECT2="$SOURCE2" MUSA_AU_PART2="$PART2" \
 MUSA_AU_REPORT="$TSAN_PRODUCTS/musa-au-tsan-report.json" \
     "$TSAN_PRODUCTS/musa-au-harness" >"$TSAN_LOG" 2>&1 || true
 if grep -q 'WARNING: ThreadSanitizer' "$TSAN_LOG"; then
@@ -122,4 +137,4 @@ fi
 echo "  clean (Swift and Objective-C instrumented; the Rust library is not)"
 
 echo "== findings =="
-python3 scripts/check-audio-unit.py "$REPORT" "$auval_ok"
+python3 scripts/check-audio-unit.py "$REPORT" "$auval_ok" "$COMPONENT"

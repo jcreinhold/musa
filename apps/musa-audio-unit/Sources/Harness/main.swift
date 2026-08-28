@@ -114,9 +114,9 @@ do {
 /// and the crate's documentation says so. Comparing two renders across a
 /// reset would therefore be comparing two different starting states and
 /// blaming the difference on the block size.
-func freshRig(capacity: Int) throws -> Rig {
+func freshRig(capacity: Int, of what: MusaSelection? = nil) throws -> Rig {
     let unit = try makeUnit()
-    unit.selectAndWait(selection())
+    unit.selectAndWait(what ?? selection())
     return try Rig(unit: unit, capacity: capacity)
 }
 
@@ -225,16 +225,18 @@ if let unit = prepared {
 
     report.check(
         "bus.count",
-        "The component publishes one stereo output bus",
-        unit.outputBusses.count == 1,
-        "\(unit.outputBusses.count) output bus",
+        "The component publishes exactly the outputs the source declares, bus zero first",
+        unit.outputBusses.count == unit.projectedOutputs.count && unit.projectedOutputs.first?.role == .main,
+        unit.projectedOutputs.map(\.name).joined(separator: ", "),
         numbers: ["buses": Double(unit.outputBusses.count)]
     )
     report.check(
-        "param.tree.empty",
-        "It publishes no parameters: a parameter is a source control, and prompt 217 projects those",
-        unit.parameterTree == nil,
-        "the parameter tree is empty by decision (Rule D2)"
+        "bus.names",
+        "Each bus carries the name the source gave it, not a workstation's word for a track",
+        zip(0..<unit.outputBusses.count, unit.projectedOutputs).allSatisfy { index, output in
+            unit.outputBusses[index].name == output.name
+        },
+        (0..<unit.outputBusses.count).map { unit.outputBusses[$0].name ?? "(unnamed)" }.joined(separator: ", ")
     )
 
     // The component states an upper bound rather than measuring the studio's
@@ -440,6 +442,272 @@ if let unit = prepared {
         )
     }
 }
+
+// MARK: - Parameters
+
+/// The second fixture: a part with a studio behind it, so that "the outputs
+/// this part reaches" is more than one thing. Named by the script rather than
+/// found here, because a harness that went looking for a piece would be
+/// choosing what to measure.
+let secondProject = ProcessInfo.processInfo.environment["MUSA_AU_PROJECT2"] ?? ""
+let secondPart = ProcessInfo.processInfo.environment["MUSA_AU_PART2"] ?? ""
+
+func address(_ unit: MusaInstrumentAudioUnit, _ identity: String) -> UInt64? {
+    unit.publishedControls.first { $0.identity == identity }?.address
+}
+
+if let unit = prepared {
+    let published = unit.publishedControls
+    report.check(
+        "param.tree.declared",
+        "Every parameter is a source-declared control, and every admitted control is a parameter",
+        {
+            guard let tree = unit.parameterTree else { return false }
+            let byAddress = Set(tree.allParameters.map { UInt64($0.address) })
+            return !published.isEmpty && byAddress == Set(published.map(\.address))
+                && tree.allParameters.allSatisfy { parameter in
+                    published.contains { $0.address == UInt64(parameter.address) && $0.display == parameter.displayName }
+                }
+        }(),
+        published.map(\.identity).joined(separator: ", "),
+        numbers: ["parameters": Double(unit.parameterTree?.allParameters.count ?? 0)]
+    )
+
+    report.check(
+        "param.ranges",
+        "Each parameter's domain, default, and ramp flag come from the declaration",
+        {
+            guard let tree = unit.parameterTree else { return false }
+            return published.allSatisfy { control in
+                guard let parameter = tree.parameter(withAddress: AUParameterAddress(control.address)) else {
+                    return false
+                }
+                let ramps = parameter.flags.contains(.flag_CanRamp)
+                return parameter.minValue == control.minimum && parameter.maxValue == control.maximum
+                    && parameter.value == control.defaultValue && ramps == control.continuous
+            }
+        }(),
+        published
+            .map { "\($0.display) \($0.minimum)…\($0.maximum)@\($0.defaultValue) \($0.continuous ? "ramps" : "steps")" }
+            .joined(separator: "; ")
+    )
+
+    report.check(
+        "param.losses",
+        "A declared control that cannot be a float is a named loss, never a coerced parameter",
+        !unit.projectionLosses.isEmpty
+            && unit.projectionLosses.allSatisfy { $0.contains("is not a host parameter") }
+            && unit.projectionLosses.allSatisfy { loss in
+                !published.contains { loss.contains($0.identity) }
+            },
+        unit.projectionLosses.joined(separator: " | "),
+        numbers: ["losses": Double(unit.projectionLosses.count)]
+    )
+}
+
+/// The energy of one phrase, rendered from a fresh preparation.
+func energy(_ frames: [Float]) -> Double { frames.reduce(0) { $0 + Double(abs($1)) } }
+
+let phraseOnly: [(Int, [UInt8])] = [(0, note(0x90, 60, 100))]
+
+if let expression = prepared.flatMap({ address($0, "std.performance::expression") }) {
+    func withKnob(_ value: Float) throws -> Double {
+        let rig = try freshRig(capacity: 4096)
+        guard let tree = rig.unit.parameterTree,
+              let parameter = tree.parameter(withAddress: AUParameterAddress(expression))
+        else {
+            return -1
+        }
+        parameter.value = value
+        return energy(rig.renderPartitioned(frames: 4096, block: 512, midi: phraseOnly, parameters: []))
+    }
+    let quiet = try withKnob(0.05)
+    let loud = try withKnob(1.0)
+    report.check(
+        "param.setValue",
+        "A value set through the parameter tree reaches the instrument's declared mapping",
+        loud > quiet * 2,
+        "energy \(quiet) at 0.05 against \(loud) at 1.0",
+        numbers: ["quiet": quiet, "loud": loud]
+    )
+
+    func withScheduled(_ value: Float) throws -> Double {
+        let rig = try freshRig(capacity: 4096)
+        return energy(
+            rig.renderPartitioned(
+                frames: 4096,
+                block: 512,
+                midi: phraseOnly,
+                parameters: [(0, expression, value, 0)]
+            )
+        )
+    }
+    let scheduledQuiet = try withScheduled(0.05)
+    let scheduledLoud = try withScheduled(1.0)
+    report.check(
+        "param.scheduled",
+        "A parameter event the host schedules does the same thing the knob does",
+        scheduledLoud > scheduledQuiet * 2,
+        "energy \(scheduledQuiet) at 0.05 against \(scheduledLoud) at 1.0"
+    )
+
+    // A ramp is gradual: it differs from the point change while it is
+    // running, and has stopped differing well after it has arrived.
+    let point = try freshRig(capacity: 4096).renderPartitioned(
+        frames: 12_288,
+        block: 512,
+        midi: phraseOnly,
+        parameters: [(256, expression, 0.1, 0)]
+    )
+    let ramped = try freshRig(capacity: 4096).renderPartitioned(
+        frames: 12_288,
+        block: 512,
+        midi: phraseOnly,
+        parameters: [(256, expression, 0.1, 4_096)]
+    )
+    func difference(_ range: Range<Int>) -> Double {
+        var total = 0.0
+        var index = range.lowerBound
+        while index < range.upperBound {
+            total += abs(Double(point[index]) - Double(ramped[index]))
+            index += 1
+        }
+        return total / Double(range.count)
+    }
+    let during = difference(1_024..<4_096)
+    let after = difference(20_000..<24_576)
+    report.check(
+        "param.ramp",
+        "A ramp is gradual while it runs and has converged once it has arrived",
+        during > 0 && after < during / 10,
+        "mean difference \(during) inside the ramp, \(after) long after it",
+        numbers: ["during": during, "after": after]
+    )
+
+    // §4, Theorem R1-batch: a different partition of the same frames is
+    // unobservable, and parameter events are placed by sample offset, so
+    // they are exactly where that could break.
+    let history: [(Int, UInt64, Float, UInt32)] = [
+        (0, expression, 1.0, 0),
+        (301, expression, 0.2, 640),
+        (2_000, expression, 0.8, 0),
+    ]
+    let midi: [(Int, [UInt8])] = [(11, note(0x90, 60, 100)), (1_500, note(0x90, 67, 90))]
+    let whole = try freshRig(capacity: 6_000).renderPartitioned(
+        frames: 6_000,
+        block: 6_000,
+        midi: midi,
+        parameters: history
+    )
+    var partitionHeld = true
+    var partitionDetail = "every block size agreed"
+    for size in [1, 64, 512, 2_048] {
+        let partitioned = try freshRig(capacity: 6_000).renderPartitioned(
+            frames: 6_000,
+            block: size,
+            midi: midi,
+            parameters: history
+        )
+        if partitioned != whole {
+            partitionHeld = false
+            partitionDetail = "a block size of \(size) changed the music"
+            break
+        }
+    }
+    report.check(
+        "param.blockPartition",
+        "A parameter history is the same music under every host block partition",
+        partitionHeld,
+        partitionDetail
+    )
+
+    let stray = try freshRig(capacity: 512)
+    let before = stray.unit.unboundEvents
+    _ = stray.renderPartitioned(frames: 512, block: 512, midi: [], parameters: [(0, 0xDEAD_BEEF, 0.5, 0)])
+    report.check(
+        "param.unknownAddress",
+        "An address the source does not publish is counted, never guessed at",
+        stray.unit.unboundEvents == before + 1,
+        "\(stray.unit.unboundEvents - before) unbound event after one stray address"
+    )
+}
+
+// MARK: - The address table
+
+if let unit = prepared {
+    let document = unit.fullStateForDocument
+    let table = document?[MusaStateKey.controlTable] as? String
+    report.check(
+        "state.controlTable",
+        "The saved document carries the address table and the projection losses",
+        !(table ?? "").isEmpty && (document?[MusaStateKey.controlLosses] as? [String])?.isEmpty == false,
+        table.map { "\($0.split(separator: "\n").count) lines of table" } ?? "no table"
+    )
+
+    let restored = try makeUnit()
+    restored.fullStateForDocument = document
+    let deadline = Date().addingTimeInterval(20)
+    while !restored.isReady, Date() < deadline {
+        RunLoop.current.run(until: Date().addingTimeInterval(0.05))
+    }
+    report.check(
+        "param.addressesStable",
+        "Every address comes back where the document left it",
+        restored.isReady
+            && restored.publishedControls.map { [$0.identity, String($0.address)] }
+                == unit.publishedControls.map { [$0.identity, String($0.address)] },
+        restored.isReady ? "\(restored.publishedControls.count) addresses unchanged" : restored.refusal
+    )
+}
+
+// MARK: - Outputs
+
+if !secondProject.isEmpty {
+    let multi = MusaSelection(project: secondProject, piece: nil, part: secondPart, sampleRate: 48_000)
+    let unit = try makeUnit()
+    let refusal = unit.selectAndWait(multi)
+    report.check(
+        "bus.identity",
+        "A part with a studio behind it publishes the points it actually reaches",
+        unit.isReady && unit.projectedOutputs.count > 1 && unit.projectedOutputs.first?.role == .main
+            && unit.projectedOutputs.dropFirst().contains { $0.role == .bus },
+        unit.isReady
+            ? unit.projectedOutputs.map { "\($0.name) (\($0.role))" }.joined(separator: ", ")
+            : refusal
+    )
+
+    if unit.isReady {
+        let count = unit.projectedOutputs.count
+        let struck: [(Int, [UInt8])] = [(0, note(0x90, 64, 100)), (3_000, note(0x80, 64, 0))]
+        let all = try freshRig(capacity: 512, of: multi).renderBuses(
+            frames: 8_000,
+            block: 256,
+            midi: struck,
+            parameters: [],
+            buses: count
+        )
+        let alone = try freshRig(capacity: 512, of: multi).renderBuses(
+            frames: 8_000,
+            block: 256,
+            midi: struck,
+            parameters: [],
+            buses: 1
+        )
+        report.check(
+            "bus.mainUnchanged",
+            "Bus zero says the same thing whether a host takes one output or all of them",
+            all[0] == alone[0],
+            "the GarageBand fallback is the same main output Logic gets, not a different mix"
+        )
+        report.check(
+            "bus.independent",
+            "An extra bus is neither silence nor a copy of the main output",
+            all.dropFirst().allSatisfy { bus in bus.contains { $0 != 0 } && bus != all[0] },
+            "\(count - 1) extra buses, each sounding and each its own"
+        )
+    }
+}
+
 
 // MARK: - Format change
 

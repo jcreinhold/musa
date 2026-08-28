@@ -126,6 +126,127 @@ pub enum AuditionEvent {
     },
 }
 
+/// One source-declared exposed control a host may drive directly.
+///
+/// The value is the *semantic* control of `08-performance-and-sound.md` §3 —
+/// an exact normalized intention — and never a private DSP parameter.
+/// `06-daw-boundary.md` Rule D2 admits exactly these and nothing else, so a
+/// consumer projecting a parameter tree reads this list and stops.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct AuditionControl {
+    namespace: String,
+    name: String,
+    summary: String,
+    kind: String,
+    update_rate: String,
+    default_ratio: Ratio<i64>,
+}
+
+impl AuditionControl {
+    /// The namespace the source key declares.
+    pub fn namespace(&self) -> &str {
+        &self.namespace
+    }
+
+    /// The name the source key declares.
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    /// The one sentence the source key declares about what this means.
+    pub fn summary(&self) -> &str {
+        &self.summary
+    }
+
+    /// The source value kind. Every admitted control is `Normalized`; the
+    /// field is carried anyway because a consumer that recorded the kind can
+    /// say what changed when a later edition admits another one.
+    pub fn kind(&self) -> &str {
+        &self.kind
+    }
+
+    /// The source update rate, spelled as the declaration spells it.
+    pub fn update_rate(&self) -> &str {
+        &self.update_rate
+    }
+
+    /// The exact declared default, in the control's own normalized domain.
+    pub const fn default_ratio(&self) -> Ratio<i64> {
+        self.default_ratio
+    }
+
+    /// Whether the declaration says this control changes continuously.
+    ///
+    /// A per-note or per-transition control still accepts a host value; what
+    /// it does not accept is a ramp, because the source does not say the
+    /// quantity moves between its statements.
+    pub fn is_continuous(&self) -> bool {
+        self.update_rate == "Continuous"
+    }
+}
+
+/// Why one source-declared control is not projected to a host.
+///
+/// `06-daw-boundary.md` §6: a presentation may lose information and may not
+/// lose it silently. The control keeps working inside Musa; what is recorded
+/// here is that this *boundary* cannot carry it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct AuditionControlLoss {
+    namespace: String,
+    name: String,
+    kind: String,
+    refusal: AuditionControlRefusal,
+}
+
+impl AuditionControlLoss {
+    /// The namespace of the control that is not projected.
+    pub fn namespace(&self) -> &str {
+        &self.namespace
+    }
+
+    /// The name of the control that is not projected.
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    /// The source value kind that could not be carried.
+    pub fn kind(&self) -> &str {
+        &self.kind
+    }
+
+    /// Which refusal this is, as a fact rather than a sentence.
+    pub const fn refusal(&self) -> AuditionControlRefusal {
+        self.refusal
+    }
+}
+
+/// The named reasons a declared control is not admitted at a host boundary.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum AuditionControlRefusal {
+    /// The value kind is a typed constructor set rather than a quantity —
+    /// `phrase` is a grouping relation, and coercing it to a float would be
+    /// exactly the invention `08-performance-and-sound.md` §3 forbids.
+    NotScalar,
+    /// The value kind is a quantity, but the source declares no minimum and
+    /// maximum for it. A host parameter without a domain is a control whose
+    /// ends nobody agreed on.
+    NoDeclaredDomain,
+    /// The selected implementation maps this control to nothing, so a host
+    /// parameter for it would move and be inaudible.
+    Unmapped,
+}
+
+impl AuditionControlRefusal {
+    /// The refusal as one clause, for a consumer that has to print it.
+    pub const fn reason(self) -> &'static str {
+        match self {
+            Self::NotScalar => "its value kind is a typed relation rather than a quantity",
+            Self::NoDeclaredDomain => "its source declaration states no value domain",
+            Self::Unmapped => "the selected implementation maps it to nothing",
+        }
+    }
+}
+
 /// Whether source policy could interpret an audition event's expressive part.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum AuditionOutcome {
@@ -233,6 +354,21 @@ struct InstrumentInstanceBinding {
 
 struct PreparedInstrumentAudition {
     bindings: Vec<PreparedAuditionBinding>,
+    controls: Vec<PreparedAuditionControl>,
+    losses: Vec<AuditionControlLoss>,
+}
+
+/// One admitted control beside the private targets its source mapping names.
+struct PreparedAuditionControl {
+    control: AuditionControl,
+    default_value: f32,
+    mappings: Box<[PreparedControlTarget]>,
+}
+
+/// One private parameter a control reaches, and the source transfer to it.
+struct PreparedControlTarget {
+    target: PreparedParameterId,
+    transfer: Option<(f32, f32, bool)>,
 }
 
 struct PreparedAuditionBinding {
@@ -279,6 +415,80 @@ impl PreparedAudio {
         self.audition
             .get(target.0)
             .is_some_and(|prepared| prepared.bindings.iter().any(|binding| binding.input == input))
+    }
+
+    /// How many source-declared controls this instrument exposes to a host.
+    pub fn audition_control_count(&self, target: PreparedAuditionTarget) -> usize {
+        self.audition
+            .get(target.0)
+            .map_or(0, |prepared| prepared.controls.len())
+    }
+
+    /// One admitted control, in the order the source signature declares them.
+    ///
+    /// The order is the declaration's, so a consumer that keeps an index is
+    /// keeping a source fact and not a preparation accident.
+    pub fn audition_control_at(&self, target: PreparedAuditionTarget, index: usize) -> Option<&AuditionControl> {
+        self.audition
+            .get(target.0)?
+            .controls
+            .get(index)
+            .map(|prepared| &prepared.control)
+    }
+
+    /// The exact declared default of one admitted control, as a DSP value.
+    pub fn audition_control_default(&self, target: PreparedAuditionTarget, index: usize) -> Option<f32> {
+        Some(self.audition.get(target.0)?.controls.get(index)?.default_value)
+    }
+
+    /// Every declared control this boundary cannot carry, and why.
+    pub fn audition_control_losses(&self, target: PreparedAuditionTarget) -> &[AuditionControlLoss] {
+        self.audition.get(target.0).map_or(&[][..], |prepared| &prepared.losses)
+    }
+
+    /// Drive one admitted control directly, as an ephemeral overlay.
+    ///
+    /// This is the host-parameter half of audition. The value is the semantic
+    /// control's own normalized quantity; what reaches the private graph is
+    /// whatever the instrument's declared mapping says, exactly as a
+    /// scheduled control statement would reach it. Nothing here writes source
+    /// (Rule D1) and nothing here addresses a DSP node (Rule D2).
+    ///
+    /// `ramp_frames` is honoured only for a control the source declares
+    /// continuous; a per-note or per-transition control takes the value as a
+    /// point change, because the declaration does not say the quantity moves
+    /// between its statements. Allocation-free.
+    pub fn audition_control(
+        &mut self,
+        target: PreparedAuditionTarget,
+        index: usize,
+        value: f32,
+        ramp_frames: u64,
+    ) -> AuditionOutcome {
+        let Some(prepared) = self.audition.get(target.0) else {
+            return AuditionOutcome::UnsupportedInput;
+        };
+        let Some(control) = prepared.controls.get(index) else {
+            return AuditionOutcome::UnsupportedInput;
+        };
+        let semantic = value.clamp(0.0, 1.0);
+        let ramp_frames = if control.control.is_continuous() {
+            ramp_frames
+        } else {
+            0
+        };
+        for mapping in &control.mappings {
+            let value = mapping.transfer.map_or(semantic, |(minimum, maximum, inverse)| {
+                let along = if inverse { 1.0 - semantic } else { semantic };
+                (maximum - minimum).mul_add(along, minimum)
+            });
+            self.plan.apply_parameter_events(&[PreparedParameterEvent {
+                target: mapping.target,
+                value,
+                ramp_frames,
+            }]);
+        }
+        AuditionOutcome::Applied
     }
 
     /// Apply one ephemeral event without advancing musical transport time.
@@ -342,6 +552,25 @@ impl PreparedAudio {
     /// effects move while transport remains stopped.
     pub fn audition_step(&mut self) -> [f32; 2] {
         self.plan.finish_step()
+    }
+
+    /// The same audition frame, also reporting what each tap wrote during it.
+    ///
+    /// The audition counterpart of [`Self::step_with_taps`], and identical to
+    /// [`Self::audition_step`] in every effect it has: the taps are reads of
+    /// buffers this frame already wrote, so the master returned here is the
+    /// master `audition_step` would have returned. That is what lets a host
+    /// enable or ignore extra output buses without changing the main one.
+    pub fn audition_step_with_taps(&mut self, into: &mut [[f32; 2]]) -> [f32; 2] {
+        let master = self.plan.finish_step();
+        for (index, slot) in into.iter_mut().enumerate() {
+            *slot = if index < self.taps.len() {
+                self.plan.tap_frame(index)
+            } else {
+                [0.0; 2]
+            };
+        }
+        master
     }
 
     fn apply_audition_input(
@@ -830,7 +1059,85 @@ fn prepare_audition_bindings(
             mappings: mappings.into_boxed_slice(),
         });
     }
-    Ok(PreparedInstrumentAudition { bindings })
+    let (controls, losses) = prepare_audition_controls(plan, node, declaration)?;
+    Ok(PreparedInstrumentAudition {
+        bindings,
+        controls,
+        losses,
+    })
+}
+
+/// Admit the source-declared controls a host may drive, and record the rest.
+///
+/// Admission is a question about the *declaration*, not about what would be
+/// convenient: a control is admitted when its source value kind is a quantity
+/// with a declared domain and the selected implementation maps it somewhere.
+/// Everything else stays available inside Musa and leaves a named loss, which
+/// is `06-daw-boundary.md` §6 rather than a policy invented here.
+fn prepare_audition_controls(
+    plan: &mut RenderPlan,
+    node: crate::spec::NodeId,
+    declaration: &crate::InstrumentContract,
+) -> Result<(Vec<PreparedAuditionControl>, Vec<AuditionControlLoss>), AudioPrepareError> {
+    let mut controls = Vec::new();
+    let mut losses = Vec::new();
+    for control in declaration.controls() {
+        let refuse = |refusal| AuditionControlLoss {
+            namespace: control.namespace().to_owned(),
+            name: control.name().to_owned(),
+            kind: control.kind().to_owned(),
+            refusal,
+        };
+        if control.kind() != "Normalized" {
+            losses.push(refuse(if control.kind() == "PhraseConnection" {
+                AuditionControlRefusal::NotScalar
+            } else {
+                AuditionControlRefusal::NoDeclaredDomain
+            }));
+            continue;
+        }
+        let Some(default_ratio) = control.default_ratio() else {
+            losses.push(refuse(AuditionControlRefusal::NoDeclaredDomain));
+            continue;
+        };
+        let mut mappings = Vec::new();
+        for mapping in declaration.mappings().iter().filter(|mapping| {
+            mapping.kind() == control.kind()
+                && mapping.namespace() == control.namespace()
+                && mapping.name() == control.name()
+        }) {
+            let Some(target) = plan
+                .resolve_parameter(node, mapping.parameter())
+                .map_err(|error| AudioPrepareError::InstrumentContract(error.to_string()))?
+            else {
+                continue;
+            };
+            let transfer = mapping
+                .transfer()
+                .map(|(minimum, maximum, inverse)| {
+                    Ok::<_, AudioPrepareError>((exact_f32(minimum)?, exact_f32(maximum)?, inverse))
+                })
+                .transpose()?;
+            mappings.push(PreparedControlTarget { target, transfer });
+        }
+        if mappings.is_empty() {
+            losses.push(refuse(AuditionControlRefusal::Unmapped));
+            continue;
+        }
+        controls.push(PreparedAuditionControl {
+            control: AuditionControl {
+                namespace: control.namespace().to_owned(),
+                name: control.name().to_owned(),
+                summary: control.summary().to_owned(),
+                kind: control.kind().to_owned(),
+                update_rate: control.update_rate().to_owned(),
+                default_ratio,
+            },
+            default_value: exact_f32(default_ratio)?,
+            mappings: mappings.into_boxed_slice(),
+        });
+    }
+    Ok((controls, losses))
 }
 
 fn exact_f32(value: Ratio<i64>) -> Result<f32, AudioPrepareError> {

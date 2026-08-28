@@ -31,13 +31,79 @@ final class ComponentIdentityTests: XCTestCase {
         let keys = [
             MusaStateKey.version, MusaStateKey.abiVersion, MusaStateKey.project, MusaStateKey.access,
             MusaStateKey.piece, MusaStateKey.part, MusaStateKey.musicIdentity, MusaStateKey.assetIdentity,
-            MusaStateKey.inputs, MusaStateKey.refusal,
+            MusaStateKey.inputs, MusaStateKey.controlTable, MusaStateKey.controlLosses, MusaStateKey.outputs,
+            MusaStateKey.refusal,
         ]
         XCTAssertEqual(Set(keys).count, keys.count)
     }
 
     func testTheFrameworkAndTheLibraryAgreeOnTheAbi() {
         XCTAssertEqual(musa_au_abi_version(), MUSA_AU_ABI_VERSION)
+    }
+}
+
+final class ControlDescriptorTests: XCTestCase {
+    private func control(_ identity: String, continuous: Bool = true) -> MusaControl {
+        MusaControl(
+            identity: identity,
+            display: "expression",
+            summary: "how much the player is giving the note",
+            kind: "Normalized",
+            updateRate: continuous ? "Continuous" : "PerNote",
+            address: 0x1234,
+            minimum: 0,
+            maximum: 1,
+            defaultValue: 0.5,
+            continuous: continuous
+        )
+    }
+
+    /// A canonical identity is full of the punctuation `AUParameterNode`
+    /// reads as a key path, so the identifier folds it — deterministically,
+    /// and without the identity itself changing.
+    func testAParameterIdentifierCarriesNoKeyPathPunctuation() {
+        let identifier = control("std.performance::expression").parameterIdentifier
+        XCTAssertEqual(identifier, "std_performance__expression")
+        XCTAssertFalse(identifier.contains("."))
+        XCTAssertFalse(identifier.contains(":"))
+    }
+
+    func testTwoControlsThatDifferKeepDifferentIdentifiers() {
+        XCTAssertNotEqual(
+            control("std.performance::expression").parameterIdentifier,
+            control("std.performance::emphasis").parameterIdentifier
+        )
+    }
+
+    func testAnOutputRoleIsWhatTheLibrarySaidItWas() {
+        XCTAssertEqual(MusaOutputRole(rawValue: 0), .main)
+        XCTAssertEqual(MusaOutputRole(rawValue: 1), .part)
+        XCTAssertEqual(MusaOutputRole(rawValue: 2), .bus)
+        XCTAssertNil(MusaOutputRole(rawValue: 3))
+    }
+}
+
+final class ParameterEventTests: XCTestCase {
+    func testAParameterEventCarriesItsAddressValueAndRamp() {
+        let event = musaParameterEvent(frame: 64, address: 0xABCD, value: 0.25, ramp: 512)
+        XCTAssertEqual(event.kind, UInt8(MUSA_AU_EVENT_PARAMETER))
+        XCTAssertEqual(event.address, 0xABCD)
+        XCTAssertEqual(event.value, 0.25)
+        XCTAssertEqual(event.ramp, 512)
+        XCTAssertEqual(event.frame, 64)
+    }
+
+    /// The wire struct carries both kinds of event, so a MIDI message has to
+    /// say what it does *not* mean as well as what it does.
+    func testAMIDIEventMeansNothingByItsParameterFields() {
+        var message = AUMIDIEvent()
+        message.eventSampleTime = 0
+        message.length = 3
+        message.data = (0x90, 60, 100)
+        let decoded = musaDecodeMIDI(message, 512)
+        XCTAssertEqual(decoded?.address, 0)
+        XCTAssertEqual(decoded?.ramp, 0)
+        XCTAssertEqual(decoded?.value, 0)
     }
 }
 
