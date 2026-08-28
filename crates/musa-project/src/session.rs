@@ -140,6 +140,17 @@ pub struct ProjectSession {
     /// The live MIDI projection, opened on request for the same reason: a
     /// session that never sends to a workstation publishes no ports.
     midi_output: Option<musa_playback::MidiOutput>,
+    /// What the open run is playing, kept so a seek can replace its packets
+    /// without re-compiling and without republishing its ports.
+    midi_output_run: Option<(crate::LiveMidiOptions, crate::LiveMidiProjection)>,
+    /// The external clock this session follows, and everything measured
+    /// about it. Both are `None` for a session with one transport, which is
+    /// every session that has not asked otherwise.
+    sync_input: Option<musa_playback::SyncInput>,
+    sync_follower: Option<musa_playback::TransportFollower>,
+    /// The exact map a musical clock position is read through, fixed when
+    /// following starts so a tick never re-integrates the piece.
+    sync_tempo: Option<musa_score::IntegratedTempoMap>,
     /// Stable input identity chosen by the musician, retained across unplug.
     midi_preferred_id: Option<String>,
     /// Last control-side hot-plug enumeration for the device picker.
@@ -1156,6 +1167,16 @@ impl ProjectSession {
         musa_playback::MidiOutput::endpoints()
     }
 
+    /// Every MIDI input the host offers, which is where an external clock
+    /// source is chosen from.
+    ///
+    /// Inputs, not destinations: a leader *sends* its clock, so Musa reads it
+    /// on the way in. The two lists are different and naming them apart is
+    /// what stops a musician choosing the wrong one.
+    pub fn sync_sources() -> Vec<MidiInputDevice> {
+        MidiInput::devices()
+    }
+
     /// What sending the last score that compiled would publish and play,
     /// without publishing anything.
     ///
@@ -1172,10 +1193,10 @@ impl ProjectSession {
         options: &crate::LiveMidiOptions,
     ) -> Result<(crate::LiveMidiProjection, crate::LiveMidiReport), ProjectError> {
         let valid = self.valid.as_ref().ok_or(ProjectError::NoValidScore)?;
-        let projection = crate::midi_out::project(&valid.score, options.mode)?;
+        let projection = crate::midi_out::project(&valid.score, options)?;
         let config = crate::midi_out::config(&self.name, options);
         let preview = musa_playback::MidiOutput::preview(&config, projection.parts());
-        let report = crate::midi_out::report(options.mode, &projection, &preview);
+        let report = crate::midi_out::report(options, &projection, &preview);
         Ok((projection, report))
     }
 
@@ -1197,17 +1218,19 @@ impl ProjectSession {
     ) -> Result<crate::LiveMidiReport, ProjectError> {
         let span = tracing::info_span!("start_midi_output", revision = self.revision.0);
         let _entered = span.enter();
+        self.check_authority(options.sync.authority().map_err(|refusal| refused(&refusal))?)?;
         let valid = self.valid.as_ref().ok_or(ProjectError::NoValidScore)?;
-        let projection = crate::midi_out::project(&valid.score, options.mode)?;
+        let projection = crate::midi_out::project(&valid.score, options)?;
         self.stop_midi_output();
         let config = crate::midi_out::config(&self.name, options);
         let mut output = musa_playback::MidiOutput::open(&config, projection.parts())
             .map_err(|error| ProjectError::MidiOutput(error.to_string()))?;
-        let report = crate::midi_out::report(options.mode, &projection, output.report());
+        let report = crate::midi_out::report(options, &projection, output.report());
         output
             .start(projection.packets().to_vec())
             .map_err(|error| ProjectError::MidiOutput(error.to_string()))?;
         self.midi_output = Some(output);
+        self.midi_output_run = Some((options.clone(), projection));
         Ok(report)
     }
 
@@ -1215,6 +1238,208 @@ impl ProjectSession {
     pub fn stop_midi_output(&mut self) {
         if let Some(mut output) = self.midi_output.take() {
             output.stop();
+        }
+        self.midi_output_run = None;
+    }
+
+    /// Follow one external transport.
+    ///
+    /// The session has one clock authority, so this refuses a configuration
+    /// that also asks Musa to lead, and refuses to change the authority of a
+    /// run already in progress (`06-daw-boundary.md` §4). Nothing about the
+    /// source is guessed: a source that is not present is a follower that has
+    /// heard nothing, which its lock state says.
+    ///
+    /// # Errors
+    /// [`ProjectError::Sync`] when the configuration names no external source,
+    /// names two authorities, or changes the authority of a running session;
+    /// [`ProjectError::NoValidScore`] when the piece has never compiled; and
+    /// [`ProjectError::Performance`] when its gestures do not lower.
+    pub fn start_sync(
+        &mut self,
+        options: &musa_playback::SyncOptions,
+    ) -> Result<musa_playback::SyncStatus, ProjectError> {
+        let authority = options.authority().map_err(|refusal| refused(&refusal))?;
+        if authority != Some(musa_playback::ClockAuthority::External) {
+            return Err(ProjectError::Sync(
+                "following needs one external source: name it in `follow`".to_owned(),
+            ));
+        }
+        self.check_authority(authority)?;
+        let source = options
+            .follow
+            .as_ref()
+            .ok_or_else(|| ProjectError::Sync("following needs one external source".to_owned()))?;
+        let valid = self.valid.as_ref().ok_or(ProjectError::NoValidScore)?;
+        let tempo = crate::midi_out::tempo_map(&valid.score, options.reference.as_deref())?;
+        let follower = musa_playback::TransportFollower::new(source.protocol);
+        let status = follower.status();
+        self.sync_input = Some(musa_playback::SyncInput::open(&source.id));
+        self.sync_follower = Some(follower);
+        self.sync_tempo = Some(tempo);
+        Ok(status)
+    }
+
+    /// Stop following, and stop the transport the leader was driving.
+    pub fn stop_sync(&mut self) {
+        let following = self.sync_input.take().is_some();
+        self.sync_follower = None;
+        self.sync_tempo = None;
+        if following {
+            self.transport(TransportRequest::Stop).ok();
+        }
+    }
+
+    /// What following has measured, or `None` when this session leads.
+    pub fn sync_status(&self) -> Option<musa_playback::SyncStatus> {
+        self.sync_follower
+            .as_ref()
+            .map(musa_playback::TransportFollower::status)
+    }
+
+    /// What the sync callback could not pass on.
+    pub fn sync_losses(&self) -> Option<musa_playback::SyncInputLosses> {
+        self.sync_input.as_ref().map(musa_playback::SyncInput::losses)
+    }
+
+    /// Read everything the leader has sent since the last tick, and follow it.
+    ///
+    /// Answers how many instructions the leader actually gave, which for a
+    /// steady clock is zero: twenty-four pulses a quarter are a measurement,
+    /// not an instruction. The two things that *are* instructions are a
+    /// transport change and a position far enough from Musa's own to be
+    /// heard, and the second is checked here because this is the only side
+    /// that knows where Musa is.
+    pub fn sync_tick(&mut self) -> usize {
+        let mut intents = Vec::new();
+        if let (Some(input), Some(follower)) = (self.sync_input.as_mut(), self.sync_follower.as_mut()) {
+            while let Some(observation) = input.poll() {
+                intents.extend(follower.observe(observation));
+            }
+            intents.extend(follower.idle_at(input.now()));
+        }
+        intents.extend(self.resynchronization());
+        let applied = intents.len();
+        for intent in intents {
+            self.follow(intent);
+        }
+        applied
+    }
+
+    /// Whether Musa has drifted far enough from the leader to re-seek.
+    ///
+    /// A resynchronization is audible, so it is worth doing only when the
+    /// alternative is worse: below [`musa_playback::RESYNC_MICROS`] the
+    /// difference stands, and the measured drift reports it.
+    fn resynchronization(&self) -> Option<musa_playback::SyncIntent> {
+        let follower = self.sync_follower.as_ref()?;
+        let status = follower.status();
+        if !status.running || !follower.is_locked() {
+            return None;
+        }
+        let leader = self.sync_micros(status.position?)?;
+        let here = self.playback_micros();
+        if leader.abs_diff(here) <= musa_playback::RESYNC_MICROS {
+            return None;
+        }
+        Some(musa_playback::SyncIntent::Seek(status.position?))
+    }
+
+    /// Do what the leader asked.
+    fn follow(&mut self, intent: musa_playback::SyncIntent) {
+        match intent {
+            musa_playback::SyncIntent::Start(position) | musa_playback::SyncIntent::Seek(position) => {
+                let Some(micros) = self.sync_micros(position) else {
+                    return;
+                };
+                // The boundary is a discontinuity: what was sounding is
+                // released and what was scheduled is dropped before anything
+                // restarts from it.
+                self.restart_midi_output(micros);
+                let frame = Self::frame_of(micros);
+                self.transport(TransportRequest::Seek { frame }).ok();
+                if matches!(intent, musa_playback::SyncIntent::Start(_)) {
+                    self.transport(TransportRequest::Play).ok();
+                }
+            }
+            musa_playback::SyncIntent::Continue => {
+                self.transport(TransportRequest::Play).ok();
+            }
+            musa_playback::SyncIntent::Stop => {
+                self.transport(TransportRequest::Stop).ok();
+                self.restart_midi_output(u64::MAX);
+            }
+        }
+    }
+
+    /// One leader position in microseconds of Musa's own timeline.
+    ///
+    /// The two protocols are converted by two different laws and neither
+    /// becomes the other: quarters go through the piece's exact tempo map,
+    /// and MTC seconds are already physical.
+    fn sync_micros(&self, position: musa_playback::SyncPosition) -> Option<u64> {
+        match position {
+            musa_playback::SyncPosition::Quarters(quarters) => {
+                Some(crate::midi_out::quarters_micros(self.sync_tempo.as_ref()?, quarters))
+            }
+            musa_playback::SyncPosition::Seconds(seconds) => Some(crate::midi_out::seconds_micros(seconds)),
+        }
+    }
+
+    /// Where the audio transport is, in microseconds.
+    fn playback_micros(&self) -> u64 {
+        let rate = u64::from(playback::sample_rate()).max(1);
+        let frames = self.audio.as_ref().map_or(0, musa_playback::AudioEngine::position);
+        frames.saturating_mul(1_000_000).checked_div(rate).unwrap_or(0)
+    }
+
+    /// One moment as a frame of the installed plan.
+    fn frame_of(micros: u64) -> u64 {
+        let rate = u64::from(playback::sample_rate());
+        micros.saturating_mul(rate).checked_div(1_000_000).unwrap_or(0)
+    }
+
+    /// Release what the live run left sounding, and restart it from `from`.
+    ///
+    /// `u64::MAX` is the stop case: everything is flushed and nothing
+    /// restarts. The ports are not republished either way — the same output
+    /// plays the new packets, so a workstation's input list does not flicker
+    /// every time the leader seeks.
+    fn restart_midi_output(&mut self, from: u64) {
+        let (Some(output), Some((_, projection))) = (self.midi_output.as_mut(), self.midi_output_run.as_ref()) else {
+            return;
+        };
+        output.stop();
+        if from == u64::MAX {
+            return;
+        }
+        let packets = crate::midi_out::from_micros(projection.packets(), from);
+        if let Err(error) = output.start(packets) {
+            tracing::warn!(%error, "could not restart live MIDI at the new boundary");
+        }
+    }
+
+    /// Refuse to change the authority of a session that already has one.
+    ///
+    /// A run is in progress from the moment an authority is in force —
+    /// following opened, or a leading run started — until it is stopped. What
+    /// is refused is the *change*: asking again for the authority already in
+    /// force is fine, and so is asking for one when there is none.
+    fn check_authority(&self, wanted: Option<musa_playback::ClockAuthority>) -> Result<(), ProjectError> {
+        let current = self
+            .sync_follower
+            .as_ref()
+            .map(|_| musa_playback::ClockAuthority::External)
+            .or_else(|| {
+                self.midi_output_run
+                    .as_ref()
+                    .and_then(|(options, _)| options.sync.authority().ok().flatten())
+            });
+        match (current, wanted) {
+            (Some(current), Some(wanted)) if current != wanted => {
+                Err(refused(&musa_playback::SyncRefusal::WhileRunning))
+            }
+            _ => Ok(()),
         }
     }
 
@@ -1625,6 +1850,10 @@ impl ProjectSession {
             next_group_plan: 1,
             midi: None,
             midi_output: None,
+            midi_output_run: None,
+            sync_input: None,
+            sync_follower: None,
+            sync_tempo: None,
             midi_preferred_id: None,
             midi_devices: Vec::new(),
             midi_performance: MidiPerformanceBuffer::default(),
@@ -2394,6 +2623,11 @@ fn audition_input(event: AuditionEvent) -> Option<AuditionInputKind> {
         AuditionEvent::NoteOff { .. } => Some(AuditionInputKind::ReleaseVelocity),
         AuditionEvent::Input { input, .. } => Some(input),
     }
+}
+
+/// One synchronization refusal, in the project's own words.
+fn refused(refusal: &musa_playback::SyncRefusal) -> ProjectError {
+    ProjectError::Sync(refusal.to_string())
 }
 
 fn prepare_audition_routes(

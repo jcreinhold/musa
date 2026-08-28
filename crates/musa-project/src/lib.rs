@@ -138,7 +138,9 @@ pub use musa_compiler::standard_library_source;
 pub use musa_compiler::{EventsTokenClass, events_bindings, events_classify, events_keyword_doc};
 pub use musa_notation::MidiMode;
 pub use musa_playback::{
-    LiveMidiPacket, LiveMidiPart, MidiEndpoint, MidiOutputCounters, MidiOutputMode, MidiOutputTarget, MidiPortReport,
+    ClockAuthority, LiveMidiPacket, LiveMidiPart, MidiEndpoint, MidiOutputCounters, MidiOutputMode, MidiOutputTarget,
+    MidiPortReport, RESYNC_MICROS, SyncInputLosses, SyncLock, SyncOptions, SyncPosition, SyncProtocol, SyncSource,
+    SyncStatus,
 };
 pub use musa_score::{
     AnalysisKind, AnalysisProfile, AnalysisRequest, AnalysisScope, ChoicePath, ChoiceStep, ClaimDoc, Decision,

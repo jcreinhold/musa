@@ -100,6 +100,13 @@ pub enum ProjectError {
     #[error("MIDI output: {0}")]
     MidiOutput(String),
 
+    /// A synchronization configuration was refused. A session has exactly one
+    /// clock authority (`docs/rules/across-stages/06-daw-boundary.md` §4), and
+    /// what one clock lane cannot state — simultaneous independent tempos —
+    /// is refused here rather than silently flattened.
+    #[error("synchronization: {0}")]
+    Sync(String),
+
     /// An analysis request named something the score does not have, or a
     /// window with no music in it. The score is untouched: an analysis reads.
     #[error("cannot analyze: {0}")]

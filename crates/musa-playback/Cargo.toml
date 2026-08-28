@@ -12,8 +12,12 @@ workspace = true
 [dependencies]
 cpal = "0.18"
 midir = "0.11"
+# Musical time is rational even where a follower reads it off a wire: a
+# song position is an exact number of sixteenths and an MTC frame is an exact
+# fraction of a second (constitution.md §3).
 musa-dsp = { workspace = true }
 musa-score = { workspace = true }
+num-rational = "0.4"
 rtrb = "0.3"
 thiserror = "2"
 tracing = "0.1"

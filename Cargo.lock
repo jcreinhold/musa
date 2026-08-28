@@ -2445,6 +2445,7 @@ dependencies = [
  "musa-compiler",
  "musa-dsp",
  "musa-score",
+ "num-rational",
  "rtrb",
  "thiserror 2.0.20",
  "tracing",

@@ -62,8 +62,11 @@ pub struct LiveMidiPacket {
     /// Which part of the run this belongs to, indexing the parts given to
     /// [`MidiOutput::open`].
     pub part: usize,
-    /// Status and two data bytes, exactly as the schedule decided them.
+    /// Status and up to two data bytes, exactly as the schedule decided them.
     pub bytes: [u8; 3],
+    /// How many of `bytes` go on the wire. Notes are three; the transport
+    /// stream a leading session sends is one or three.
+    pub len: u8,
 }
 
 /// How many ports the run publishes.
@@ -108,6 +111,13 @@ pub struct MidiOutputConfig {
     pub target: MidiOutputTarget,
     /// What the published ports are called, before the part name is added.
     pub client: String,
+    /// Publish one further port carrying the transport stream, for a session
+    /// where Musa is the clock authority.
+    ///
+    /// It is a port of its own so a workstation can be told which input to
+    /// take its clock from without also taking notes from it, and so the
+    /// notes' ports stay exactly what prompt 213 published.
+    pub clock: bool,
 }
 
 impl Default for MidiOutputConfig {
@@ -116,6 +126,7 @@ impl Default for MidiOutputConfig {
             mode: MidiOutputMode::default(),
             target: MidiOutputTarget::default(),
             client: "Musa".to_owned(),
+            clock: false,
         }
     }
 }
@@ -260,6 +271,17 @@ impl MidiOutput {
         }
     }
 
+    /// Which `part` index a transport packet carries.
+    ///
+    /// The transport stream is not a part and has no channel, but it travels
+    /// in the same packet list as the notes so that one send loop walks one
+    /// schedule. It routes one past the last sounding part, which is the
+    /// clock port.
+    #[must_use]
+    pub const fn clock_part(parts: &[LiveMidiPart]) -> usize {
+        parts.len()
+    }
+
     /// What this run published.
     pub const fn report(&self) -> &MidiOutputReport {
         &self.report
@@ -396,7 +418,32 @@ impl PortPlan {
         }
     }
 
+    /// Append the transport port, where the session leads.
+    ///
+    /// It is always last, so a part's port index is the one prompt 213 gave
+    /// it whether or not a clock is running.
+    fn with_clock(mut self, config: &MidiOutputConfig, parts: &[LiveMidiPart]) -> Self {
+        if !config.clock {
+            return self;
+        }
+        let port = self.names.len();
+        let name = format!("{} · clock", config.client);
+        debug_assert_eq!(self.routes.len(), MidiOutput::clock_part(parts));
+        self.routes.push(Route { port, channel: 0 });
+        self.report.push(MidiPortReport {
+            port,
+            name: name.clone(),
+            parts: Vec::new(),
+        });
+        self.names.push(name);
+        self
+    }
+
     fn of(config: &MidiOutputConfig, parts: &[LiveMidiPart]) -> Self {
+        Self::sounding(config, parts).with_clock(config, parts)
+    }
+
+    fn sounding(config: &MidiOutputConfig, parts: &[LiveMidiPart]) -> Self {
         let client = config.client.as_str();
         match config.mode {
             MidiOutputMode::SourcePerPart => {
@@ -464,8 +511,8 @@ pub(crate) mod testing {
     /// A cable that keeps every batch it is handed.
     #[derive(Default)]
     struct FakeCable {
-        /// Every message accepted, as `(port, timestamp, bytes)`.
-        received: Vec<(usize, u64, [u8; 3])>,
+        /// Every message accepted, as `(port, timestamp, bytes, length)`.
+        received: Vec<(usize, u64, [u8; 3], u8)>,
         /// Ports that refuse everything, standing in for a vanished endpoint.
         broken: Vec<usize>,
     }
@@ -475,7 +522,8 @@ pub(crate) mod testing {
             if self.broken.contains(&port) {
                 return Err(Refused);
             }
-            self.received.extend(batch.iter().map(|&(at, bytes)| (port, at, bytes)));
+            self.received
+                .extend(batch.iter().map(|(at, wire)| (port, *at, wire.bytes, wire.len)));
             Ok(())
         }
     }
@@ -546,7 +594,7 @@ pub(crate) mod testing {
 
         /// Every message the cable accepted.
         #[must_use]
-        pub fn received(&self) -> &[(usize, u64, [u8; 3])] {
+        pub fn received(&self) -> &[(usize, u64, [u8; 3], u8)] {
             &self.cable.received
         }
 

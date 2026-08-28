@@ -322,12 +322,14 @@ fn the_midi_send_loop_allocates_nothing() {
             micros: (index / 300) * 1_000,
             part: (index % 2) as usize,
             bytes: [0x90 | (index % 2) as u8, (index % 128) as u8, 80],
+            len: 3,
         });
     }
     let config = MidiOutputConfig {
         mode: MidiOutputMode::SourcePerPart,
         target: MidiOutputTarget::VirtualSources,
         client: "Musa".to_owned(),
+        clock: false,
     };
     let mut harness = MidiOutputHarness::new(&config, &parts, packets, 4_000, 20_000);
     harness.reserve(4_096);
@@ -341,4 +343,35 @@ fn the_midi_send_loop_allocates_nothing() {
     }
     harness.panic_at(64_000);
     assert_eq!(allocs(), before, "the MIDI send loop allocated");
+}
+
+/// The sync callback reads bytes off a wire and pushes what they mean into a
+/// preallocated ring. Nothing in that path may allocate: it runs on the MIDI
+/// thread, beside the same real-time contract the keyboard callback is held
+/// to (`06-daw-boundary.md` §4). A clock leader sends 192 messages a second at
+/// a quarter of 480, and the whole of that arrives here.
+#[test]
+fn the_sync_callback_allocates_nothing() {
+    use musa_playback::testing::SyncCallbackHarness;
+
+    let mut harness = SyncCallbackHarness::new();
+    // One pass before measuring, so nothing lazily initialised on the way in
+    // is counted.
+    harness.receive(0, 0, &[0xF8]);
+    while harness.poll().is_some() {}
+
+    let before = allocs();
+    for step in 0..512u64 {
+        // A clock byte, a note under running status with a clock inside it,
+        // a song position, a quarter frame, and a fragment of sysex: every
+        // shape the parser has a branch for.
+        harness.receive(step, step, &[0xF8]);
+        harness.receive(step, step, &[0x90, 0xF8, 60]);
+        harness.receive(step, step, &[80, 62, 80]);
+        harness.receive(step, step, &[0xF2, 0x10, 0x00]);
+        harness.receive(step, step, &[0xF1, 0x35]);
+        harness.receive(step, step, &[0xF0, 0x7E, 0x01, 0xF7]);
+        while harness.poll().is_some() {}
+    }
+    assert_eq!(allocs(), before, "the sync callback allocated");
 }

@@ -35,21 +35,25 @@ fn phrase() -> Vec<LiveMidiPacket> {
             micros: 0,
             part: 0,
             bytes: [0x90, 72, 80],
+            len: 3,
         },
         LiveMidiPacket {
             micros: 0,
             part: 1,
             bytes: [0x91, 48, 80],
+            len: 3,
         },
         LiveMidiPacket {
             micros: 250_000,
             part: 0,
             bytes: [0x80, 72, 0],
+            len: 3,
         },
         LiveMidiPacket {
             micros: 250_000,
             part: 1,
             bytes: [0x81, 48, 0],
+            len: 3,
         },
     ]
 }
@@ -59,6 +63,7 @@ fn config(mode: MidiOutputMode) -> MidiOutputConfig {
         mode,
         target: MidiOutputTarget::VirtualSources,
         client: "Musa".to_owned(),
+        clock: false,
     }
 }
 
@@ -92,7 +97,7 @@ fn every_message_reaches_a_port_once_in_the_order_it_was_scheduled() {
     let sent = harness
         .received()
         .iter()
-        .map(|&(_, _, bytes)| bytes)
+        .map(|&(_, _, bytes, _)| bytes)
         .collect::<Vec<_>>();
     assert_eq!(sent, vec![[0x90, 72, 80], [0x91, 48, 80], [0x80, 72, 0], [0x81, 48, 0]]);
     assert_eq!(harness.counters().sent, 4);
@@ -104,7 +109,7 @@ fn every_message_reaches_a_port_once_in_the_order_it_was_scheduled() {
 fn a_source_per_part_run_puts_each_part_on_its_own_port() {
     let mut harness = harness(MidiOutputMode::SourcePerPart, phrase());
     harness.run(WINDOW);
-    for &(port, _, bytes) in harness.received() {
+    for &(port, _, bytes, _) in harness.received() {
         // The flute is port zero on channel zero; the cello is port one on
         // channel one. Nothing crosses.
         assert_eq!(usize::from(bytes[0] & 0x0F), port);
@@ -116,11 +121,11 @@ fn a_channelized_run_puts_every_part_on_the_one_port() {
     let mut harness = harness(MidiOutputMode::SingleChannelized, phrase());
     harness.run(WINDOW);
     assert_eq!(harness.received().len(), 4);
-    assert!(harness.received().iter().all(|&(port, _, _)| port == 0));
+    assert!(harness.received().iter().all(|&(port, _, _, _)| port == 0));
     let channels = harness
         .received()
         .iter()
-        .map(|&(_, _, bytes)| bytes[0] & 0x0F)
+        .map(|&(_, _, bytes, _)| bytes[0] & 0x0F)
         .collect::<Vec<_>>();
     assert_eq!(channels, vec![0, 1, 0, 1]);
 }
@@ -145,10 +150,10 @@ fn nothing_is_handed_over_before_its_window() {
 fn a_message_is_stamped_at_its_moment_and_never_before_now() {
     let mut harness = harness(MidiOutputMode::SourcePerPart, phrase());
     harness.pump(0);
-    assert!(harness.received().iter().all(|&(_, at, _)| at == 0));
+    assert!(harness.received().iter().all(|&(_, at, _, _)| at == 0));
     harness.pump(248_000);
     // Due at 250_000 and inside the 4 ms window, so it keeps its own moment.
-    assert!(harness.received()[2..].iter().all(|&(_, at, _)| at == 250_000));
+    assert!(harness.received()[2..].iter().all(|&(_, at, _, _)| at == 250_000));
 }
 
 #[test]
@@ -161,7 +166,7 @@ fn a_note_long_past_is_not_attacked_and_its_release_still_goes() {
     let sent = harness
         .received()
         .iter()
-        .map(|&(_, _, bytes)| bytes)
+        .map(|&(_, _, bytes, _)| bytes)
         .collect::<Vec<_>>();
     assert_eq!(sent, vec![[0x90, 72, 80], [0x91, 48, 80], [0x80, 72, 0], [0x81, 48, 0]]);
     let counters = harness.counters();
@@ -176,16 +181,19 @@ fn an_attack_whose_moment_is_long_past_is_dropped_rather_than_played_wrong() {
             micros: 0,
             part: 0,
             bytes: [0x90, 60, 80],
+            len: 3,
         },
         LiveMidiPacket {
             micros: 10_000,
             part: 0,
             bytes: [0x90, 62, 80],
+            len: 3,
         },
         LiveMidiPacket {
             micros: 500_000,
             part: 0,
             bytes: [0x80, 60, 0],
+            len: 3,
         },
     ];
     let mut harness = harness(MidiOutputMode::SourcePerPart, late);
@@ -196,7 +204,7 @@ fn an_attack_whose_moment_is_long_past_is_dropped_rather_than_played_wrong() {
     let sent = harness
         .received()
         .iter()
-        .map(|&(_, _, bytes)| bytes)
+        .map(|&(_, _, bytes, _)| bytes)
         .collect::<Vec<_>>();
     assert_eq!(sent, vec![[0x90, 60, 80], [0x80, 60, 0]]);
     let counters = harness.counters();
@@ -214,6 +222,7 @@ fn a_window_fuller_than_the_batch_leaves_the_rest_for_the_next_one() {
             micros: 0,
             part: 0,
             bytes: [0x90, (index % 128) as u8, 80],
+            len: 3,
         })
         .collect::<Vec<_>>();
     let mut harness = harness(MidiOutputMode::SourcePerPart, crowd);
@@ -237,8 +246,8 @@ fn stopping_releases_every_note_the_run_left_sounding() {
     let after = &harness.received()[attacks..];
     let flute = after
         .iter()
-        .filter(|&&(port, _, _)| port == 0)
-        .map(|&(_, _, bytes)| bytes)
+        .filter(|&&(port, _, _, _)| port == 0)
+        .map(|&(_, _, bytes, _)| bytes)
         .collect::<Vec<_>>();
     assert_eq!(
         flute,
@@ -247,8 +256,8 @@ fn stopping_releases_every_note_the_run_left_sounding() {
     );
     let cello = after
         .iter()
-        .filter(|&&(port, _, _)| port == 1)
-        .map(|&(_, _, bytes)| bytes)
+        .filter(|&&(port, _, _, _)| port == 1)
+        .map(|&(_, _, bytes, _)| bytes)
         .collect::<Vec<_>>();
     assert_eq!(
         cello,
@@ -264,7 +273,7 @@ fn a_panic_after_a_finished_run_releases_nothing_and_still_quiets_the_channels()
     harness.panic_at(1_000_000);
     let after = &harness.received()[played..];
     assert!(
-        after.iter().all(|&(_, _, bytes)| bytes[0] & 0xF0 == 0xB0),
+        after.iter().all(|&(_, _, bytes, _)| bytes[0] & 0xF0 == 0xB0),
         "a note that already ended was released twice"
     );
     assert_eq!(after.len(), 6, "three controllers on each of two channels");
@@ -276,7 +285,7 @@ fn a_port_that_refuses_is_counted_and_the_other_keeps_playing() {
     harness.break_port(0);
     harness.run(WINDOW);
     assert!(
-        harness.received().iter().all(|&(port, _, _)| port == 1),
+        harness.received().iter().all(|&(port, _, _, _)| port == 1),
         "the broken port delivered something"
     );
     let counters = harness.counters();
@@ -290,6 +299,7 @@ fn a_packet_naming_a_part_the_run_never_routed_is_counted_not_guessed_at() {
         micros: 0,
         part: 7,
         bytes: [0x90, 60, 80],
+        len: 3,
     }];
     let mut harness = harness(MidiOutputMode::SourcePerPart, stray);
     harness.run(WINDOW);

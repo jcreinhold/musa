@@ -64,7 +64,7 @@ is where it is built.
 | Deterministic export bundle, manifest, and origin/loss sidecar | implemented | prompt 212: `ProjectSession::export_daw_bundle` packaging the `ExportRequest` targets plus prompt 211's `StemSet`, reached by `musa render --to daw` and the desktop Export submenu |
 | Versioned DAW derivation record | implemented | prompt 212 defines version 1 — `musaManifest`/`musaOrigins`, carried by every later boundary |
 | Live CoreMIDI projection of score or performance MIDI | implemented | `musa-notation::midi_schedule` is the one decision path; `musa-playback::MidiOutput` publishes virtual sources or sends to a destination; `ProjectSession::plan_midi_output`/`start_midi_output` join them, and `musa midi` drives it. Each message is handed over as it comes due rather than host-stamped, and every report says so |
-| One declared clock authority, leader and follower | absent | prompt 214; MIDI clock and MTC losses stated before a session starts |
+| One declared clock authority, leader and follower | implemented | `musa-playback` `sync/`, `musa-project::ProjectSession::start_sync`; MIDI clock and MTC limits stated before a session starts |
 | Audio Unit shape trial and host measurement | absent | prompt 215; it also replaces the "not yet measured" column of the compatibility table |
 | AUv3 Music Device rendering one checked instrument | absent | prompts 216–217 |
 | Logic MIDI Processor projecting a checked piece | absent | prompt 218, only if prompt 215 measures the surface |

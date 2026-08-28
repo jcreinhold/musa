@@ -315,6 +315,15 @@ impl IntegratedTempoMap {
         Position::new(self.physical_seconds(MusicalTime::new(position.as_ratio())))
     }
 
+    /// Exact physical seconds at one symbolic position.
+    ///
+    /// The same integration [`Self::physical`] performs, said in the units a
+    /// caller that is already counting seconds wants — a live clock reading
+    /// off this map has a position and wants a moment, not a wrapper.
+    pub fn seconds_at(&self, position: MusicalTime) -> Ratio<i64> {
+        self.physical_seconds(position)
+    }
+
     fn physical_seconds(&self, position: MusicalTime) -> Ratio<i64> {
         let Some(point) = self
             .points

@@ -14,7 +14,7 @@
 // Microsecond and index arithmetic over values this module bounds itself.
 #![allow(clippy::arithmetic_side_effects)]
 
-use crate::midi_out::cable::{Cable, Refused};
+use crate::midi_out::cable::{Cable, Refused, Wire};
 use crate::midi_out::{LiveMidiPacket, MidiOutputCounters};
 
 /// How many messages one port accepts in one window.
@@ -115,7 +115,7 @@ pub(crate) struct Sender {
     origin: Option<u64>,
     window: u64,
     tolerance: u64,
-    staged: Vec<Vec<(u64, [u8; 3])>>,
+    staged: Vec<Vec<(u64, Wire)>>,
     sounding: Sounding,
     totals: Totals,
 }
@@ -208,7 +208,13 @@ impl Sender {
                 self.totals.late += 1;
             }
             let at = due.max(now);
-            staged.push((at, packet.bytes));
+            staged.push((
+                at,
+                Wire {
+                    bytes: packet.bytes,
+                    len: packet.len,
+                },
+            ));
             self.remember(port, channel, packet.bytes);
             self.next += 1;
         }
@@ -249,7 +255,7 @@ impl Sender {
     fn stage(&mut self, cable: &mut dyn Cable, port: usize, now: u64, bytes: [u8; 3]) {
         let full = match self.staged.get_mut(port) {
             Some(staged) => {
-                staged.push((now, bytes));
+                staged.push((now, Wire { bytes, len: 3 }));
                 staged.len() >= BATCH
             }
             None => false,

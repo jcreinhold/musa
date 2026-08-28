@@ -17,6 +17,7 @@ mod engine;
 mod error;
 mod midi;
 mod midi_out;
+mod sync;
 
 pub use crate::core::{AuditionEvent, AuditionInputKind, AuditionTarget, PreparedPlaybackPlan, TransportCommand};
 pub use crate::engine::{AudioEngine, EngineConfig};
@@ -29,6 +30,11 @@ pub use crate::midi_out::{
     LiveMidiPacket, LiveMidiPart, MidiEndpoint, MidiOutput, MidiOutputConfig, MidiOutputCounters, MidiOutputMode,
     MidiOutputReport, MidiOutputTarget, MidiPortReport,
 };
+pub use crate::sync::{
+    ClockAuthority, PULSES_PER_QUARTER, RESYNC_MICROS, SYNC_OPTIONS_VERSION, SYNC_STATUS_VERSION, SyncInput,
+    SyncInputLosses, SyncIntent, SyncLock, SyncMessage, SyncObservation, SyncOptions, SyncParser, SyncPosition,
+    SyncProtocol, SyncRefusal, SyncSource, SyncStatus, TransportFollower, transport_packets,
+};
 
 #[doc(hidden)]
 pub mod testing {
@@ -38,6 +44,7 @@ pub mod testing {
     pub use crate::core::{AuditionMessage, CallbackCore, Message};
     pub use crate::midi::MidiCallbackHarness;
     pub use crate::midi_out::testing::MidiOutputHarness;
+    pub use crate::sync::SyncCallbackHarness;
 
     use musa_dsp::{MachineValue, PreparedMachine, StartedMachine, StepError};
 

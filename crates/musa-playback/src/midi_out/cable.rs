@@ -33,13 +33,35 @@ impl Clock for ProcessClock {
     }
 }
 
-/// A batch of channel messages, each stamped in the clock's microseconds.
+/// One message as the wire carries it.
+///
+/// The length matters and cannot be inferred from the status alone once the
+/// stream carries transport bytes: a clock is one byte, a song position is
+/// three, and a note is three. Sending a one-byte message padded to three
+/// would put two stray data bytes on the cable.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct Wire {
+    /// Status and up to two data bytes.
+    pub(crate) bytes: [u8; 3],
+    /// How many of them are on the wire: one, two, or three.
+    pub(crate) len: u8,
+}
+
+impl Wire {
+    /// The bytes actually sent.
+    pub(crate) fn on_the_wire(&self) -> &[u8] {
+        let len = (self.len as usize).min(3);
+        self.bytes.get(..len).unwrap_or(&self.bytes)
+    }
+}
+
+/// A batch of messages, each stamped in the clock's microseconds.
 ///
 /// The stamp is what the port should deliver the message *at*. A backend that
 /// can hand the host a future timestamp uses it; one that cannot delivers the
 /// batch on arrival, which is why [`super::MidiOutputReport::window_micros`]
 /// says how near its moment a message actually lands.
-pub(crate) type Batch = [(u64, [u8; 3])];
+pub(crate) type Batch = [(u64, Wire)];
 
 /// A port refused a batch: it vanished, or it was never opened.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

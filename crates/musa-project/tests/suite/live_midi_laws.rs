@@ -15,7 +15,9 @@
 use std::path::PathBuf;
 
 use midly::{Smf, Timing, TrackEventKind};
-use musa_project::{ExportRequest, LiveMidiOptions, MidiMode, MidiOutputMode, MidiOutputTarget, ProjectSession};
+use musa_project::{
+    ExportRequest, LiveMidiOptions, MidiMode, MidiOutputMode, MidiOutputTarget, ProjectSession, SyncOptions,
+};
 
 const PROFILED: &str = "profile-fixture.musa";
 
@@ -35,6 +37,7 @@ fn options(mode: MidiMode) -> LiveMidiOptions {
         mode,
         sources: MidiOutputMode::SourcePerPart,
         target: MidiOutputTarget::VirtualSources,
+        sync: SyncOptions::default(),
     }
 }
 

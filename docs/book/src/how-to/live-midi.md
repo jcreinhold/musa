@@ -51,10 +51,11 @@ Every one of these is printed when it applies rather than left to be discovered.
 
 ## Timing
 
-Musa's own transport is the clock: it does not follow a workstation's, and a workstation does not follow it. Each
-message is handed to the port as it comes due, which places it within one scheduling window — four milliseconds — of its
-moment. `musa midi send` prints how many messages went out, how many went out after their moment, how many were dropped,
-and how many a port refused.
+By default Musa's own transport is the clock, and nothing follows anything: a workstation does not follow Musa and Musa
+does not follow it. Sharing one transport is a separate choice, with [its own how-to](sync-transport.md). Each message
+is handed to the port as it comes due, which places it within one scheduling window — four milliseconds — of its moment.
+`musa midi send` prints how many messages went out, how many went out after their moment, how many were dropped, and how
+many a port refused.
 
 An attack whose moment is more than twenty milliseconds past is dropped rather than played late, because a late attack
 is wrong music. A release always goes out, because a note left holding is worse than a late one. Stopping releases every

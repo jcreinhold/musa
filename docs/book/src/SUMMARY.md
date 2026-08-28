@@ -23,6 +23,7 @@
 - [Export scores and audio](how-to/export.md)
 - [Import a bundle into Logic Pro or GarageBand](how-to/daw-bundle.md)
 - [Play a piece to a workstation, live](how-to/live-midi.md)
+- [Share one transport with Logic Pro](how-to/sync-transport.md)
 - [Play a piece](how-to/play.md)
 - [Set up an editor](how-to/editor-setup.md)
 - [Run the desktop app](how-to/desktop.md)

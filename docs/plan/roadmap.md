@@ -2184,7 +2184,8 @@ Owns platform and real-time integration:
 - transport;
 - real-time command queues;
 - render-plan installation;
-- clock synchronization.
+- clock synchronization: one declared authority, the leader's clock stream, and the follower's bounded callback parser
+  and control-side lock (prompt 214).
 
 Dependencies:
 
@@ -2193,6 +2194,7 @@ musa-dsp
 musa-score
 cpal
 midir
+num-rational    # a followed position is exact: sixteenths, or a fraction of a second
 rtrb
 tracing
 thiserror

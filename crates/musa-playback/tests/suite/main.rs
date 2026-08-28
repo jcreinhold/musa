@@ -9,4 +9,5 @@ mod machine;
 mod midi_out;
 mod rt;
 mod support;
+mod sync;
 mod transport_regressions;

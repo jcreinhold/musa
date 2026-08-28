@@ -12,7 +12,8 @@ use std::process::ExitCode;
 use musa_project::{
     AnalysisKind, AnalysisRequest, AnalysisScope, DawExportOptions, DawProfile, ExportArtifact, ExportRequest,
     LiveMidiOptions, Logging, MidiMode, MidiOutputMode, MidiOutputTarget, MusicalTime, ProjectCommand, ProjectSession,
-    Realization, TransportRequest, asset_inventory, fetch_packages, lock_assets, verify_packages,
+    Realization, SyncOptions, SyncProtocol, SyncSource, TransportRequest, asset_inventory, fetch_packages, lock_assets,
+    verify_packages,
 };
 
 fn main() -> ExitCode {
@@ -133,6 +134,9 @@ fn cmd_midi(args: &[String], realization: &Realization) -> ExitCode {
     let mut mode = MidiMode::Performance;
     let mut sources = MidiOutputMode::SourcePerPart;
     let mut target = MidiOutputTarget::VirtualSources;
+    let mut sync = SyncOptions::default();
+    let mut follow_id: Option<String> = None;
+    let mut protocol = SyncProtocol::MidiClock;
     let mut rest: Vec<&str> = Vec::new();
     let mut arguments = args.iter();
     while let Some(arg) = arguments.next() {
@@ -156,19 +160,127 @@ fn cmd_midi(args: &[String], realization: &Realization) -> ExitCode {
                     return ExitCode::FAILURE;
                 }
             },
+            "--lead" => sync.send = Some(SyncProtocol::MidiClock),
+            "--from" => match arguments.next() {
+                Some(id) => follow_id = Some(id.clone()),
+                None => {
+                    eprintln!("error: --from needs a source; `musa midi sources` lists them");
+                    return ExitCode::FAILURE;
+                }
+            },
+            "--protocol" => match arguments.next().map(String::as_str) {
+                Some("midi-clock") => protocol = SyncProtocol::MidiClock,
+                Some("mtc") => protocol = SyncProtocol::MidiTimecode,
+                other => {
+                    eprintln!(
+                        "error: --protocol takes midi-clock or mtc, not `{}`",
+                        other.unwrap_or("")
+                    );
+                    return ExitCode::FAILURE;
+                }
+            },
+            "--reference" => match arguments.next() {
+                Some(name) => sync.reference = Some(name.clone()),
+                None => {
+                    eprintln!("error: --reference needs the name of a part to synchronize to");
+                    return ExitCode::FAILURE;
+                }
+            },
             other => rest.push(other),
         }
     }
-    let options = LiveMidiOptions { mode, sources, target };
+    if let Some(id) = follow_id {
+        sync.follow = Some(SyncSource { id, protocol });
+    }
+    let options = LiveMidiOptions {
+        mode,
+        sources,
+        target,
+        sync,
+    };
     match rest.as_slice() {
         ["endpoints"] => cmd_midi_endpoints(),
+        ["sources"] => cmd_midi_sources(),
         ["plan", path] => cmd_midi_plan(path, &options, realization),
         ["send", path] => cmd_midi_send(path, &options, realization),
+        ["follow", path] => cmd_midi_follow(path, &options, realization),
         _ => {
-            eprintln!("error: midi takes `endpoints`, `plan <file.musa>`, or `send <file.musa>`");
+            eprintln!(
+                "error: midi takes `endpoints`, `sources`, `plan <file.musa>`, `send <file.musa>`, \
+                 or `follow <file.musa>`"
+            );
             ExitCode::FAILURE
         }
     }
+}
+
+fn cmd_midi_sources() -> ExitCode {
+    let sources = ProjectSession::sync_sources();
+    if sources.is_empty() {
+        println!("no MIDI sources are connected");
+        return ExitCode::SUCCESS;
+    }
+    for source in &sources {
+        println!("{}\t{}", source.id, source.name);
+    }
+    ExitCode::SUCCESS
+}
+
+/// Follow one external transport until it stops sending.
+///
+/// The leader owns play, stop, and position; this side reports what it hears
+/// and what it measured, and never corrects the leader.
+fn cmd_midi_follow(path: &str, options: &LiveMidiOptions, realization: &Realization) -> ExitCode {
+    let mut session = match open(path, realization) {
+        Ok(session) => session,
+        Err(code) => return code,
+    };
+    let status = match session.start_sync(&options.sync) {
+        Ok(status) => status,
+        Err(error) => {
+            eprintln!("error: {error}");
+            return ExitCode::FAILURE;
+        }
+    };
+    println!("following {} — {}", status.protocol.name(), status.protocol.limits());
+    if let Some(name) = options.sync.reference.as_deref() {
+        println!("  synchronized to `{name}`");
+    }
+    // Follow until the leader has been quiet long enough to be gone. The
+    // follower says when that is; this loop only ticks.
+    let mut quiet = 0u32;
+    let mut last = status;
+    while quiet <= 200 {
+        session.sync_tick();
+        let Some(status) = session.sync_status() else { break };
+        quiet = if status.running { 0 } else { quiet.saturating_add(1) };
+        last = status;
+        std::thread::sleep(std::time::Duration::from_millis(10));
+    }
+    session.stop_sync();
+    print_sync_status(&last);
+    ExitCode::SUCCESS
+}
+
+fn print_sync_status(status: &musa_project::SyncStatus) {
+    let lock = match status.lock {
+        musa_project::SyncLock::Idle => "idle",
+        musa_project::SyncLock::Acquiring => "acquiring",
+        musa_project::SyncLock::Locked => "locked",
+        musa_project::SyncLock::Lost => "lost",
+    };
+    println!(
+        "{lock} (status v{}): {} observations, {} dropouts",
+        status.version, status.observations, status.dropouts
+    );
+    println!(
+        "  resynchronizing when further than {} µs apart",
+        musa_project::RESYNC_MICROS
+    );
+    if let Some(bpm) = status.tempo_bpm {
+        println!("  leader tempo about {bpm:.2} bpm");
+    }
+    println!("  drift {} µs, jitter {} µs", status.drift_micros, status.jitter_micros);
 }
 
 fn cmd_midi_endpoints() -> ExitCode {
@@ -241,6 +353,22 @@ fn print_midi_report(report: &musa_project::LiveMidiReport) {
         // side of the boundary.
         let channel = part.channel.saturating_add(1);
         println!("  {} — channel {channel}, port {}", part.name, part.port);
+    }
+    if let Some(authority) = report.authority() {
+        println!(
+            "  clock authority: {} (options v{})",
+            authority.name(),
+            report.sync_version()
+        );
+    }
+    if let Some(limits) = report.limits() {
+        println!("  {limits}");
+    }
+    if let Some(name) = report.reference() {
+        println!("  the clock states the tempo of `{name}`");
+    }
+    for scope in report.unsynchronized() {
+        eprintln!("warning: `{scope}` runs at its own tempo and this clock does not state it");
     }
     for loss in report.losses() {
         eprintln!("warning: {}: {}", loss.kind(), loss.message());

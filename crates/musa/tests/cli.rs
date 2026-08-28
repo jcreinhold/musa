@@ -958,3 +958,86 @@ fn midi_endpoints_reports_what_the_host_offers() -> std::io::Result<()> {
     assert!(output.status.success(), "stderr: {:?}", output.stderr);
     Ok(())
 }
+
+/// The two lists a musician chooses from are different lists, and both are
+/// readable on a machine with nothing plugged in.
+#[test]
+fn midi_sources_reports_what_the_host_sends_from() -> std::io::Result<()> {
+    let output = musa(&["midi", "sources"])?;
+    assert!(output.status.success(), "stderr: {:?}", output.stderr);
+    Ok(())
+}
+
+/// Leading publishes one further port and says which side owns the clock.
+#[test]
+fn midi_plan_lead_publishes_a_clock_port_and_names_the_authority() -> std::io::Result<()> {
+    let output = musa(&["midi", "plan", &glass_mountain(), "--lead"])?;
+    assert!(output.status.success(), "stderr: {:?}", output.stderr);
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("clock authority: musa-leads"), "stdout: {stdout}");
+    assert!(stdout.contains("· clock"), "stdout: {stdout}");
+    // The limits are printed before anything opens, not discovered by drift.
+    assert!(stdout.contains("no meter"), "stdout: {stdout}");
+    Ok(())
+}
+
+/// One clock lane states one tempo, and a polytempo piece is told so.
+#[test]
+fn midi_plan_lead_refuses_a_polytempo_piece_and_takes_a_reference() -> std::io::Result<()> {
+    let canon = format!("{}/../../examples/canon-x.musa", env!("CARGO_MANIFEST_DIR"));
+    let refused = musa(&["midi", "plan", &canon, "--lead"])?;
+    assert!(!refused.status.success());
+    assert!(
+        String::from_utf8_lossy(&refused.stderr).contains("name the scope"),
+        "stderr: {:?}",
+        String::from_utf8_lossy(&refused.stderr)
+    );
+
+    let named = musa(&["midi", "plan", &canon, "--lead", "--reference", "rising"])?;
+    assert!(named.status.success(), "stderr: {:?}", named.stderr);
+    let stdout = String::from_utf8_lossy(&named.stdout);
+    assert!(stdout.contains("tempo of `rising`"), "stdout: {stdout}");
+    let stderr = String::from_utf8_lossy(&named.stderr);
+    assert!(stderr.contains("`falling` runs at its own tempo"), "stderr: {stderr}");
+    Ok(())
+}
+
+/// One authority, and the refusals that keep it to one.
+#[test]
+fn midi_refuses_two_authorities_and_a_protocol_it_does_not_speak() -> std::io::Result<()> {
+    // Sending and following the same protocol is the ambiguity by name.
+    let same = musa(&["midi", "plan", &glass_mountain(), "--lead", "--from", "somewhere"])?;
+    assert!(!same.status.success());
+    assert!(
+        String::from_utf8_lossy(&same.stderr).contains("send and follow midi-clock"),
+        "stderr: {:?}",
+        String::from_utf8_lossy(&same.stderr)
+    );
+
+    // Two different protocols is still two authorities.
+    let both = musa(&[
+        "midi",
+        "plan",
+        &glass_mountain(),
+        "--lead",
+        "--from",
+        "somewhere",
+        "--protocol",
+        "mtc",
+    ])?;
+    assert!(!both.status.success());
+    assert!(
+        String::from_utf8_lossy(&both.stderr).contains("one clock authority"),
+        "stderr: {:?}",
+        String::from_utf8_lossy(&both.stderr)
+    );
+
+    let protocol = musa(&["midi", "follow", &glass_mountain(), "--protocol", "smpte"])?;
+    assert!(!protocol.status.success());
+    assert!(String::from_utf8_lossy(&protocol.stderr).contains("midi-clock or mtc"));
+
+    let nothing = musa(&["midi", "follow", &glass_mountain()])?;
+    assert!(!nothing.status.success());
+    assert!(String::from_utf8_lossy(&nothing.stderr).contains("external source"));
+    Ok(())
+}

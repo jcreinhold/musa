@@ -814,7 +814,11 @@ impl From<&ProjectError> for ErrorDto {
             // An analysis request that named a part or a window this score
             // does not have is a mistake about the document, not a backend
             // that failed: nothing was attempted.
-            | ProjectError::Analysis(_) => ErrorKindDto::Document,
+            | ProjectError::Analysis(_)
+            // A refused clock authority is a mistake about the request or
+            // about the piece — two leaders, or a polytempo score with no
+            // reference scope named. Nothing was attempted.
+            | ProjectError::Sync(_) => ErrorKindDto::Document,
             ProjectError::NothingTo(_) | ProjectError::NoValidScore => ErrorKindDto::Nothing,
             ProjectError::Performance(_)
             | ProjectError::Notation(_)

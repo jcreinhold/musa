@@ -1,7 +1,7 @@
 ---
 id: 214
 slug: external-transport-sync
-status: pending
+status: done
 depends_on: [213]
 phase: 4
 ---

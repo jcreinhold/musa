@@ -102,8 +102,8 @@ impl Cable for CoreMidiCable {
             return Err(Refused);
         };
         buffer.clear();
-        for &(_, bytes) in batch {
-            buffer.push_data(0, &bytes);
+        for (_, wire) in batch {
+            buffer.push_data(0, wire.on_the_wire());
         }
         let sent = match port {
             Port::Source(source) => source.received(&*buffer),
