@@ -99,6 +99,11 @@ fn print_usage() {
     println!("      --mode score | performance           which document to send (default: performance)");
     println!("      --single-source                      one port for every part, not one each");
     println!("      --to <endpoint>                      send to a destination instead of publishing");
+    println!("  musa midi sources                      every MIDI source this host offers");
+    println!("  musa midi follow <file.musa>           follow another transport until it stops");
+    println!("      --from <source> --protocol midi-clock | mtc   whose clock, and read how");
+    println!("      --reference <part>                   place the piece against one part's time");
+    println!("      --lead                               on send: be the clock, and say so");
     println!("  musa events <file.musa> [--normalized] print the piece as events interchange text");
     println!("  musa events --check <file.musa.events> parse, check, and evaluate events text");
     println!("      a file whose first line is `% musa-events-1` is Musa too: check, format");

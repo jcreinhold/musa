@@ -15,9 +15,23 @@ musa format [<file|folder>…] [--check]  format in place; no path means here
     --insert-bars                        insert only compiler-proved `|` assertions
 musa render <file.musa> --to <target>   mei | lilypond | musicxml | midi | wav
     --to plan | performance              the debug dumps, to stdout
+    --to daw --profile logic | garageband  a whole bundle, into a directory
+        --replace                        replace a bundle already sitting there
     --mode score | performance           for --to midi (default: score)
     -o <path>                            where to write it (`-` for stdout)
 musa play <file.musa> [--loop]          live playback through the audio engine
+musa midi endpoints                     every MIDI destination this host offers
+musa midi sources                       every MIDI source this host offers
+musa midi plan <file.musa>              what sending it would publish and play
+musa midi send <file.musa>              play it to a workstation, live
+musa midi follow <file.musa>            follow another transport until it stops
+    --mode score | performance           which reading to send (default: performance)
+    --single-source                      one port for every part, not one each
+    --to <endpoint>                      send to a destination instead of publishing
+    --lead                               on send: be the clock, and say so
+    --from <source>                      on follow: whose transport to follow
+    --protocol midi-clock | mtc          how to read that source (default: midi-clock)
+    --reference <part>                   which scope's tempo one clock states
 musa events <file.musa> [--normalized]  print the piece as events interchange text
 musa events --check <file.musa.events>  parse, check, and evaluate events text
 musa analyze <file.musa> --kind <kind>  inspect facts, harmony, cadences, voice leading, or counterpoint
@@ -46,6 +60,11 @@ musa fetch <project|piece>              fetch exact-pinned package source and as
   checked score proves a complete measure at a direct authored source boundary; `--check` and `--diff` retain their
   non-writing meanings.
 - Text render targets accept `-o -` for stdout; binary targets (`midi`, `wav`) require `-o <path>`.
+- `render --to daw` writes a folder rather than a file, and refuses one that already exists so a bundle is never
+  half-replaced; `--replace` writes over the last one. `--profile` is required and chooses what is in it — see
+  [The DAW bundle](daw-bundle.md).
+- The `midi` verbs are macOS only, because CoreMIDI is the only MIDI output macOS has. `musa midi plan` asks the piece
+  rather than the host and runs everywhere. The whole surface is [Live MIDI and transport sync](midi-sync.md).
 - `assets lock` is explicit and offline: it reads local files declared in `[assets."path"]`, validates that every path
   stays inside the project, and atomically writes deterministic SHA-256 identities to `musa.lock`. `list` and `verify`
   never modify it. A missing or stale lock is an error; no ordinary build chooses bytes by filename or modification

@@ -1508,6 +1508,12 @@ The governing contract is `docs/rules/across-stages/06-daw-boundary.md`, which f
 derivation record, the loss discipline, and the Logic/GarageBand compatibility table. Where this section and that page
 disagree, the rules win.
 
+Prompt 219 closes the boundary by auditing all three crossings against that contract:
+`docs/notes/research/94-the-daw-boundary-closed.md` holds the conformance matrix and `scripts/check-daw-integration.sh`
+makes it a gate, so a claim in it that stops resolving is a failing test. The automated Audio Unit host and the bundle's
+own self-checking claims are the CI contract, because a workstation is a commercial application a machine may not have;
+the manual host protocol is versioned beside them and each of its steps records whether it was run.
+
 ---
 
 # 13. Sound synthesis and DSP

@@ -161,19 +161,25 @@ Musa's, the stricter one holds.
 
 **Normative.** A row may be relied on only at the strength its column states. "Documented" means Apple's current primary
 documentation, cited below. "Measured" means a Musa host probe recorded against named Logic Pro, GarageBand, macOS, and
-Xcode versions; nothing here is measured yet, because prompt 210 builds no transport. "Musa" is a decision of this
-project, and it does not change with a host version.
+Xcode versions. "Musa" is a decision of this project, and it does not change with a host version.
+
+The measurements in the column below were taken on arm64 macOS 26.6.2 (25G83) with Xcode 26.6 (17F113), by
+`scripts/check-daw-integration.sh` and the automated Audio Unit host it runs, and are recorded in
+`docs/notes/research/94-the-daw-boundary-closed.md`. **Logic Pro was not installed on that machine and GarageBand
+10.4.14 was installed but not launched**, so no cell below claims a workstation was observed. What the column reports is
+what Musa produces and what Apple's own validator accepts; §4 of that note is the versioned manual protocol a person
+with the applications executes on top, and every one of its steps is currently marked `not run`.
 
 | Capability | Logic Pro | GarageBand | Measured | Musa's decision |
 | --- | --- | --- | --- | --- |
-| Standard MIDI File import | documented | documented (drag to a software-instrument track) | not yet | produced by the Export boundary |
-| MusicXML import | documented | not documented | not yet | produced by the Export boundary |
-| Audio file import | documented | documented: AIFF, CAF, WAV, AAC, Apple Lossless, MP3 | not yet | 32-bit float WAV only; other formats are the host's job |
-| Audio Unit instrument | documented | documented, after Audio Units are enabled in settings | not yet | produced: one Music Device per checked instrument |
-| Audio Unit effect | documented | documented | not yet | **declined** — Musa's studio is the work's room, not an effect for other people's audio |
-| Audio Unit MIDI Processor | not read here | not mentioned in the cited GarageBand page | not yet | produced for Logic only, and only if prompt 215 measures the surface |
+| Standard MIDI File import | documented | documented (drag to a software-instrument track) | produced: both readings parse as format 1, one track per part, 480 ppq — no host observed | produced by the Export boundary |
+| MusicXML import | documented | not documented | produced: `<score-partwise>` in the Logic profile; the GarageBand profile records having none — no host observed | produced by the Export boundary |
+| Audio file import | documented | documented: AIFF, CAF, WAV, AAC, Apple Lossless, MP3 | produced: every stem and the mix one 48 kHz float32 WAV of one common length — no host observed | 32-bit float WAV only; other formats are the host's job |
+| Audio Unit instrument | documented | documented, after Audio Units are enabled in settings | measured: `auval` validates `aumu musa Musa`, and the automated host instantiates, renders, saves and restores it out of process — no workstation observed | produced: one Music Device per checked instrument |
+| Audio Unit effect | documented | documented | not applicable — declined, so nothing is produced to measure | **declined** — Musa's studio is the work's room, not an effect for other people's audio |
+| Audio Unit MIDI Processor | not read here | not mentioned in the cited GarageBand page | measured: `auval` validates `aumi musp Musa`, and the automated host reads its schedule by position, seeks, and refuses a polytempo piece on a host grid — no workstation observed | produced for Logic only; GarageBand is not supported for it, and that is an absence of observation, not a finding |
 | Hosting third-party plug-ins | — | — | — | **declined**, permanently (roadmap §4) |
-| Transport synchronization | documented | not documented | not yet | one declared clock authority per session (§4) |
+| Transport synchronization | documented | not documented | measured against a synthetic leader: lock, drift, jitter, dropout, and resynchronization — no workstation observed | one declared clock authority per session (§4) |
 | Reading a host's document | — | — | — | **declined**: Musa neither writes nor parses `.logicx` or `.band` |
 | Round trip back into source | — | — | — | **declined**: no proved reverse conversion exists (§1) |
 
@@ -188,8 +194,11 @@ Sources, current as cited by prompt 210:
 
 The Logic rows above are cited at the strength of the pages' own titles and section structure: the article bodies of the
 Logic guide were not readable when this table was written, and the GarageBand and `AUAudioUnit` rows quote what was.
-Prompt 215 pins exact versions and replaces every "not yet" with a measurement or a refusal. Until then, no
-implementation may cite this table as evidence that a host behaves a particular way.
+
+No implementation may cite this table as evidence that a host behaves a particular way. The Measured column says what
+Musa produces and what Apple's validator accepts; it says nothing about Logic Pro or GarageBand, because neither was
+run. A future run of §4's protocol on a machine that has them replaces "no host observed" in a cell with a named version
+and an observation, or with a refusal — never with an assumption that it would have worked.
 
 ## 9. What this boundary is not
 

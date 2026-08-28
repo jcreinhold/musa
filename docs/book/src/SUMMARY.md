@@ -6,6 +6,7 @@
 
 - [Getting started](tutorials/getting-started.md)
 - [Your first captured phrase](tutorials/first-captured-phrase.md)
+- [Taking a piece into a workstation](tutorials/into-a-workstation.md)
 
 # Writing music
 
@@ -24,6 +25,8 @@
 - [Import a bundle into Logic Pro or GarageBand](how-to/daw-bundle.md)
 - [Play a piece to a workstation, live](how-to/live-midi.md)
 - [Share one transport with Logic Pro](how-to/sync-transport.md)
+- [Use the Musa Audio Units in a host](how-to/audio-unit.md)
+- [When a workstation and Musa disagree](how-to/daw-troubleshooting.md)
 - [Play a piece](how-to/play.md)
 - [Set up an editor](how-to/editor-setup.md)
 - [Run the desktop app](how-to/desktop.md)
@@ -49,6 +52,7 @@
 - [The style guide](concepts/style-guide.md)
 - [What musa refuses to blur](concepts/distinctions.md)
 - [How the sound language crosses the host boundary](concepts/sound-language.md)
+- [The DAW boundary](concepts/daw-boundary.md)
 
 # Reference
 
@@ -59,3 +63,7 @@
 - [Lint codes](reference/lints.md)
 - [Events interchange format](reference/events-format.md)
 - [Capture and transcription](reference/capture-and-transcription.md)
+- [The DAW bundle](reference/daw-bundle.md)
+- [Losses](reference/losses.md)
+- [Live MIDI and transport sync](reference/midi-sync.md)
+- [The Audio Units](reference/audio-unit.md)

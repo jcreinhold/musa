@@ -10,6 +10,7 @@ new contributor would lose an afternoon rediscovering it.
 
 | Page | What it answers |
 | --- | --- |
+| [audio-unit-release-tests.md](audio-unit-release-tests.md) | Why the Audio Unit's Release `xcodebuild … test` cannot resolve its own framework, and which two build settings say what the build phase actually produces |
 | [generated-files.md](generated-files.md) | Why a currency test says a fixture is stale when nobody changed the generator, and which formatter owns which files |
 | [nextest-fail-fast.md](nextest-fail-fast.md) | Why `--run-ignored all` reports a handful of failures instead of the whole list, and why the count moves between runs |
 | [playwright-under-recursive-pnpm.md](playwright-under-recursive-pnpm.md) | Why `pnpm -r test` fails a screen test that passes when the UI package runs on its own |

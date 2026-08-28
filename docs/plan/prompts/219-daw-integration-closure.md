@@ -1,7 +1,7 @@
 ---
 id: 219
 slug: daw-integration-closure
-status: pending
+status: done
 depends_on: [212, 214, 217, 218]
 phase: 4
 ---

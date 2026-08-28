@@ -40,6 +40,29 @@ registry to settle, runs Apple's `auval`, runs the harness with the allocation p
 Thread Sanitizer, asserts every finding with `scripts/check-audio-unit.py`, and unregisters the extension again. It
 needs a full Xcode, and it needs neither a Developer Team nor an App Group.
 
+### Installing it during development
+
+The script is the supported way in, and it leaves nothing behind. If you want the components to *stay* registered while
+you work in a host, register the built app's extension yourself and remember to take it out again:
+
+```sh
+pluginkit -a "<built app>.app/Contents/PlugIns/MusaComponents.appex"    # register
+pluginkit -r "<built app>.app/Contents/PlugIns/MusaComponents.appex"    # and remove
+```
+
+Two things go wrong here often enough to name:
+
+- **A stale registration of the same four-character triple shadows a new one, silently.** `apps/musa-audio-unit-trial`
+  registers `aumi musp Musa`, which is the triple this app ships, so a leftover trial registration makes the production
+  processor look absent. `pluginkit -mAvvv | grep -i musa` lists what is registered; remove anything you did not mean to
+  have.
+- **`auval -a` showing one component and not two** is almost always that, not a build problem. The measurement behind
+  that claim is in
+  [`../../docs/notes/toolchain/two-audio-units-one-container.md`](../../docs/notes/toolchain/two-audio-units-one-container.md).
+
+Ad-hoc signing is enough for everything here. Nothing in this repository has, needs, or may acquire a signing identity,
+a notarization credential, or an App Store submission: shipping is not one of this app's jobs.
+
 The framework links `libmusa_au.a`, which a build phase produces with `cargo build -p musa-au`. Set `MUSA_AU_SKIP_CARGO`
 to skip that when a caller has already built it.
 
