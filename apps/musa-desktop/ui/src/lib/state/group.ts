@@ -10,7 +10,25 @@
  */
 
 import type { GroupIntentDto } from "../session/generated/GroupIntentDto";
-import { DURATION_KEYS, spellDuration } from "./entry.svelte";
+
+/**
+ * The number keys, as `03-interaction.md`'s duration table binds them: the
+ * key is the denominator where the digit allows it, and the three that do not
+ * fit on one key take the nearest free digit.
+ */
+const DURATION_KEYS: ReadonlyMap<string, number> = new Map([
+  ["1", 1],
+  ["2", 2],
+  ["4", 4],
+  ["8", 8],
+  ["6", 16],
+  ["3", 32],
+]);
+
+/** How the language spells a duration a number key names. */
+function spellDuration(denominator: number): string {
+  return denominator === 1 ? "1" : `1/${denominator}`;
+}
 
 /**
  * The command a number key means with the score focused and a selection made.
@@ -23,7 +41,7 @@ import { DURATION_KEYS, spellDuration } from "./entry.svelte";
 export function durationIntent(key: string): GroupIntentDto | null {
   const denominator = DURATION_KEYS.get(key);
   if (denominator === undefined) return null;
-  return { kind: "setEachDuration", duration: spellDuration(denominator, false) };
+  return { kind: "setEachDuration", duration: spellDuration(denominator) };
 }
 
 /**

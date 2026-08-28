@@ -62,6 +62,8 @@ outline and final review that `../../rules/across-stages/05-metatheory.md` §1 c
 | --- | --- |
 | [88](88-keyboard-capture-not-step-entry.md) | Why audition, finite capture, notation review, and source acceptance replace MIDI step entry |
 | [89](89-expressive-midi-capture-measurement.md) | Expressive MIDI callback, audition, clock, and physical-device latency measurements for prompt 202 |
+| [90](90-midi-transcription-trial.md) | The measured transcription trial: a bounded structural search with ranked alternatives, and no probability model |
+| [91](91-keyboard-composition-closure.md) | The conformance, performance, correction-count, and accessibility closure that retired step entry |
 
 ## Earlier evidence
 

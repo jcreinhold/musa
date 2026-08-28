@@ -186,6 +186,12 @@ fn a_128_note_take_completes_within_the_published_bounds() {
     let started = std::time::Instant::now();
     let report = session.transcribe_rhythm(&take, "standard");
     assert!(report.candidates().is_some(), "the stress take must rank");
+    println!(
+        "128-note take: {} peak states, {} peak storage bytes, {:.1} ms",
+        report.peak_states(),
+        report.peak_storage_bytes(),
+        started.elapsed().as_secs_f64() * 1000.0
+    );
     assert!(report.peak_states() <= 96);
     assert!(
         report.peak_storage_bytes() < 131_072,
@@ -282,6 +288,12 @@ fn corpus_admission_thresholds_hold_through_the_facade() {
         ));
     }
 
+    // Reported, not only asserted: a floor tells the next reader the model did
+    // not regress, and the measurement tells them how much room it has.
+    println!(
+        "corpus through the facade: onsets {onset_correct}/{onset_total}, top-5 {top_k_recall}/{top_k_total}, \
+         key durations {duration_correct}/{duration_total}, source-token edits {edits}"
+    );
     assert!(onset_total >= 58, "at least 58 expected onsets, saw {onset_total}");
     assert!(
         onset_correct >= 54,

@@ -775,11 +775,10 @@ export async function stubShell(
         },
         // A machine with a keyboard plugged in; the no-device case is
         // `musa-playback`'s test, since it is about the host and not about this.
-        listen_to_midi: (args) => {
-          current = {
-            ...current,
-            midiPort: args.listening === true ? "Stub Keyboard" : null,
-          };
+        // Saying where the composer is never changes the connection: a
+        // keyboard auditions whenever it is safely plugged in.
+        audition_at: () => {
+          current = { ...current, midiPort: "Stub Keyboard" };
           return current;
         },
         /*
@@ -956,6 +955,14 @@ export async function stubShell(
         },
       });
 
+      // Whether the stub is still holding a take. Discarding clears the
+      // screen before the shell has answered — the interface does not wait
+      // for permission to close a reading — so a test that seeds another take
+      // has to know the last discard has actually landed.
+      Object.defineProperty(window, "__musaHasTake", {
+        value: () => review !== null,
+      });
+
       // The one refusal the stub cannot reach on its own: whether the
       // document the phrase would write compiles is the compiler's answer,
       // and there is no compiler here.
@@ -992,6 +999,8 @@ declare global {
     __musaGroupEdits: Record<string, unknown>[];
     /** Seed the take a review reads, or clear it. */
     __musaReview: (facts: Record<string, unknown> | null) => void;
+    /** Whether the stub is still holding a take. */
+    __musaHasTake: () => boolean;
     /** Every review gesture the interface has made, in order. */
     __musaReviewActs: Record<string, unknown>[];
     /** Make the next placement be refused, the way the compiler would. */

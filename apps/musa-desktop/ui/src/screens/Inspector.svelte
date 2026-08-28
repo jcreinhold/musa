@@ -219,6 +219,12 @@
     mark("inspector");
   });
 
+  // The same for a group command's preview: the frame the counts and the
+  // source it would write are readable in (`06-frame-budgets.md` §7).
+  $effect(() => {
+    if (plan) mark("groupDrawn");
+  });
+
   // `durationSpelling` is how the composer wrote it. Showing it beside the
   // exact value earns its space only when the two differ — a dotted quarter
   // written `1/4.` and sounding `3/8` is worth saying; `1/2` twice is not.

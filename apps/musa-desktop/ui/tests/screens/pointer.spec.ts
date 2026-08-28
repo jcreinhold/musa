@@ -247,19 +247,18 @@ test("a horizontal drag is still a range selection", async ({ page }) => {
   expect(await edits(page)).toHaveLength(0);
 });
 
-test("with entry armed, a click on an empty step writes a note there", async ({ page }) => {
-  await page.getByRole("button", { name: /^Notes/ }).click();
+test("a click on empty staff clears the selection and writes nothing", async ({ page }) => {
   const space = await staffSpace(page);
   const box = await boxOf(page, AUTHORED);
+  await page.locator(`${AUTHORED} use`).click({ force: true });
+  await expect(page.locator(".overlay rect.selection")).toHaveCount(1);
 
-  // Two steps above the note beside it, on blank staff.
+  // Two steps above the note beside it, on blank staff. Blank paper is not a
+  // writing surface: notes arrive by playing them, or from the source.
   await page.mouse.click(box.x + box.width * 2.5, box.y + box.height / 2 - space);
 
-  await expect.poll(() => page.evaluate(() => window.__musaEdits.length)).toBe(1);
-  expect((await edits(page))[0]).toMatchObject({
-    kind: "insertNote",
-    note: { kind: "note", pitch: "c5", duration: "1/4" },
-  });
+  await expect(page.locator(".overlay rect.selection")).toHaveCount(0);
+  expect(await edits(page)).toHaveLength(0);
 });
 
 test("a gesture in flight has no accessibility violations", async ({ page }) => {

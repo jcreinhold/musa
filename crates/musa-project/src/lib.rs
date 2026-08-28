@@ -95,8 +95,8 @@ pub use crate::group_edit::{GroupBarEffect, GroupDefinition, GroupEdit, GroupEdi
 pub use crate::library::{LibraryDocument, library_document};
 pub use crate::logging::{FILTER_VARIABLE, Logging};
 pub use crate::midi::{
-    CapturedMidiEvent, MidiCaptureFacts, MidiCaptureState, MidiDeviceFacts, MidiEntry, MidiLossFacts, MidiPairingFact,
-    MidiTake, MidiTakeContext,
+    CapturedMidiEvent, MidiCaptureFacts, MidiCaptureState, MidiDeviceFacts, MidiLossFacts, MidiPairingFact, MidiTake,
+    MidiTakeContext,
 };
 pub use crate::packages::{fetch_packages, verify_packages};
 pub use crate::position::Position;

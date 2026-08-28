@@ -1,10 +1,15 @@
 /**
- * Writing music, from the keyboard (`03-interaction.md` §3).
+ * Editing what is already written (`03-interaction.md` §1, `04-provenance.md` §4).
  *
  * The score the composer edits here is Glass Mountain, where ten of the
  * violin's notes come from two occurrences of one motif — so the same
- * gesture, a letter key, is an ordinary insertion in one place and a question
- * about generated music in another. That difference is the whole feature.
+ * gesture, changing a note's pitch, is an ordinary edit in one place and a
+ * question about generated music in another. That difference is the whole
+ * feature.
+ *
+ * Nothing here writes a note that was not there. Notes arrive by playing them
+ * and keeping the reading (`capture.spec.ts`) or by typing source; the score
+ * page edits, extracts, and recovers.
  *
  * What these tests assert is the *commands the interface issued*: the stub is
  * not a compiler, and what a command does to the source is asserted by
@@ -29,10 +34,21 @@ async function edits(page: Page): Promise<Record<string, unknown>[]> {
 /**
  * Wait until the interface has asked for `count` of them. Every edit is a
  * round trip — the impact is asked for before the edit is sent — so the
- * assertions that follow have to let the keystrokes land first.
+ * assertions that follow have to let the gesture land first.
  */
 async function settled(page: Page, count: number): Promise<void> {
   await expect.poll(() => page.evaluate(() => window.__musaEdits.length)).toBe(count);
+}
+
+/**
+ * Select a note and respell it from the inspector, which is the pointer-free
+ * way to change one pitch: the field takes the language's own spelling and
+ * the core decides what it means.
+ */
+async function respell(page: Page, event: string, pitch: string): Promise<void> {
+  await page.locator(`.engraving [id="${event}"] use`).click({ force: true });
+  await page.getByRole("textbox", { name: "Pitch" }).fill(pitch);
+  await page.keyboard.press("Enter");
 }
 
 test.beforeEach(async ({ page }) => {
@@ -41,55 +57,10 @@ test.beforeEach(async ({ page }) => {
   await engraved(page);
 });
 
-test("a four-note melody is typed, one letter a note", async ({ page }) => {
-  await inScore(page);
-
-  // `N` turns the letters into pitches. The mode is never invisible: the
-  // duration the next note would take sits in the top margin the whole time.
-  await page.keyboard.press("n");
-  const indicator = page.getByRole("button", { name: /^Notes/ });
-  await expect(indicator).toHaveAttribute("aria-pressed", "true");
-
-  // A number is the duration, and it persists across the notes that follow —
-  // a composer sets eighths once and types the phrase.
-  await page.keyboard.press("8");
-  for (const letter of ["c", "d", "e", "f"]) await page.keyboard.press(letter);
-
-  await settled(page, 4);
-  const asked = await edits(page);
-  expect(asked.map((edit) => (edit.note as { pitch: string }).pitch)).toEqual(["c4", "d4", "e4", "f4"]);
-  for (const edit of asked) {
-    expect(edit.kind).toBe("insertNote");
-    expect(edit.note).toMatchObject({ kind: "note", duration: "1/8" });
-  }
-
-  // Escape leaves the mode rather than the selection: one key, the nearest
-  // thing first.
-  await page.keyboard.press("Escape");
-  await expect(indicator).toHaveAttribute("aria-pressed", "false");
-});
-
-test("the octave and the accidental follow the letters until they are changed", async ({ page }) => {
-  await inScore(page);
-  await page.keyboard.press("n");
-
-  await page.keyboard.press("Meta+ArrowUp");
-  await page.keyboard.press("Shift+ArrowUp");
-  await page.keyboard.press("g");
-  await page.keyboard.press("a");
-
-  await settled(page, 2);
-  const asked = await edits(page);
-  expect(asked.map((edit) => (edit.note as { pitch: string }).pitch)).toEqual(["g#5", "a#5"]);
-});
-
 test("editing a generated note asks first, and states what it would change", async ({ page }) => {
   // `event-0` is the first note of the first `sigh()` — the case
   // `04-provenance.md` §4 is written about.
-  await page.locator('.engraving [id="event-0"] use').click({ force: true });
-  await inScore(page);
-  await page.keyboard.press("n");
-  await page.keyboard.press("g");
+  await respell(page, "event-0", "g5");
 
   const choice = page.getByRole("group", { name: "Editing generated music" });
   await expect(choice).toBeVisible();
@@ -122,10 +93,7 @@ test("editing a generated note asks first, and states what it would change", asy
 });
 
 test("cancelling the choice changes nothing and puts the selection back", async ({ page }) => {
-  await page.locator('.engraving [id="event-0"] use').click({ force: true });
-  await inScore(page);
-  await page.keyboard.press("n");
-  await page.keyboard.press("g");
+  await respell(page, "event-0", "g5");
 
   const choice = page.getByRole("group", { name: "Editing generated music" });
   await choice.getByRole("button", { name: "Cancel" }).click();
@@ -133,6 +101,24 @@ test("cancelling the choice changes nothing and puts the selection back", async 
   await expect(choice).toBeHidden();
   expect(await edits(page)).toHaveLength(0);
   await expect(page.locator(".overlay rect.selection")).toHaveCount(1);
+});
+
+test("the other answer changes this occurrence and says which", async ({ page }) => {
+  await respell(page, "event-0", "g5");
+
+  const choice = page.getByRole("group", { name: "Editing generated music" });
+  await choice.getByRole("button", { name: /Just this occurrence/ }).click();
+  await expect(choice).toBeHidden();
+
+  await settled(page, 1);
+  const asked = await edits(page);
+  expect(asked[0]).toMatchObject({
+    kind: "changePitch",
+    event: "event-0",
+    pitch: "g5",
+    mode: "specialize",
+  });
+  await expect(page.locator("p.notice")).toContainText("one note changed");
 });
 
 test("a range is lifted into a motif, named where the notes are", async ({ page }) => {
@@ -163,60 +149,16 @@ test("a range is lifted into a motif, named where the notes are", async ({ page 
   await expect(page.locator("p.notice")).toContainText("Extracted cadence()");
 });
 
-test("undo takes an entered note back", async ({ page }) => {
-  await inScore(page);
+test("an edit is undone like any other revision", async ({ page }) => {
   const before = await page.evaluate(() => window.__musaRevision);
 
-  await page.keyboard.press("n");
-  await page.keyboard.press("c");
+  // The cello's own note: authored music, so it is edited without a question.
+  await respell(page, "event-e", "a3");
   await expect.poll(() => page.evaluate(() => window.__musaRevision)).toBeGreaterThan(before);
 
-  // Undo is the ordinary one: an entered note is a document revision like any
-  // other, not a special entry buffer that has to be committed.
+  await inScore(page);
   await page.keyboard.press("Meta+z");
   await expect.poll(() => page.evaluate(() => window.__musaRevision)).toBe(before);
-});
-
-test("a keyboard is named where the caret is, and what it plays is not written", async ({ page }) => {
-  await inScore(page);
-  await page.keyboard.press("n");
-
-  // The keyboard is opened once there is a caret for it to play into, and
-  // named where the composer is looking — not announced in a settings pane
-  // they would have to go and find. The line says what it is for, so nobody
-  // has to discover by playing that the notes are not going into the score.
-  await expect(page.getByText(/Stub Keyboard$/)).toBeVisible();
-  await expect(page.locator("span.port")).toHaveAttribute("title", /never writes notes/);
-
-  // Playing it writes nothing. A played note is a performance and a written
-  // note is notation, and the interface never silently turns one into the
-  // other: Capture holds the take and Review is where it becomes source.
-  await page.keyboard.press("8");
-  await page.evaluate(() => window.__musaEmit("musa://midi", { pitches: ["eb4"] }));
-  await page.evaluate(() => window.__musaEmit("musa://midi", { pitches: ["c4", "e4", "g4"] }));
-  await expect.poll(() => page.evaluate(() => window.__musaEdits.length)).toBe(0);
-
-  // The letters still write, so entry mode is not disabled — it is the device
-  // that is not an editing surface.
-  await page.keyboard.press("c");
-  await settled(page, 1);
-  const [written] = await edits(page);
-  expect(written).toMatchObject({
-    kind: "insertNote",
-    note: { kind: "note", pitch: "c4", duration: "1/8" },
-  });
-
-  // Leaving entry stops the letters being pitches, and leaves the keyboard
-  // open: it auditions and captures whether or not letters are writing.
-  await page.keyboard.press("Escape");
-  await expect(page.getByRole("button", { name: /^Notes/ })).toHaveAttribute("aria-pressed", "false");
-  await expect(page.getByText(/Stub Keyboard$/)).toBeVisible();
-});
-
-test("notes played with entry off are not written", async ({ page }) => {
-  await inScore(page);
-  await page.evaluate(() => window.__musaEmit("musa://midi", { pitches: ["c4"] }));
-  await expect.poll(() => page.evaluate(() => window.__musaEdits.length)).toBe(0);
 });
 
 test("work a crash left behind is offered, and taking it is one command", async ({ page }) => {
@@ -257,25 +199,4 @@ test("unsaved work says whether it is kept, and a saved piece says nothing", asy
   // Saving is the only state that needs no words: the file has the work.
   await page.evaluate(() => window.__musaSet({ unsaved: false, autosaved: false }));
   await expect(page.getByText(/^Unsaved/)).toHaveCount(0);
-});
-
-test("the other answer changes this occurrence and says which", async ({ page }) => {
-  await page.locator('.engraving [id="event-0"] use').click({ force: true });
-  await inScore(page);
-  await page.keyboard.press("n");
-  await page.keyboard.press("g");
-
-  const choice = page.getByRole("group", { name: "Editing generated music" });
-  await choice.getByRole("button", { name: /Just this occurrence/ }).click();
-  await expect(choice).toBeHidden();
-
-  await settled(page, 1);
-  const asked = await edits(page);
-  expect(asked[0]).toMatchObject({
-    kind: "changePitch",
-    event: "event-0",
-    pitch: "g5",
-    mode: "specialize",
-  });
-  await expect(page.locator("p.notice")).toContainText("one note changed");
 });

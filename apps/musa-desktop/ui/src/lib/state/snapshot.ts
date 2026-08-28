@@ -462,12 +462,6 @@ export interface PlaybackState {
   loopRegion: [number, number] | null;
 }
 
-/** Notes played in on a MIDI keyboard, spelled and grouped by the core. */
-export interface MidiEntry {
-  /** One pitch for a note, several for a chord, as the language spells them. */
-  pitches: string[];
-}
-
 /** A project's running order and its shared material. */
 export interface ContentsFacts {
   /** What to call the project: the manifest's name, else the folder's. */

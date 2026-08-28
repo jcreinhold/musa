@@ -230,20 +230,18 @@ pub fn export(request: ExportDto, session: State<'_, SessionHandle>) -> Result<V
     session.export(request.target.into(), PathBuf::from(path))
 }
 
-/// Start always-listen MIDI and update the selected score position.
+/// Say where in the score the composer is, so a connected keyboard auditions
+/// with that part's sound.
 ///
-/// A false legacy request no longer disconnects the keyboard; prompt 209
-/// removes this compatibility shape with the superseded note-entry mode.
+/// A keyboard is listened to whenever it is safely connected. There is no
+/// armed state for it to enter: capture is the only armed state, and it is
+/// asked for by name.
 ///
 /// # Errors
 /// If no piece is open.
 #[tauri::command]
-pub fn listen_to_midi(
-    listening: bool,
-    caret: Option<String>,
-    session: State<'_, SessionHandle>,
-) -> Result<Value, ErrorDto> {
-    session.listen_to_midi(listening, caret)
+pub fn audition_at(caret: Option<String>, session: State<'_, SessionHandle>) -> Result<Value, ErrorDto> {
+    session.audition_at(caret)
 }
 
 /// Select one stable MIDI input identity.

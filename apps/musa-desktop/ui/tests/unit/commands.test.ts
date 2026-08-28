@@ -131,8 +131,7 @@ describe("the pointer gestures have keys", () => {
   }
 
   // The right-edge drag renotates, which is what a number key does to a
-  // selected note, and the empty-step click writes one, which is what a letter
-  // does. Both of those are entry's, and `state/compose.ts` holds them.
+  // selected note; `state/group.ts` holds that half of the map.
   it("binds all four respellings, and shows them in the sheet", () => {
     for (const id of ["score.step.up", "score.step.down", "score.accidental.up", "score.accidental.down"]) {
       const command = COMMANDS.find((candidate) => candidate.id === id);

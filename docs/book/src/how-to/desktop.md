@@ -23,4 +23,8 @@ produced it by expanding a motif or transform. Hold the Origin key and the page 
 ink, generated music falls back, and hovering a generated note traces it back to the occurrence that produced it, on the
 page and in the source.
 
+A connected MIDI keyboard auditions the selected part's instrument and writes nothing. Turning a phrase you played into
+notation is a separate, visible decision — [Your first captured phrase](../tutorials/first-captured-phrase.md) walks
+through it, and [Capture and transcription](../reference/capture-and-transcription.md) is the reference.
+
 The design behind all of this is explained under [The desktop interface](../concepts/interface.md).

@@ -34,7 +34,6 @@
   } from "../lib/state/snapshot";
   import type { HeaderFieldDto } from "../lib/session/generated/HeaderFieldDto";
   import type { GroupEditPlanDto } from "../lib/session/generated/GroupEditPlanDto";
-  import type { NoteEntry } from "../lib/state/entry.svelte";
   import SourcePane from "../lib/ui/SourcePane.svelte";
   import Inspector from "./Inspector.svelte";
   import Outline from "./Outline.svelte";
@@ -55,7 +54,6 @@
     sounding,
     onvisible,
     pinned,
-    entry,
     choice,
     plan,
     transposing,
@@ -68,7 +66,6 @@
     onloop,
     onfollow,
     onpin,
-    onentry,
     onconfirm,
     onspecialize,
     oncancel,
@@ -82,7 +79,6 @@
     candidate,
     onedit,
     oncandidate,
-    oninsert,
     onpitch,
     onduration,
     onheader,
@@ -116,8 +112,6 @@
     onvisible: (ids: string[]) => void;
     /** Whether it is pinned, which is what the toggle reports. */
     pinned: boolean;
-    /** Note entry: what the next note would be, and whether letters are notes. */
-    entry: NoteEntry;
     /** An edit against generated music waiting to be confirmed (§4). */
     choice: EditImpact | null;
     /** A group transformation previewed and waiting to be accepted. */
@@ -136,7 +130,6 @@
     onloop: () => void;
     onfollow: () => void;
     onpin: () => void;
-    onentry: () => void;
     onconfirm: () => void;
     /** Take the other answer: change this occurrence only. */
     onspecialize: () => void;
@@ -157,8 +150,6 @@
     onedit: (candidate: Candidate) => void;
     /** A gesture moved: ask what it would write. */
     oncandidate: (candidate: Candidate | null) => void;
-    /** A click on an empty staff step, with entry armed. */
-    oninsert: (pitch: string) => void;
     onpitch: (event: string, pitch: string) => void;
     onduration: (event: string, duration: string) => void;
     /** Rewrite one of the piece's own statements. */
@@ -325,24 +316,6 @@
           />
           <button type="button" class="text" aria-pressed={follow !== "off"} onclick={onfollow}>Follow</button>
         </div>
-
-        <!--
-          Note entry, and what it would write. The duration is the glyph an
-          engraver draws rather than a word, because the composer reading it
-          writes that glyph for a living (`03-interaction.md` §3).
-        -->
-        <button
-          type="button"
-          class="text entry"
-          aria-pressed={entry.on}
-          title="Write notes with the letter keys — N"
-          onclick={onentry}
-          >Notes{#if entry.on}<span class="duration" aria-hidden="true">{entry.glyph}</span><span
-              class="visually-hidden"
-            >
-              — duration {entry.duration}</span
-            >{/if}</button
-        >
 
         <div class="midi" role="group" aria-label="MIDI keyboard capture">
           {#if snapshot.midiDevices.length > 1 || snapshot.midiPort === null}
@@ -551,11 +524,9 @@
               {origin}
               {focus}
               {onvisible}
-              {entry}
               spell={!session.sourceOpen}
               onedit={session.live ? onedit : undefined}
               oncandidate={session.live ? oncandidate : undefined}
-              oninsert={session.live ? oninsert : undefined}
               {flash}
               {bring}
               header={score.header}
@@ -770,18 +741,6 @@
   /* The current view is the one set in ink; the other is an offer. */
   .text[aria-pressed="true"] {
     color: var(--ink);
-  }
-
-  /*
-   * Entry is a mode, so it says so with a glyph beside its name rather than
-   * with colour alone (`03-interaction.md` §5).
-   */
-  .duration {
-    font-family: var(--f-notation);
-    font-size: 1.4em;
-    line-height: 1;
-    padding-left: var(--s-2);
-    vertical-align: -0.12em;
   }
 
   .visually-hidden {

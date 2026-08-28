@@ -44,7 +44,6 @@ const MIDI_DEVICE_INTERVAL: Duration = Duration::from_secs(1);
 pub const SNAPSHOT_EVENT: &str = "musa://snapshot";
 pub const POSITION_EVENT: &str = "musa://position";
 pub const TRANSPORT_EVENT: &str = "musa://transport";
-pub const MIDI_EVENT: &str = "musa://midi";
 
 /// One unit of work for the session thread.
 enum Job {
@@ -74,7 +73,8 @@ enum Job {
     /// The caret rides along because what a played note is *spelled* as
     /// depends on the key in force where it lands, and a piece modulates. It
     /// is an engraved event id, the identity the page already selects by.
-    Midi(bool, Option<String>),
+    /// Say where in the score the composer is, so audition uses that part.
+    AuditionAt(Option<String>),
     MidiSelect(String),
     MidiCaptureStart(Option<String>),
     MidiCaptureStop,
@@ -230,8 +230,8 @@ impl SessionHandle {
         self.ask(Job::ReviewPlace(voices))
     }
 
-    pub(crate) fn listen_to_midi(&self, listening: bool, caret: Option<String>) -> Reply {
-        self.ask(Job::Midi(listening, caret))
+    pub(crate) fn audition_at(&self, caret: Option<String>) -> Reply {
+        self.ask(Job::AuditionAt(caret))
     }
 
     pub(crate) fn select_midi(&self, id: String) -> Reply {
@@ -298,9 +298,7 @@ fn run(app: &AppHandle, inbox: &Receiver<(Job, Sender<Reply>)>) {
         };
 
         if let Some((job, reply)) = received {
-            if let Job::Midi(wanted, ref at) = job
-                && wanted
-            {
+            if let Job::AuditionAt(ref at) = job {
                 caret.clone_from(at);
             }
             let mutating = !matches!(
@@ -317,7 +315,7 @@ fn run(app: &AppHandle, inbox: &Receiver<(Job, Sender<Reply>)>) {
                     | Job::ReviewAccept
                     | Job::ReviewDiscard
                     | Job::ReviewPlacementPlan(_)
-                    | Job::Midi(..)
+                    | Job::AuditionAt(_)
                     | Job::MidiSelect(_)
                     | Job::MidiCaptureStart(_)
                     | Job::MidiCaptureStop
@@ -573,11 +571,9 @@ fn perform(session: &mut Option<Project>, job: Job) -> Reply {
                 .analyze_wire(&musa_project::AnalysisRequest::new(kind))
                 .map_err(|error| ErrorDto::from(&error))
         }
-        Job::Midi(listening, _) => {
+        Job::AuditionAt(_) => {
             let open = session.as_mut().ok_or_else(no_project)?;
-            if listening {
-                open.current_mut().listen_to_midi();
-            }
+            open.current_mut().listen_to_midi();
             Ok(snapshot_json(open))
         }
         Job::MidiSelect(id) => {

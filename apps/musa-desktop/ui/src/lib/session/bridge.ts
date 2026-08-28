@@ -22,7 +22,7 @@ import type { ReviewAuditionDto } from "./generated/ReviewAuditionDto";
 import type { ReviewFactsDto } from "./generated/ReviewFactsDto";
 import type { TemplateDto } from "./generated/TemplateDto";
 import type { TransportDto } from "./generated/TransportDto";
-import type { AnalysisFacts, EditImpact, LibraryDocument, MidiEntry, ProjectSnapshot } from "../state/snapshot";
+import type { AnalysisFacts, EditImpact, LibraryDocument, ProjectSnapshot } from "../state/snapshot";
 
 /** Whether the interface is running inside the desktop shell. */
 export function inShell(): boolean {
@@ -35,7 +35,6 @@ export interface Events {
   "musa://position": ProjectSnapshot["playback"];
   "musa://transport": ProjectSnapshot["playback"];
   "musa://command": string;
-  "musa://midi": MidiEntry;
 }
 
 async function core(): Promise<typeof import("@tauri-apps/api/core")> {
@@ -99,9 +98,12 @@ export const bridge = {
   exportTo: (target: ExportTargetDto, path: string | null) =>
     call<{ path: string }>("export", { request: { target, path } }),
   snapshot: () => call<ProjectSnapshot>("snapshot", {}),
-  /** Read a MIDI keyboard, or stop reading it. */
-  listenToMidi: (listening: boolean, caret: string | null) =>
-    call<ProjectSnapshot>("listen_to_midi", { listening, caret }),
+  /**
+   * Say where in the score the composer is, so a connected keyboard auditions
+   * with that part's sound. A keyboard is always listened to; there is no
+   * armed writing state for it to enter.
+   */
+  auditionAt: (caret: string | null) => call<ProjectSnapshot>("audition_at", { caret }),
   selectMidiInput: (id: string) => call<ProjectSnapshot>("select_midi_input", { id }),
   startMidiCapture: (caret: string | null) => call<ProjectSnapshot>("start_midi_capture", { caret }),
   stopMidiCapture: () => call<ProjectSnapshot>("stop_midi_capture", {}),

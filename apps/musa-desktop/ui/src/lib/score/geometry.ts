@@ -7,7 +7,7 @@
  * can be measured in staff spaces and stay correct at every zoom.
  */
 
-import { elementsOf, eventIdOf } from "./ids";
+import { elementsOf } from "./ids";
 
 export interface Rect {
   x: number;
@@ -102,28 +102,6 @@ export function pointIn(container: ParentNode, x: number, y: number): PagePoint 
     y: point.y,
     perPixel: matrix.a === 0 ? 1 : 1 / matrix.a,
   };
-}
-
-/**
- * The note nearest `x` whose head is drawn inside `staff`.
- *
- * A click on empty paper has to be measured from something the core spelled,
- * and the nearest note on the same staff is the one a reader would measure
- * from too. Nothing here decides what pitch that is — it names an event, and
- * the snapshot says the rest.
- */
-export function nearestNote(container: ParentNode, staff: Element, x: number): string | null {
-  const root = pageRoot(container);
-  if (!root) return null;
-  let best: { id: string; off: number } | null = null;
-  for (const drawn of staff.querySelectorAll<SVGGraphicsElement>('g[id^="event-"]')) {
-    const rect = boxOf(root, drawn);
-    if (!rect) continue;
-    const off = Math.abs(rect.x + rect.width / 2 - x);
-    const id = eventIdOf(drawn);
-    if (id !== null && (!best || off < best.off)) best = { id, off };
-  }
-  return best?.id ?? null;
 }
 
 /** The smallest box containing both. */

@@ -52,8 +52,6 @@ export interface Surface {
   loop(): void;
   /** Pin Origin view, for anyone who cannot hold a key while pointing. */
   origin(): void;
-  /** Turn note entry on or off. */
-  entry(): void;
   /** Lift the selected notes into a motif, naming it inline. */
   extract(): void;
   /**
@@ -183,17 +181,13 @@ export const COMMANDS: readonly Command[] = [
   own("score.first", "First note of the voice", "Score", "Home", ({ workspace }) => workspace?.edge("first")),
   own("score.last", "Last note of the voice", "Score", "End", ({ workspace }) => workspace?.edge("last")),
   own("score.part.next", "Next part", "Score", "Tab", ({ workspace }) => workspace?.part(1)),
-  // Note entry is a mode because the unmodified letters already belong to the
-  // navigation map: `f` follows and `l` loops, so a bare `f` cannot also be
-  // the note F. `N` is how a composer says "the letters are notes now", and it
-  // is the key every notation editor they have used binds it to.
-  own("score.entry", "Note entry", "Score", "N", (surface) => surface.entry()),
   // Extraction is the composer noticing they have written the same idea
   // twice; `M` for motif, and the name is asked for in the margin rather than
   // in a dialog that would take the notes off the screen.
   own("score.extract", "Extract a motif", "Score", "M", (surface) => surface.extract()),
   // The keyboard equivalents of the vertical drag. `⌥` because the bare
-  // arrows are navigation and the shifted ones are entry's accidental.
+  // arrows are navigation, and `⇧` on top of it moves the sign rather than
+  // the notehead.
   own("score.step.up", "Up a step", "Score", "Alt+ArrowUp", (surface) => surface.respell(1, false)),
   own("score.step.down", "Down a step", "Score", "Alt+ArrowDown", (surface) => surface.respell(-1, false)),
   own("score.accidental.up", "Raise the accidental", "Score", "Alt+Shift+ArrowUp", (surface) =>

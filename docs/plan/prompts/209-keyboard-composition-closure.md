@@ -1,7 +1,7 @@
 ---
 id: 209
 slug: keyboard-composition-closure
-status: pending
+status: done
 depends_on: [206, 208]
 phase: 2
 ---

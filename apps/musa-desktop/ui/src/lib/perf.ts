@@ -43,7 +43,23 @@ export type Moment =
   /** The replacement reading is on the leaf. */
   | "reviewDrawn"
   /** Focus is back on the note the composer was reading. */
-  | "reviewFocus";
+  | "reviewFocus"
+  /*
+   * The rest of the keyboard workflow (`06-frame-budgets.md` §7). One take
+   * goes Capture or Keep that → a proposal → group revisions → kept, and each
+   * arrow is a quantity that section asks to be measured on the real path
+   * rather than on a function.
+   */
+  /** A capture door was pressed, so a first proposal is owed. */
+  | "capture"
+  /** A group command was issued, so a preview is owed. */
+  | "group"
+  /** The group preview is on screen. */
+  | "groupDrawn"
+  /** The accepted phrase was asked for, so a revision and ink are owed. */
+  | "keep"
+  /** An undo was asked for, so the previous ink is owed. */
+  | "undo";
 
 const enabled =
   typeof globalThis.location !== "undefined" && new URLSearchParams(globalThis.location.search).has("perf");

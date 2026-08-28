@@ -186,8 +186,8 @@ styles. A repertoire-specific profile is named and selected, never smuggled into
 
 ## 11. Transition from step entry
 
-Prompt 33's `N` mode, active duration/octave/accidental state, MIDI-to-written-pitch heuristic, and fixed chord window
-remain temporary implementation evidence while prompts 202–208 build and prove this workflow. Prompt 209 removes them
-only after audition, Capture, Keep that, Review, group revision, Accept/Discard, device loss, stale source, and undo
-pass their complete checks. Until then the implementation is known to lag this governing page; the old path is not a
-second supported design.
+Closed. Prompt 33's `N` mode, active duration/octave/accidental state, MIDI-to-written-pitch heuristic, and fixed chord
+window were temporary implementation evidence while prompts 202–208 built and proved this workflow; prompt 209 removed
+them once audition, Capture, Keep that, Review, group revision, Accept/Discard, device loss, stale source, and undo
+passed their checks. There is no second supported design and no preference that restores one. What the old path was and
+why it was rejected is recorded in prompt 33 and note 88, which are history rather than an alternative.

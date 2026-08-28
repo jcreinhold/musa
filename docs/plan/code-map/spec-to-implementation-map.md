@@ -35,23 +35,22 @@ the code that implements it. `implemented` means the public compiler path reache
 | One-frame DSP meaning and opaque prepared machine | implemented | exact gestures → checked `Schedule` → `PreparedAudio`; live/offline repeated-step partition and RT laws |
 | Native checked sample-map preparation and deterministic runtime | implemented | `std::sound::sample` → `musa-dsp::{sample_source,sampler}` with verified project reads, bounded PCM preload, tokenized selection, fixed voices, interpolation/loops/envelopes/release/pedal, partition and RT-allocation laws |
 
-## Keyboard-composition migration
+## Keyboard composition
 
-The governing workflow is `docs/rules/desktop/10-keyboard-composition.md`; implementation deliberately lags it until
-prompt 209 can remove the old path at a tested boundary.
+The governing workflow is `docs/rules/desktop/10-keyboard-composition.md`. Prompt 209 closed the migration: step entry
+is gone, and audition, Capture, Keep that, Review, and Accept are the only route from a keyboard to notation.
 
 | Capability | State | Current or planned owner |
 | --- | --- | --- |
-| MIDI device connection and note-on/off queue | implemented, insufficient | `musa-playback::MidiInput`; today it drops expressive evidence after deciding press/release and chooses one port at open |
-| Step-entry spelling/grouping and UI mode | implemented, scheduled for deletion | `musa-project::{MidiEntry, EntryBuffer}` and desktop `NoteEntry`; fixed chord window plus active duration/octave/accidental state from prompt 33 |
+| MIDI device connection and expressive evidence queue | implemented | `musa-playback::MidiInput`; stable port identity, hot-plug refresh, and timestamped note/pedal evidence carried without deciding notation |
 | Always-available prepared-instrument audition | implemented | `musa-playback::{AuditionEvent, AudioEngine}` behind `ProjectSession`; source-declared prepared instrument, bounded RT queues, callback-allocation laws |
 | Complete bounded expressive MIDI take and recent phrase | implemented | playback retains fixed callback facts; project owns calibrated immutable takes plus a 30-second/4,096-event memory-only recent suffix; prompt-202 loss/privacy laws and note 89 |
 | Measured transcription model and corpus | implemented, production-neutral | `musa-project::transcription_trial`, executable intended-score/JSON fixtures, scripted/QWERTY driver, Divan scaling harness, exact-pinned optional ASAP adapter, and note 90; no production candidate API |
-| Ranked metrical and polyphonic notation candidates | pending 204–205 | shared-back-pointer project search consuming checked source policy/context; top 5, 96 states/layer, 128 notes, four voices, 128 KiB abstract search, 50 ms reference target; no frontend inference |
-| Cross-voice selection and group duration/pitch transformations | pending 206 | one project preview/apply facade over syntax-owned edits |
-| Engraved Review and raw/written audition | pending 207 | desktop projection of immutable project candidates and local alternatives |
-| Revision-safe Accept, Discard, and Keep that | pending 208 | one project transaction; accepted notes become ordinary canonical source |
-| Removal of step entry | pending 209 | delete old project/UI types, `N` mode, active next-note state, fixed chord window, and migration bindings after closure |
+| Ranked metrical and polyphonic notation candidates | implemented | `musa-project` search over checked source policy/context; top 5, bounded states/notes/voices/memory, no frontend inference |
+| Cross-voice selection and group duration/pitch transformations | implemented | `musa-project::group_edit_plan`/`apply` over syntax-owned edits, one preview then one transaction |
+| Engraved Review and raw/written audition | implemented | desktop `Review` screen over immutable `ReviewFacts`; the interface arranges and computes no notation |
+| Revision-safe Accept, Discard, and Keep that | implemented | `musa-project::review_placement`; the anchor is a part/voice name pair, and placing writes one revision or none |
+| Removal of step entry | implemented | prompt 209 deleted `MidiEntry`, `EntryBuffer`, the desktop `NoteEntry`/`N` mode, the empty-step click, and the `musa://midi` event |
 
 ## Trusted boundary
 

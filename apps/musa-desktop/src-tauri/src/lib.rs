@@ -57,7 +57,7 @@ pub fn run() -> tauri::Result<()> {
             commands::transport,
             commands::export,
             commands::snapshot,
-            commands::listen_to_midi,
+            commands::audition_at,
             commands::select_midi_input,
             commands::start_midi_capture,
             commands::stop_midi_capture,

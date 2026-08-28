@@ -1,12 +1,12 @@
-//! Bounded expressive MIDI evidence and the temporary legacy note-entry path.
+//! Bounded expressive MIDI evidence.
 //!
 //! MIDI is edge evidence, not written music. This module preserves fixed raw
 //! events, calibrates their clock, pairs note lifecycles, and freezes bounded
 //! memory-only takes without editing source. Audition events retain device
 //! dimensions for the checked source instrument to interpret.
 //!
-//! [`EntryBuffer`] and pitch spelling remain only until prompt 209 removes the
-//! superseded step-entry workflow. New capture code must not depend on them.
+//! Pitch spelling lives here because a note number is edge evidence too: it
+//! becomes a written pitch only against a key, and transcription is what asks.
 
 // Every arithmetic expression below is over small integers with known
 // bounds: a note number is 0–127, a natural is 0–11, an alteration is −2–2,
@@ -17,21 +17,12 @@
 
 use std::collections::VecDeque;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
 
 use musa_playback::{
     AuditionEvent, AuditionInputKind, CalibratedMidiEvent, MidiClockCalibration, MidiClockCalibrator, MidiInputEvent,
     MidiInputLosses, MidiMessageKind,
 };
 use musa_score::{Key, Letter};
-
-/// How close two presses must be to be one chord.
-///
-/// Long enough that a hand landing on a triad is never split — the spread of
-/// a deliberate chord is a few milliseconds — and short enough that a fast
-/// scale is never joined: at 40 ms a run would have to pass 1 500 notes per
-/// minute before two of its notes collided.
-const CHORD_WINDOW: Duration = Duration::from_millis(40);
 
 /// Recent phrase memory: thirty seconds at ordinary performance density.
 pub(crate) const RECENT_MIDI_MICROS: u64 = 30_000_000;
@@ -653,54 +644,6 @@ fn loss_delta(before: MidiInputLosses, after: MidiInputLosses) -> MidiInputLosse
     }
 }
 
-/// Notes the keyboard played, grouped as one statement to write.
-#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct MidiEntry {
-    /// The written pitches, spelled in the piece's key, lowest first. One
-    /// pitch is a note; more than one is a chord.
-    pub pitches: Vec<String>,
-}
-
-/// Presses waiting to be grouped into chords.
-///
-/// Kept separate from the clock so the grouping rule can be tested by handing
-/// it times rather than by sleeping.
-#[derive(Debug, Default)]
-pub(crate) struct EntryBuffer {
-    /// Presses in arrival order.
-    pending: Vec<(u8, Instant)>,
-}
-
-impl EntryBuffer {
-    /// Record a key going down.
-    pub(crate) fn press(&mut self, note: u8, at: Instant) {
-        self.pending.push((note, at));
-    }
-
-    /// The groups whose window has closed by `now`, oldest first.
-    ///
-    /// A group is the oldest waiting press plus every press within
-    /// [`CHORD_WINDOW`] of it. Nothing is released early: a chord half-played
-    /// when the poll happens stays whole and arrives on the next one.
-    pub(crate) fn ready(&mut self, now: Instant) -> Vec<Vec<u8>> {
-        let mut groups = Vec::new();
-        while let Some(&(_, first)) = self.pending.first() {
-            let deadline = first.checked_add(CHORD_WINDOW).unwrap_or(first);
-            if now < deadline {
-                break;
-            }
-            let taken = self.pending.iter().take_while(|(_, at)| *at <= deadline).count();
-            let mut notes: Vec<u8> = self.pending.drain(..taken).map(|(note, _)| note).collect();
-            // A held key that retriggers is one note in the chord, not two.
-            notes.sort_unstable();
-            notes.dedup();
-            groups.push(notes);
-        }
-        groups
-    }
-}
-
 /// The natural pitch class of each letter, in the language's letter order.
 const NATURALS: [(Letter, i32); 7] = [
     (Letter::C, 0),
@@ -859,7 +802,6 @@ fn accidental(alter: i32) -> &'static str {
 mod midi_laws {
     use super::*;
     use musa_score::{Accidental, Key, Letter, Mode, PitchClass};
-    use std::time::{Duration, Instant};
 
     fn key(letter: Letter, accidental: i8, mode: Mode) -> Option<Key> {
         Some(Key::new(
@@ -1142,56 +1084,5 @@ mod midi_laws {
         };
         let octave: i32 = octave.parse().ok()?;
         u8::try_from((octave + 1) * 12 + natural + alter).ok()
-    }
-
-    /// Keys pressed together are one chord; keys pressed apart are two notes.
-    #[test]
-    fn presses_inside_the_window_are_one_chord() {
-        let start = Instant::now();
-        let mut buffer = EntryBuffer::default();
-        buffer.press(60, start);
-        buffer.press(64, start + Duration::from_millis(5));
-        buffer.press(67, start + Duration::from_millis(9));
-        buffer.press(72, start + Duration::from_millis(400));
-
-        assert_eq!(
-            buffer.ready(start + Duration::from_millis(100)),
-            vec![vec![60, 64, 67]],
-            "the triad is one group and the later note is not in it"
-        );
-        assert_eq!(buffer.ready(start + Duration::from_millis(500)), vec![vec![72]]);
-        assert!(buffer.ready(start + Duration::from_secs(1)).is_empty());
-    }
-
-    /// A chord still being played when the poll happens is not cut in half:
-    /// it waits for its window to close.
-    #[test]
-    fn a_chord_is_never_released_early() {
-        let start = Instant::now();
-        let mut buffer = EntryBuffer::default();
-        buffer.press(60, start);
-        assert!(buffer.ready(start + Duration::from_millis(10)).is_empty());
-        buffer.press(64, start + Duration::from_millis(20));
-        assert_eq!(buffer.ready(start + Duration::from_millis(60)), vec![vec![60, 64]]);
-    }
-
-    /// A key held down retriggers on some keyboards; the chord has one of it.
-    #[test]
-    fn a_retriggered_key_is_one_note() {
-        let start = Instant::now();
-        let mut buffer = EntryBuffer::default();
-        buffer.press(60, start);
-        buffer.press(60, start + Duration::from_millis(3));
-        assert_eq!(buffer.ready(start + Duration::from_millis(60)), vec![vec![60]]);
-    }
-
-    /// The wire shape a chord takes, so the frontend has one thing to read.
-    #[test]
-    fn an_entry_serializes_as_its_pitches() -> Result<(), serde_json::Error> {
-        let entry = MidiEntry {
-            pitches: vec!["c4".to_owned(), "e4".to_owned()],
-        };
-        assert_eq!(serde_json::to_string(&entry)?, r#"{"pitches":["c4","e4"]}"#);
-        Ok(())
     }
 }

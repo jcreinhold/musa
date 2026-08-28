@@ -137,6 +137,24 @@ test("one undo puts the piece back where it was", async ({ page }) => {
 
 // ------------------------------------------------------------ what it says
 
+test("the keyboard says it never writes notes, and it never does", async ({ page }) => {
+  await page.goto("/");
+  await keyboard(page, { recentEvents: 3, recentMicros: 900_000 });
+
+  // A keyboard auditions whenever it is safely connected — there is no mode
+  // to arm — and it is named where the composer is looking rather than in a
+  // settings pane they would have to find. The line says what it is for, so
+  // nobody has to discover by playing that the notes are not going anywhere.
+  await expect(page.getByText(/Stub Keyboard$/)).toBeVisible();
+  await expect(page.locator("span.port")).toHaveAttribute("title", /never writes notes/);
+
+  // Playing it writes nothing. A played note is a performance and a written
+  // note is notation, and the interface never silently turns one into the
+  // other: Capture holds the take and Review is where it becomes source.
+  await expect(page.locator("button.recent")).toContainText("Recent phrase on \u00b7 0.9 s");
+  expect(await page.evaluate(() => window.__musaEdits.length)).toBe(0);
+});
+
 test("the capture line says which clock the take will get", async ({ page }) => {
   await page.goto("/");
   await keyboard(page);

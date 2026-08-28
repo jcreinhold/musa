@@ -33,7 +33,6 @@
     pad,
     runsFor,
     traceTo,
-    nearestNote,
     pointIn,
     NOTHING,
     type Bracket,
@@ -41,11 +40,10 @@
     type Marks,
     type Rect,
   } from "./geometry";
-  import { HANDLE_SPACES, RUNG_SPACES, STEP_SPACES, THRESHOLD_PX, shiftStep, stepsFor } from "./steps";
+  import { HANDLE_SPACES, RUNG_SPACES, STEP_SPACES, THRESHOLD_PX } from "./steps";
   import type { Focus } from "../state/focus.svelte";
   import { Gesture } from "../state/gesture.svelte";
   import type { Candidate } from "../state/gesture.svelte";
-  import type { NoteEntry } from "../state/entry.svelte";
   import type { EventFacts } from "../state/snapshot";
   import { eventIdOf } from "./ids";
   import { frontFieldOf, measureFront, type FrontMatterAt } from "./front-matter";
@@ -58,12 +56,10 @@
     mode = "page",
     workspace,
     focus,
-    entry,
     spell = false,
     onvisible,
     onedit,
     oncandidate,
-    oninsert,
     onpinch,
     playing = [],
     loop = null,
@@ -85,12 +81,6 @@
      * and marks what the focus resolves to; it decides neither.
      */
     focus?: Focus;
-    /**
-     * Note entry, for the one gesture that writes rather than rewrites: a
-     * click on an empty staff step, which only means anything while entry is
-     * armed.
-     */
-    entry?: NoteEntry;
     /**
      * Whether a live gesture prints what it would write beside the pointer.
      * It does when the source column is not showing — with the column open
@@ -114,8 +104,6 @@
      * while the pointer is still down.
      */
     oncandidate?: (candidate: Candidate | null) => void;
-    /** A click on an empty staff step, with entry armed: write a note there. */
-    oninsert?: (pitch: string) => void;
     /** A settled pinch, as a factor on the current zoom (§5). */
     onpinch?: (factor: number) => void;
     /** The event ids sounding right now (`03-interaction.md` §4). */
@@ -711,7 +699,6 @@
     mark("select");
     const id = eventIdOf(event.target as Element);
     if (!id) {
-      if (writeAt(event)) return;
       workspace.clear();
       // Blank paper is where a rectangle starts. Nothing is selected until
       // the pointer travels, so a plain click still means "select nothing".
@@ -777,32 +764,6 @@
     // middle left to ask about its pitch.
     const handle = Math.min(staffSpace * HANDLE_SPACES, box.width / 3);
     return at.x >= box.x + box.width - handle;
-  }
-
-  /**
-   * A click on empty staff, with entry armed: write a note at the step
-   * clicked (`03-interaction.md` §2).
-   *
-   * The step is measured from the nearest note on the same staff, whose
-   * spelling the core published — so no clef is read and no pitch is guessed.
-   * With no note on that staff to measure from there is nothing to write
-   * against, and the click stays a click.
-   */
-  function writeAt(event: PointerEvent): boolean {
-    if (!oninsert || entry?.on !== true) return false;
-    const staff = (event.target as Element).closest("g.staff");
-    const element = (event.target as Element).closest<HTMLElement>(".arriving");
-    const at = element ? pointIn(element, event.clientX, event.clientY) : null;
-    if (!staff || !element || !at) return false;
-    const anchor = nearestNote(element, staff, at.x);
-    const note = workspace?.snapshot?.score?.events.find((each) => each.id === anchor);
-    const spelling = note?.pitchSpellings[0];
-    const [head] = anchor === null ? [] : headsFor(element, anchor);
-    if (!head || spelling === undefined) return false;
-    const pitch = shiftStep(spelling, stepsFor(at.y - (head.y + head.height / 2), staffSpace));
-    if (pitch === null) return false;
-    oninsert(pitch);
-    return true;
   }
 
   // What the gesture would write is reported out as it snaps, so the source
@@ -1136,12 +1097,11 @@
   }
 
   /*
-   * The blank staff is pointable too, because entry writes where the composer
-   * points (`03-interaction.md` §2) and the space between two lines is where
-   * a note goes. An SVG group is otherwise hit only where something is drawn,
-   * which would make the one place a new note belongs the one place a click
-   * cannot land. Notes are drawn inside the staff and are hit first, so this
-   * costs nothing that was already hittable.
+   * The blank staff is pointable too, so a click on the space between two
+   * lines clears the selection and starts a rectangle like any other click on
+   * paper. An SVG group is otherwise hit only where something is drawn, which
+   * would make most of a system unclickable. Notes are drawn inside the staff
+   * and are hit first, so this costs nothing that was already hittable.
    */
   .engraving :global(g.staff) {
     pointer-events: bounding-box;

@@ -189,7 +189,7 @@ function recorder(): Recorder {
     on: vi.fn(async () => () => {}),
     askToOpen: vi.fn(async () => "/tmp/piece.musa"),
     askToSave: vi.fn(async () => "/tmp/out.mei"),
-    listenToMidi: vi.fn(async () => VALID),
+    auditionAt: vi.fn(async () => VALID),
     selectMidiInput: vi.fn(async () => VALID),
     startMidiCapture: vi.fn(async () => VALID),
     stopMidiCapture: vi.fn(async () => VALID),

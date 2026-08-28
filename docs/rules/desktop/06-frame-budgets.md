@@ -25,6 +25,9 @@ score (`tests/fixtures/large-score.musa`, created at prompt 22) for the large ca
 | B10 | Idle CPU with playback stopped | **≈ 0 %** — no polling timers, no rAF loop | An editor that heats a laptop while nothing happens will not be used. |
 | B11 | New performance → the new reading drawn (prompt 76) | ≤ 250 ms from the snapshot, previous page visible throughout | Measured apart from B2 on purpose: B2 is what an *edit* costs and its 400 ms includes the 100 ms typing debounce, which a click never pays. Folding the two together would hide a slow redraw behind a wait it does not do. |
 | B12 | Choosing a piece already opened this session → its page drawn (prompt 85) | **≤ 400 ms**, previous page visible throughout | Turning to a piece you have already opened is turning back, not reopening: the session is still in memory and nothing has to be read from disk. A piece opened for the first time is B7's cold number by construction and is not asserted here. |
+| B13 | Capture or Keep that → a readable proposal (prompt 209) | **≤ 250 ms** for the interface's share | A phrase a composer just played is still in their hands; a reading that arrives after they have stopped listening for it is a reading they have to re-hear. The transcriber's share is measured separately and reported beside it (§7). |
+| B14 | One review or group command → its replacement reading and preview (prompt 209) | **≤ 250 ms** | The same number as B11 and for the same reason: this is a click, not a keystroke, so it never pays a typing debounce. A composer answering a question about their own phrase is comparing two readings, and a gap between them is what makes the comparison hard. |
+| B15 | Keep → the kept phrase on the leaf (prompt 209) | **≤ 400 ms**, and one revision | Writing the phrase is an edit, so it gets B2's number. What it must not do is cost more than an edit because it also closed a screen. |
 
 ## 2. How they are measured
 
@@ -113,12 +116,20 @@ locking, I/O, logging, or large destruction.
 
 ## 7. Keyboard capture and transcription measurement
 
-Prompt 201 fixes the keyboard workflow before implementation but does not invent latency thresholds without a measured
-path. Prompts 202–203 must measure and then amend this table with three separate quantities: MIDI callback arrival to
-the scheduled audition frame; Capture/Keep-that completion to the first reviewable candidate; and one review constraint
-or group transformation to its replacement candidate and source preview. Each is measured on named take lengths and
-polyphony, with p95, peak memory, dropped-event count, and search bounds. Device input/output latency is reported beside
-host processing rather than charged to code that does not control it.
+Prompt 201 fixed the keyboard workflow before implementation and did not invent latency thresholds without a measured
+path. The three quantities are now measured, and B13–B15 above are what they came to. Each is measured on named take
+lengths and polyphony, with p50/p95/max, peak memory, dropped-event count, and search bounds. Device input/output
+latency is reported beside host processing rather than charged to code that does not control it.
+
+| Quantity | Where it is measured | What it came to |
+| --- | --- | --- |
+| MIDI callback arrival → scheduled audition frame | `musa-playback` callback laws; note 89 | Host share only: the control loop polls an already-filled ring every 2 ms, then the event waits for the next device callback. The device share — key scan, transport, CoreMIDI delivery, buffer, DAC — has no p95 on a host with no keyboard connected, and is reported as unavailable rather than as a number. |
+| Capture or Keep that → first reviewable candidate | B13, `perf.spec.ts` "keyboard workflow" | Interface share p50 42 ms, p95 45 ms, max 93 ms (Capture) and p50 43 ms, p95 44 ms, max 108 ms (Keep that). The transcriber's share is note 90's bench: 8.7 ms median for the whole corpus and 44.0 ms for a 128-note take, under 128 KiB of retained search. |
+| One review constraint or group transformation → replacement candidate and source preview | B14, `perf.spec.ts` "review" and "keyboard workflow" | p95 10 ms for a review decision and 7 ms for a group command, both to the redrawn reading and the preview beside it. |
+
+The two shares are reported beside each other and never added up. The interface's number is taken against a stubbed
+shell, which answers with a committed reading rather than transcribing one; adding it to a bench figure taken in a
+different process on a different workload would produce a total nobody measured.
 
 The structural constraints already govern: audition does not wait for compilation or transcription; MIDI callbacks
 allocate no event-sized storage and never touch the UI; capture is bounded; transcription runs off the real-time path;

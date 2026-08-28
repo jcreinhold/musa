@@ -38,13 +38,10 @@
   import { fixture } from "./lib/state/fixtures";
   import { volumeOf, type Diagnostic, type OutlineFacts, type Span } from "./lib/state/snapshot";
   import { Playhead, soundingAt } from "./lib/state/playhead.svelte";
-  import { NoteEntry } from "./lib/state/entry.svelte";
-  import { anchorFor, stroke } from "./lib/state/compose";
   import { durationIntent, respellIntent, transposeIntent } from "./lib/state/group";
   import { definitionAt, usesAt } from "./lib/state/terms";
   import type { Candidate } from "./lib/state/gesture.svelte";
   import type { EditDto } from "./lib/session/generated/EditDto";
-  import type { InsertAtDto } from "./lib/session/generated/InsertAtDto";
   import type { GroupIntentDto } from "./lib/session/generated/GroupIntentDto";
   import type { GeneratedEditModeDto } from "./lib/session/generated/GeneratedEditModeDto";
   import type { EditImpact } from "./lib/state/snapshot";
@@ -225,13 +222,6 @@
   let pinned = $state(false);
 
   /**
-   * Note entry. A mode, and never a hidden one: the duration
-   * glyph sits in the top margin the whole time it is on, and the caret is
-   * placed the moment it opens so there is always somewhere for a note to go.
-   */
-  const entry = new NoteEntry();
-
-  /**
    * An edit against generated music, waiting for the composer to choose
    * (`04-provenance.md` §4). Holding it here rather than in the inspector is
    * what lets Origin view enter and hold itself for as long as the choice is
@@ -360,7 +350,7 @@
     transportSaid = follow === "off" ? "Follow off" : `Follow ${follow}`;
   }
 
-  /** `Esc`: the choice first, then entry, then the selection, then the source column. */
+  /** `Esc`: the choice first, then the selection, then the source column. */
   function escape(): void {
     if (paletteOpen || keysOpen || settingsOpen) {
       paletteOpen = false;
@@ -378,24 +368,8 @@
       naming = null;
       return;
     }
-    if (entry.on) return entry.set(false);
     if (workspace.selection.kind !== "none") workspace.clear();
     else session.sourceOpen = false;
-  }
-
-  /**
-   * Turn note entry on, putting the caret where the next note would go.
-   *
-   * Entry always has a position: the selection if there is one, otherwise the
-   * end of the voice the composer was last in (`03-interaction.md` §1).
-   */
-  function toggleEntry(): void {
-    entry.toggle();
-    if (!entry.on) return;
-    if (workspace.selection.kind === "none") {
-      const active = workspace.active;
-      if (active) workspace.placeCaret(active.part, active.voice, "end");
-    }
   }
 
   /**
@@ -569,7 +543,6 @@
     follow: cycleFollow,
     loop: toggleLoop,
     origin: () => (pinned = !pinned),
-    entry: toggleEntry,
     respell,
     transpose: askForInterval,
     extract,
@@ -621,22 +594,11 @@
       held = true;
       if (event.key !== "Alt") event.preventDefault();
     }
-    // While entry is on, the score pane's letters and numbers are notes and
-    // durations rather than commands. Everything the entry map passes on —
-    // arrows, Space, ⌘-anything — still reaches the map below.
-    if (entry.on && scopeOf(event.target) === "score") {
-      const asked = stroke(event, entry, workspace);
-      if (asked.kind !== "pass") {
-        event.preventDefault();
-        if (asked.kind === "edit") void write(asked.edit, asked.at);
-        return;
-      }
-    }
-    // With the score focused and a selection made, the duration keys are a
-    // command against that selection rather than a setting for the next note
-    // — `03-interaction.md` §1's rule that the same shortcut changes what is
-    // selected. Entry mode has already had its turn above, so this is the
-    // no-mode path, and with nothing selected it is not a shortcut at all.
+    // With the score focused and a selection made, the number keys are a
+    // command against that selection — `03-interaction.md` §1's rule that a
+    // shortcut changes what is selected. With nothing selected they are not
+    // shortcuts at all: there is no mode in which a bare letter or digit
+    // writes a note.
     if (
       scopeOf(event.target) === "score" &&
       !event.metaKey &&
@@ -662,26 +624,6 @@
     if (!command) return;
     event.preventDefault();
     command.run(surface);
-  }
-
-  /**
-   * Issue an entry edit and move the caret past what it wrote.
-   *
-   * The new note has no id until the core answers, so the caret is placed
-   * afterwards by position in the voice — which is the only honest way to say
-   * "after the note I just entered" when ids are the core's to mint.
-   */
-  async function write(edit: EditDto, at: InsertAtDto | null): Promise<void> {
-    await issue(edit);
-    if (at === null || at.kind === "endOfVoice") return;
-    const before = at.event;
-    const events = session.snapshot?.score?.events ?? [];
-    const anchored = events.find((event) => event.id === before);
-    if (!anchored) return;
-    const voice = events.filter((e) => e.part === anchored.part && e.voice === anchored.voice);
-    const index = voice.findIndex((e) => e.id === before);
-    const written = at.kind === "before" ? voice[index] : voice[index + 1];
-    if (written) workspace.select(written.id);
   }
 
   /**
@@ -773,7 +715,6 @@
       choice = null;
       naming = null;
       onPage = [];
-      if (entry.on) toggleEntry();
     });
   });
 
@@ -806,7 +747,7 @@
     untrack(() => {
       if (caret === toldCaret) return;
       toldCaret = caret;
-      void session.listenToMidi(true, caret);
+      void session.auditionAt(caret);
     });
   });
 
@@ -821,8 +762,6 @@
     const report = await session.placeReview(voices);
     if (report) workspace.selectMany(report.events);
   }
-
-  session.played = null;
 
   // Apply this app preference once per open document and whenever it changes.
   // The project owns the buffer; localStorage owns only the yes/no choice.
@@ -917,7 +856,6 @@
     {sounding}
     onvisible={(ids) => (onPage = ids)}
     {pinned}
-    {entry}
     choice={choice?.impact ?? null}
     plan={session.groupPlan}
     {transposing}
@@ -930,7 +868,6 @@
     onloop={toggleLoop}
     onfollow={cycleFollow}
     onpin={() => (pinned = !pinned)}
-    onentry={toggleEntry}
     onconfirm={() => void confirmChoice()}
     onspecialize={() => void specializeChoice()}
     oncancel={cancelChoice}
@@ -944,11 +881,6 @@
     {candidate}
     onedit={(moving) => void issue(editFor(moving))}
     oncandidate={(moving) => void preview(moving)}
-    oninsert={(pitch) => {
-      const at = anchorFor(workspace);
-      const note = { kind: "note", pitch, duration: entry.duration } as const;
-      if (at) void write({ kind: "insertNote", at, note }, at);
-    }}
     onpitch={(event, pitch) => void issue({ kind: "changePitch", event, pitch, mode: "editDefinition" })}
     onduration={(event, duration) =>
       void issue({

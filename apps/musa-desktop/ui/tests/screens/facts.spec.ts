@@ -5,7 +5,7 @@
  * is selected, the top band's tempo, key and meter, and five lines on the
  * engraved page — and all three are the same field reaching the same command.
  *
- * As in `entry.spec.ts`, what these assert is the *command the interface
+ * As in `editing.spec.ts`, what these assert is the *command the interface
  * issued*: the stub is not a compiler, so what a `setHeader` does to the text
  * is asserted by `musa-project`'s editing laws — that an unnamed role is
  * inserted in the formatter's order, that emptying one deletes the statement,

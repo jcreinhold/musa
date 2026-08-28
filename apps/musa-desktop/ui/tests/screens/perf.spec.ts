@@ -16,7 +16,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { engraved } from "./engraved";
 import { toggleSource, rewrite } from "./source";
 import { stubShell } from "./shell";
-import { openReview } from "./reviewing";
+import { openReview, reading } from "./reviewing";
 
 /** The debounce the budget is stated relative to (`06-frame-budgets.md` §1). */
 const SETTLE_MS = 100;
@@ -629,6 +629,229 @@ test.describe("review", () => {
       record("R3 focus restored", p95(samples)),
       `focus was restored at p95 ${Math.round(p95(samples))} ms after the redraw`,
     ).toBeLessThanOrEqual(50);
+  });
+});
+
+/**
+ * The rest of the keyboard workflow, measured end to end
+ * (`06-frame-budgets.md` §7).
+ *
+ * §7 asks for whole workflows rather than functions: a take from the door it
+ * came through to the proposal a composer can read, a revision command to the
+ * preview it owes, and the phrase to the ink it becomes. Each is measured on
+ * the same fixture take — twelve notes in one bar of 4/4 — and reported as
+ * p50/p95/max, because a workflow's worst case is the one a musician
+ * remembers.
+ *
+ * The transcriber is not in these numbers. The harness's shell answers with a
+ * committed reading, so what is measured is the interface's share of each
+ * arrow: the round trip through the session store, the arrangement, the ink.
+ * The core's share is `musa-project`'s to measure, and note 91 reports the two
+ * beside each other rather than adding them up.
+ */
+test.describe("keyboard workflow", () => {
+  /** The capture facts a keyboard with a phrase in it would give. */
+  const PLAYED = {
+    state: "capturing",
+    recentEnabled: true,
+    recentEvents: 12,
+    recentMicros: 4_000_000,
+    recentTruncated: false,
+    captureEvents: 12,
+    captureMicros: 4_000_000,
+    recentEventLimit: 4096,
+    recentTimeLimitMicros: 30_000_000,
+    captureEventLimit: 65_536,
+    captureTimeLimitMicros: 600_000_000,
+    unsupportedAuditionEvents: 0,
+    losses: { queueOverflow: 0, refusedSysex: 0, malformed: 0, unsupportedSystem: 0 },
+  } as const;
+
+  /**
+   * Report a workflow's whole distribution.
+   *
+   * A budget states a p95, and §7 asks for p50 and the maximum beside it: the
+   * median says what the workflow usually costs, and the maximum is the trial
+   * a composer would call slow. Printing all three keeps a passing run
+   * informative, the same way `record` does for the frame budgets.
+   */
+  function records(step: string, samples: number[]): number {
+    const sorted = [...samples].sort((a, b) => a - b);
+    const median = sorted[Math.floor(sorted.length / 2)] ?? Number.NaN;
+    const worst = sorted[sorted.length - 1] ?? Number.NaN;
+    process.stdout.write(
+      `  ${step}: p50 ${Math.round(median)} ms, p95 ${Math.round(p95(samples))} ms, max ${Math.round(worst)} ms\n`,
+    );
+    return p95(samples);
+  }
+
+  /**
+   * The first `to` mark that answers the `from` mark, in ms.
+   *
+   * `atLeast` is the same distinction the review block draws: a strict `>` is
+   * right when the two marks are made in different tasks, and wrong when the
+   * answer arrives in a microtask, where the clock can put both at the same
+   * instant.
+   */
+  async function span(page: Page, from: string, to: string, atLeast = false): Promise<number> {
+    return page.evaluate(
+      ([start, end, same]) => {
+        const gesture = performance.getEntriesByName(`musa:${start}`, "mark")[0]?.startTime;
+        if (gesture === undefined) return Number.NaN;
+        const done = performance
+          .getEntriesByName(`musa:${end}`, "mark")
+          .find((at) => (same ? at.startTime >= gesture : at.startTime > gesture));
+        return done === undefined ? Number.NaN : done.startTime - gesture;
+      },
+      [from, to, atLeast] as const,
+    );
+  }
+
+  /** Put a keyboard on the line with a take in it, and a reading waiting. */
+  async function played(page: Page, state: "capturing" | "listen"): Promise<void> {
+    await page.evaluate((facts) => window.__musaReview(facts), reading("straight-known"));
+    await page.evaluate((facts) => window.__musaSet({ midiPort: "Stub Keyboard", midiCapture: facts }), {
+      ...PLAYED,
+      state,
+    } as Record<string, unknown>);
+  }
+
+  /**
+   * A door to the first proposal a composer can read.
+   *
+   * Two presses, not one: the take is finished, and Review is offered rather
+   * than opened, because a capture that threw the composer into a reading
+   * would decide for them. Both are in the measurement, since what §7 asks
+   * for is the time from the phrase being played to the phrase being
+   * readable.
+   */
+  async function throughTheDoor(page: Page, door: "Finish" | "Keep that"): Promise<number> {
+    await page.evaluate(() => performance.clearMarks());
+    await page.getByRole("button", { name: door, exact: true }).click();
+    await page.getByRole("button", { name: "Review the take" }).click();
+    await page.waitForFunction(() => performance.getEntriesByName("musa:reviewDrawn", "mark").length > 0);
+    const measured = await span(page, "capture", "reviewDrawn");
+    await page.getByRole("button", { name: "Discard" }).click();
+    await expect(page.getByRole("heading", { name: "Review" })).toBeHidden();
+    // Discarding clears the screen before the shell answers, so the next
+    // trial's take has to be seeded after this one is actually gone.
+    await expect.poll(() => page.evaluate(() => window.__musaHasTake())).toBe(false);
+    return measured;
+  }
+
+  test("C1: Capture reaches a readable proposal within 250 ms", async ({ page }) => {
+    await stubShell(page);
+    await page.goto("/?perf=1");
+    await engraved(page);
+
+    const samples: number[] = [];
+    for (let trial = 0; trial < TRIALS; trial += 1) {
+      await played(page, "capturing");
+      samples.push(await throughTheDoor(page, "Finish"));
+    }
+    expect(
+      records("C1 capture→proposal", samples),
+      `the proposal was readable at p95 ${Math.round(p95(samples))} ms after Finish`,
+    ).toBeLessThanOrEqual(250);
+    expect(Math.min(...samples)).toBeGreaterThan(0);
+  });
+
+  test("C2: Keep that reaches the same proposal within 250 ms", async ({ page }) => {
+    await stubShell(page);
+    await page.goto("/?perf=1");
+    await engraved(page);
+
+    const samples: number[] = [];
+    for (let trial = 0; trial < TRIALS; trial += 1) {
+      await played(page, "listen");
+      samples.push(await throughTheDoor(page, "Keep that"));
+    }
+    expect(
+      records("C2 keep that→proposal", samples),
+      `the proposal was readable at p95 ${Math.round(p95(samples))} ms after Keep that`,
+    ).toBeLessThanOrEqual(250);
+    expect(Math.min(...samples)).toBeGreaterThan(0);
+  });
+
+  test("G1: a group command reaches its preview within 100 ms", async ({ page }) => {
+    await stubShell(page);
+    await page.goto("/?perf=1");
+    await engraved(page);
+    await quiet(page);
+
+    // One authored note, chosen the way a composer chooses one.
+    await page.locator('.engraving [id="event-c"] use').click({ force: true });
+    await page.getByRole("application", { name: "Engraved score" }).focus();
+
+    const samples: number[] = [];
+    for (let trial = 0; trial < TRIALS; trial += 1) {
+      await page.evaluate(() => performance.clearMarks());
+      // A number key with a selection is a command against it (prompt 206).
+      await page.keyboard.press(trial % 2 === 0 ? "8" : "4");
+      await page.waitForFunction(() => performance.getEntriesByName("musa:groupDrawn", "mark").length > 0);
+      samples.push(await span(page, "group", "groupDrawn"));
+      await page.keyboard.press("Escape");
+    }
+    expect(
+      records("G1 command→preview", samples),
+      `the preview was readable at p95 ${Math.round(p95(samples))} ms after the key`,
+    ).toBeLessThanOrEqual(100);
+    expect(Math.min(...samples)).toBeGreaterThan(0);
+  });
+
+  /**
+   * Keeping the phrase, and taking it back.
+   *
+   * The kept half is measured to the ink, because keeping closes Review and
+   * puts the page back — that whole change is what the composer sees. The
+   * undo half is measured to the snapshot instead: the stub cannot compile,
+   * so the source it answers undo with engraves to the MEI already on the
+   * leaf and no new ink is owed. What an edit costs in ink is B2's number, on
+   * a workload where the page really does change.
+   */
+  test("A1: keeping the phrase reaches new ink within 400 ms, and undo returns it", async ({ page }) => {
+    await stubShell(page);
+    await page.goto("/?perf=1");
+    await engraved(page);
+
+    const kept: number[] = [];
+    const undone: number[] = [];
+    for (let trial = 0; trial < TRIALS; trial += 1) {
+      await played(page, "capturing");
+      await page.getByRole("button", { name: "Finish", exact: true }).click();
+      await page.getByRole("button", { name: "Review the take" }).click();
+      await page.getByRole("button", { name: "Accept" }).click();
+      await expect(page.getByRole("group", { name: "Where this phrase goes" })).toBeVisible();
+
+      await page.evaluate(() => performance.clearMarks());
+      await page.getByRole("button", { name: "Keep", exact: true }).click();
+      await expect(page.getByRole("heading", { name: "Review" })).toBeHidden();
+      await page.waitForFunction(() => performance.getEntriesByName("musa:score", "mark").length > 0);
+      kept.push(await span(page, "keep", "score"));
+      await quiet(page);
+
+      await page.evaluate(() => performance.clearMarks());
+      await page.getByRole("application", { name: "Engraved score" }).focus();
+      await page.keyboard.press("Meta+z");
+      await page.waitForFunction(() => performance.getEntriesByName("musa:snapshot", "mark").length > 0);
+      undone.push(await span(page, "undo", "snapshot", true));
+      await quiet(page);
+    }
+    expect(
+      records("A1 keep→ink", kept),
+      `the kept phrase was on the leaf at p95 ${Math.round(p95(kept))} ms`,
+    ).toBeLessThanOrEqual(400);
+    expect(
+      records("A1 undo→document", undone),
+      `the previous document was in hand at p95 ${Math.round(p95(undone))} ms`,
+    ).toBeLessThanOrEqual(400);
+    // The kept half really is a redraw and must measure something. The undo
+    // half often does not: the stub answers in a microtask, so the round trip
+    // can land inside the clock's own resolution. That is the honest reading
+    // — the interface adds nothing measurable to an undo — and asserting a
+    // positive number there would be asserting a slower harness.
+    expect(Math.min(...kept)).toBeGreaterThan(0);
+    expect(undone.every((sample) => Number.isFinite(sample))).toBe(true);
   });
 });
 

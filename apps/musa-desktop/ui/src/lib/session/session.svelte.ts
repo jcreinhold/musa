@@ -29,7 +29,7 @@ import type { ReviewFactsDto } from "./generated/ReviewFactsDto";
 import type { TemplateDto } from "./generated/TemplateDto";
 import type { EditDto } from "./generated/EditDto";
 import type { StudioEditDto } from "./generated/StudioEditDto";
-import type { AnalysisFacts, EditImpact, LibraryDocument, MidiEntry, ProjectSnapshot } from "../state/snapshot";
+import type { AnalysisFacts, EditImpact, LibraryDocument, ProjectSnapshot } from "../state/snapshot";
 
 /**
  * How long typing settles before the source is compiled
@@ -91,7 +91,7 @@ export type Link = Pick<
   | "askToOpen"
   | "askToOpenProject"
   | "askToSave"
-  | "listenToMidi"
+  | "auditionAt"
   | "selectMidiInput"
   | "startMidiCapture"
   | "stopMidiCapture"
@@ -146,15 +146,6 @@ export class Session {
    * and thereafter respects whatever the user last chose (`05-states.md` §4).
    */
   sourceOpen = $state(false);
-
-  /**
-   * What to do with notes played in on a MIDI keyboard.
-   *
-   * A callback rather than state, because a played note is an event and not a
-   * condition: it is written once, where the caret is at that moment. The
-   * workspace sets this; the session only carries it.
-   */
-  played: ((entry: MidiEntry) => void) | null = null;
 
   /**
    * A bundled module being read, or null while the piece is
@@ -361,7 +352,6 @@ export class Session {
       link.on("musa://transport", (playback) => {
         if (this.snapshot) this.snapshot = { ...this.snapshot, playback };
       }),
-      link.on("musa://midi", (entry) => this.played?.(entry)),
     ]);
     // No piece open yet is the launch state, not a failure.
     await link.snapshot().then(
@@ -477,13 +467,13 @@ export class Session {
   }
 
   /** Keep the selected part current for harmless always-listen audition. */
-  async listenToMidi(listening: boolean, caret: string | null = null): Promise<void> {
+  async auditionAt(caret: string | null = null): Promise<void> {
     const link = this.#link;
     if (!link) return;
     try {
-      const snapshot = await link.listenToMidi(listening, caret);
+      const snapshot = await link.auditionAt(caret);
       this.receive(snapshot);
-      if (listening && snapshot.midiPort) {
+      if (snapshot.midiPort) {
         this.say({
           tone: "result",
           message: `Listening to ${snapshot.midiPort}; source is unchanged.`,
@@ -518,6 +508,7 @@ export class Session {
   async stopMidiCapture(): Promise<void> {
     const link = this.#link;
     if (!link) return;
+    mark("capture");
     try {
       this.receive(await link.stopMidiCapture());
       this.say({ tone: "result", message: "Capture ready to review." });
@@ -529,6 +520,7 @@ export class Session {
   async keepRecentMidi(caret: string | null): Promise<void> {
     const link = this.#link;
     if (!link) return;
+    mark("capture");
     try {
       this.receive(await link.keepRecentMidi(caret));
       this.say({ tone: "result", message: "Recent phrase ready to review." });
@@ -613,6 +605,7 @@ export class Session {
   async planGroupEdit(edit: GroupEditDto): Promise<GroupEditPlanDto | null> {
     const link = this.#link;
     if (!link || edit.events.length === 0) return null;
+    mark("group");
     try {
       const plan = await link.groupEditPlan(edit);
       this.groupPlan = plan;
@@ -717,6 +710,7 @@ export class Session {
    * the undo stack, and the review exactly as they were.
    */
   async placeReview(voices: string[]): Promise<PlacementReportDto | null> {
+    mark("keep");
     const pending = this.#link?.reviewPlace(voices);
     if (!pending) return null;
     try {
@@ -886,6 +880,7 @@ export class Session {
   }
 
   async undo(): Promise<void> {
+    mark("undo");
     await this.run({ kind: "undo" });
   }
 

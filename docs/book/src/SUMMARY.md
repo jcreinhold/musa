@@ -5,6 +5,7 @@
 # Tutorials
 
 - [Getting started](tutorials/getting-started.md)
+- [Your first captured phrase](tutorials/first-captured-phrase.md)
 
 # Writing music
 
@@ -23,6 +24,12 @@
 - [Play a piece](how-to/play.md)
 - [Set up an editor](how-to/editor-setup.md)
 - [Run the desktop app](how-to/desktop.md)
+- [Capture against a tempo](how-to/capture-with-a-clock.md)
+- [Capture without a tempo](how-to/capture-without-a-clock.md)
+- [Keep what you just played](how-to/keep-what-you-just-played.md)
+- [Correct chords and voices](how-to/correct-chords-and-voices.md)
+- [Change notes you have selected](how-to/change-selected-notes.md)
+- [Fix a keyboard or latency problem](how-to/fix-a-keyboard.md)
 - [Write for the studio](how-to/studio.md)
 - [Work with events files](how-to/events-files.md)
 
@@ -31,6 +38,7 @@
 - [Architecture](concepts/architecture.md)
 - [The event-track](concepts/event-track.md)
 - [Exact time](concepts/exact-time.md)
+- [Performed time and written time](concepts/performed-and-written-time.md)
 - [Layer separation](concepts/layer-separation.md)
 - [Source and provenance](concepts/provenance.md)
 - [Adapters: macros as ordinary functions](concepts/macros.md)
@@ -47,3 +55,4 @@
 - [CLI](reference/cli.md)
 - [Lint codes](reference/lints.md)
 - [Events interchange format](reference/events-format.md)
+- [Capture and transcription](reference/capture-and-transcription.md)
