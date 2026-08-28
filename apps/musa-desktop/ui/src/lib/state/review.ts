@@ -9,6 +9,8 @@
  * (`03-interaction.md` §7).
  */
 
+import type { PlacedVoiceDto } from "../session/generated/PlacedVoiceDto";
+import type { PlacementPlanDto } from "../session/generated/PlacementPlanDto";
 import type { ReviewAmbiguityDto } from "../session/generated/ReviewAmbiguityDto";
 import type { ReviewFactsDto } from "../session/generated/ReviewFactsDto";
 import type { ReviewNoteDto } from "../session/generated/ReviewNoteDto";
@@ -115,12 +117,51 @@ export function nextMark(facts: ReviewFactsDto, current: string | null, step: 1 
 export function destination(facts: ReviewFactsDto): string {
   const lines = facts.voiceCount === 1 ? "one line" : `${facts.voiceCount} lines`;
   const notes = facts.notes.length === 1 ? "1 note" : `${facts.notes.length} notes`;
-  return `${notes} in ${lines}, in ${facts.meter}`;
+  const where = facts.voice === null ? facts.part : `${facts.part}\u2019s ${facts.voice}`;
+  return `${notes} in ${lines}, into ${where}, in ${facts.meter}`;
 }
 
 /** Whether the reading can be kept: it writes exactly and is not already kept. */
 export function keepable(facts: ReviewFactsDto): boolean {
   return facts.source !== null && !facts.sealed && facts.current;
+}
+
+/**
+ * Whether the accepted phrase can be written now.
+ *
+ * Two separate questions, and both have to be yes: the project has said what
+ * it would write, and the reading is still of the document on screen. A
+ * plan computed against a revision that has moved describes byte ranges of a
+ * document nobody has — which is exactly what the project refuses to apply.
+ */
+export function placeable(facts: ReviewFactsDto, plan: PlacementPlanDto | null): boolean {
+  return plan !== null && facts.sealed && facts.current;
+}
+
+/**
+ * What one planned line would do, in the words the margin uses.
+ *
+ * The distinction the sentence has to carry is whether the name is a line
+ * the part already has — in which case the phrase joins music that is
+ * already there — or a line acceptance would add. Those are different acts,
+ * and a composer choosing a name is choosing between them.
+ */
+export function fate(line: PlacedVoiceDto, part: string): string {
+  const bars = line.bars === 1 ? "1 bar" : `${line.bars} bars`;
+  return line.added ? `${bars} into a new line` : `${bars} into ${part}\u2019s ${line.name}`;
+}
+
+/**
+ * The names to offer for the plan's lines, keeping whatever is already typed.
+ *
+ * Seeding is by position and only when the count changes: re-planning after
+ * every keystroke answers with the names it was given, and reseeding from
+ * that answer would be a loop that fights the person typing.
+ */
+export function naming(plan: PlacementPlanDto | null, typed: string[]): string[] {
+  if (!plan) return [];
+  if (typed.length === plan.voices.length) return typed;
+  return plan.voices.map((line) => line.name);
 }
 
 /**

@@ -810,6 +810,18 @@
     });
   });
 
+  /**
+   * Keep the reviewed phrase, and land the selection on what it wrote.
+   *
+   * The ids come back from the project, which knows which events the new
+   * revision added; the interface does not re-derive them from the source it
+   * did not compile (`03-interaction.md` §5).
+   */
+  async function keepPhrase(voices: string[]): Promise<void> {
+    const report = await session.placeReview(voices);
+    if (report) workspace.selectMany(report.events);
+  }
+
   session.played = null;
 
   // Apply this app preference once per open document and whenever it changes.
@@ -880,10 +892,14 @@
 {:else if session.snapshot && session.review}
   <Review
     facts={session.review}
+    plan={session.placement}
+    refusal={session.placementRefusal}
     onact={(action) => void session.reviewAct(action)}
     onundo={() => void session.undoReview()}
     onaudition={(mode) => void session.auditionReview(mode)}
     onaccept={() => void session.acceptReview()}
+    onplan={(voices) => void session.planReviewPlacement(voices)}
+    onplace={(voices) => void keepPhrase(voices)}
     ondiscard={() => void session.discardReview()}
   />
 {:else if session.snapshot}

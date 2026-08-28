@@ -353,3 +353,136 @@ fn specializing_something_that_is_not_an_occurrence_is_refused() {
         Err(EditError::NotAnOccurrence { .. })
     ));
 }
+
+// --- a captured phrase, written into a score ------------------------------
+//
+// A transcribed take arrives as complete bars, already spelled: what these
+// laws fix is where that text lands and how it is laid out, because a phrase
+// a composer never typed still has to read like one they did.
+
+/// One line, so a one-line voice can prove it stays one line.
+const INLINE: &str = r#"piece "Sketch" {
+    score {
+        part keyboard {
+            voice upper { | c4/4 d4/4 }
+        }
+    }
+}
+"#;
+
+#[test]
+fn a_phrase_joins_a_written_out_voice_one_bar_a_line() {
+    let out = edited(
+        PIECE,
+        &EditIntent::AppendPhrase {
+            part: "piano".to_owned(),
+            voice: "right".to_owned(),
+            bars: vec!["c4/4 d4/4 e4/4 f4/4".to_owned(), "g4/1".to_owned()],
+        },
+    );
+    assert!(
+        out.contains("                b4/4\n                | c4/4 d4/4 e4/4 f4/4\n                | g4/1\n"),
+        "{out}"
+    );
+}
+
+#[test]
+fn a_phrase_joins_a_one_line_voice_on_its_line() {
+    let out = edited(
+        INLINE,
+        &EditIntent::AppendPhrase {
+            part: "keyboard".to_owned(),
+            voice: "upper".to_owned(),
+            bars: vec!["e4/2 f4/2".to_owned()],
+        },
+    );
+    assert!(out.contains("voice upper { | c4/4 d4/4 | e4/2 f4/2 }"), "{out}");
+}
+
+#[test]
+fn a_phrase_opens_an_empty_voice_one_level_in() {
+    let out = edited(
+        PIECE,
+        &EditIntent::AppendPhrase {
+            part: "piano".to_owned(),
+            voice: "left".to_owned(),
+            bars: vec!["a2/1".to_owned()],
+        },
+    );
+    assert!(
+        out.contains("            voice left {\n                | a2/1\n            }"),
+        "{out}"
+    );
+}
+
+#[test]
+fn a_new_voice_joins_the_part_after_the_lines_it_has() {
+    let out = edited(
+        PIECE,
+        &EditIntent::AddVoice {
+            part: "piano".to_owned(),
+            voice: "middle".to_owned(),
+            bars: vec!["e4/2 f4/2".to_owned()],
+        },
+    );
+    assert!(
+        out.contains("            voice middle {\n                | e4/2 f4/2\n            }"),
+        "{out}"
+    );
+    // It is added, never merged into: the lines that were there are untouched.
+    assert!(out.contains("                a4/4\n                b4/4"), "{out}");
+}
+
+#[test]
+fn a_voice_name_the_part_already_uses_is_refused() {
+    let intent = EditIntent::AddVoice {
+        part: "piano".to_owned(),
+        voice: "right".to_owned(),
+        bars: vec!["c4/1".to_owned()],
+    };
+    // A name collision is a refusal, never a merge: the caller asked for a
+    // line the part does not have, and it has one.
+    assert_eq!(
+        compute_edits(PIECE, &intent),
+        Err(EditError::VoiceExists {
+            part: "piano".to_owned(),
+            voice: "right".to_owned(),
+        })
+    );
+}
+
+#[test]
+fn a_part_the_score_does_not_have_is_refused() {
+    let intent = EditIntent::AddVoice {
+        part: "cello".to_owned(),
+        voice: "line".to_owned(),
+        bars: vec!["c4/1".to_owned()],
+    };
+    // A part that is not there is a refusal, never a part that is made up.
+    assert_eq!(
+        compute_edits(PIECE, &intent),
+        Err(EditError::NoPart {
+            part: "cello".to_owned()
+        })
+    );
+}
+
+#[test]
+fn a_phrase_with_no_bars_is_a_mistake_rather_than_a_no_op() {
+    for intent in [
+        EditIntent::AppendPhrase {
+            part: "piano".to_owned(),
+            voice: "right".to_owned(),
+            bars: Vec::new(),
+        },
+        EditIntent::AddVoice {
+            part: "piano".to_owned(),
+            voice: "middle".to_owned(),
+            bars: Vec::new(),
+        },
+    ] {
+        // An empty phrase writes nothing, and a no-op edit plan would say it
+        // had written it.
+        assert_eq!(compute_edits(PIECE, &intent), Err(EditError::EmptyPhrase));
+    }
+}

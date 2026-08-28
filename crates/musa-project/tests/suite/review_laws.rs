@@ -16,7 +16,8 @@
 #![allow(clippy::panic)]
 
 use musa_project::{
-    AmbiguityKind, GroupIntent, ProjectCommand, ProjectSession, ReviewAction, ReviewAudition, ReviewError, ReviewFacts,
+    AmbiguityKind, GroupIntent, ProjectCommand, ProjectSession, ReviewAction, ReviewAudition, ReviewDestination,
+    ReviewError, ReviewFacts, ReviewRequest,
 };
 
 use crate::transcription_corpus::{CORPUS, Corpus, clock_of, session, synthesize};
@@ -29,6 +30,27 @@ const UNTOUCHED: &str = r#"piece "Proposal laws" {
 }
 "#;
 
+/// The fixture's take, aimed at the one voice `UNTOUCHED` has.
+fn request<'a>(
+    id: &'a str,
+    events: &'a [musa_project::CapturedMidiEvent],
+    clock: musa_project::TakeClock,
+) -> ReviewRequest<'a> {
+    ReviewRequest {
+        take_name: id,
+        destination: ReviewDestination {
+            part: "p".to_owned(),
+            voice: Some("v".to_owned()),
+        },
+        events,
+        clock,
+        bar_ticks: 96,
+        meter: "4/4",
+        key: None,
+        policy_name: "standard",
+    }
+}
+
 fn open(id: &str) -> (ProjectSession, ReviewFacts) {
     let body: Corpus = serde_json::from_str(CORPUS).expect("decode the checked-in corpus");
     let fixture = body
@@ -38,15 +60,7 @@ fn open(id: &str) -> (ProjectSession, ReviewFacts) {
         .unwrap_or_else(|| panic!("the corpus has a `{id}` fixture"));
     let mut session = session();
     let facts = session
-        .begin_review(
-            &fixture.id,
-            &synthesize(fixture),
-            clock_of(&fixture.clock),
-            96,
-            "4/4",
-            None,
-            "standard",
-        )
+        .begin_review(&request(&fixture.id, &synthesize(fixture), clock_of(&fixture.clock)))
         .expect("the fixture composes");
     (session, facts)
 }
@@ -60,15 +74,7 @@ fn refuse(id: &str) -> musa_project::ProposalError {
         .unwrap_or_else(|| panic!("the corpus has a `{id}` fixture"));
     let mut session = session();
     session
-        .begin_review(
-            &fixture.id,
-            &synthesize(fixture),
-            clock_of(&fixture.clock),
-            96,
-            "4/4",
-            None,
-            "standard",
-        )
+        .begin_review(&request(&fixture.id, &synthesize(fixture), clock_of(&fixture.clock)))
         .expect_err("this fixture is refused")
 }
 

@@ -30,34 +30,50 @@
   import type { ReviewActionDto } from "../lib/session/generated/ReviewActionDto";
   import type { ReviewAuditionDto } from "../lib/session/generated/ReviewAuditionDto";
   import type { ReviewFactsDto } from "../lib/session/generated/ReviewFactsDto";
+  import type { PlacementPlanDto } from "../lib/session/generated/PlacementPlanDto";
   import { durationIntent, respellIntent, transposeIntent } from "../lib/state/group";
   import {
     barTicks,
     barlines,
     destination,
+    fate,
     keepable,
     marked,
     marksOver,
+    naming,
     nextMark,
+    placeable,
     rows,
     taps,
   } from "../lib/state/review";
 
   let {
     facts,
+    plan = null,
+    refusal = null,
     onact,
     onundo,
     onaudition,
     onaccept,
+    onplan,
+    onplace,
     ondiscard,
   }: {
     /** The reading, as the project composed it. */
     facts: ReviewFactsDto;
+    /** What keeping it would write, once it has been accepted. */
+    plan?: PlacementPlanDto | null;
+    /** Why the project would not write it, in the project's own words. */
+    refusal?: string | null;
     /** Make one gesture. Absent while nothing is answering. */
     onact?: (action: ReviewActionDto) => void;
     onundo?: () => void;
     onaudition?: (mode: ReviewAuditionDto) => void;
     onaccept?: () => void;
+    /** Ask again with these line names. Writes nothing. */
+    onplan?: (voices: string[]) => void;
+    /** Write the phrase into these lines. */
+    onplace?: (voices: string[]) => void;
     ondiscard?: () => void;
   } = $props();
 
@@ -104,6 +120,32 @@
   const lines = $derived(barlines(facts, bar));
   const questioned = $derived(marked(facts));
   const ready = $derived(keepable(facts));
+  const settled = $derived(placeable(facts, plan));
+
+  /**
+   * The names the phrase would be written into, one per planned line.
+   *
+   * Typed here and answered by the project: every change re-asks for the
+   * plan, so "does this part already have a line called that" is the
+   * project's question and not this screen's guess.
+   */
+  let typed = $state<string[]>([]);
+  // The guard is load-bearing, exactly as it is for the selection above: an
+  // effect that writes the state it read runs forever otherwise.
+  $effect(() => {
+    const offered = naming(plan, typed);
+    if (offered.length !== typed.length || offered.some((name, at) => name !== typed[at])) typed = offered;
+  });
+
+  function rename(at: number, name: string): void {
+    typed = typed.map((held, index) => (index === at ? name : held));
+    onplan?.(typed);
+  }
+
+  /** Write it. The names go with it, so what was read is what is written. */
+  function keep(): void {
+    onplace?.(typed);
+  }
 
   // A mark that has been settled is no longer open: the panel must not go on
   // offering readings for a question that has been answered.
@@ -224,7 +266,8 @@
         return;
       }
       case "k": {
-        if (ready) onaccept?.();
+        if (settled) keep();
+        else if (ready) onaccept?.();
         event.preventDefault();
         return;
       }
@@ -255,12 +298,22 @@
   <Margin side="top">
     <div class="identity">
       <h1 class="title">Review</h1>
-      <p class="where">{facts.takeName} — {destination(facts)}</p>
+      <!--
+        One line, and which one depends on what is still open: what the take
+        *is* while that is the question, and where it *goes* once the notation
+        is settled. Saying both at once would be two sentences competing to be
+        the one thing the margin is for (`05-states.md` §1).
+      -->
+      {#if facts.sealed}
+        <p class="kept" role="status">{facts.takeName} — {plan ? plan.summary : "Kept — ready to place."}</p>
+      {:else}
+        <p class="where">{facts.takeName} — {destination(facts)}</p>
+      {/if}
       {#if !facts.current}
         <p class="stale" role="status">The piece changed while you were reading this.</p>
       {/if}
-      {#if facts.sealed}
-        <p class="kept" role="status">Kept — ready to place.</p>
+      {#if refusal}
+        <p class="refused" role="alert">{refusal}</p>
       {/if}
     </div>
 
@@ -294,7 +347,11 @@
       <button type="button" class="text" disabled={facts.history.length === 0} onclick={() => onundo?.()}>
         Take back
       </button>
-      <button type="button" class="text keep" disabled={!ready} onclick={() => onaccept?.()}>Accept</button>
+      {#if facts.sealed}
+        <button type="button" class="text keep" disabled={!settled} onclick={keep}>Keep</button>
+      {:else}
+        <button type="button" class="text keep" disabled={!ready} onclick={() => onaccept?.()}>Accept</button>
+      {/if}
       <button type="button" class="text" onclick={() => ondiscard?.()}>Discard</button>
     </div>
   </Margin>
@@ -335,10 +392,37 @@
 
     <Margin side="right" label="Choices">
       <div class="asks">
-        {#if facts.ambiguities.length === 0}
+        {#if facts.ambiguities.length === 0 && !plan}
           <p class="settled">
             {facts.sealed ? "This phrase is kept." : "Nothing to decide — this reads one way."}
           </p>
+        {/if}
+
+        <!--
+          The last question the phrase asks, and the only one whose answer is
+          typed: which line of the part each voice of the reading joins. It
+          appears only once the notation is settled, because until then there
+          is no phrase to put anywhere (`03-interaction.md` §7).
+        -->
+        {#if plan}
+          <div class="mark open lines" role="group" aria-label="Where this phrase goes">
+            <ul class="choices">
+              {#each plan.voices as line, at (line.proposalVoice)}
+                <li class="line">
+                  <label for={`line-${line.proposalVoice}`}>Line {line.proposalVoice + 1}</label>
+                  <input
+                    id={`line-${line.proposalVoice}`}
+                    type="text"
+                    spellcheck="false"
+                    autocomplete="off"
+                    value={typed[at] ?? line.name}
+                    oninput={(event) => rename(at, event.currentTarget.value)}
+                  />
+                  <span class="fate">{fate(line, plan.part)}</span>
+                </li>
+              {/each}
+            </ul>
+          </div>
         {/if}
 
         {#each facts.ambiguities as mark (mark.id)}
@@ -517,10 +601,44 @@
   .kept,
   .settled,
   .affected,
+  .fate,
   .loss {
     margin: 0;
     font-size: 0.85rem;
     color: var(--ink-muted);
+  }
+
+  /*
+   * A refusal is louder than the rest of the margin because it is the one
+   * line that changes what to do next: everything else here describes what
+   * is, and this says why nothing happened (`05-states.md` §3).
+   */
+  .refused {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--chalk);
+  }
+
+  .line {
+    display: grid;
+    grid-template-columns: auto minmax(4rem, 1fr);
+    align-items: baseline;
+    column-gap: var(--s-2);
+  }
+
+  .line input {
+    font: inherit;
+    font-size: 0.85rem;
+    color: var(--ink);
+    background: var(--leaf);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius-control);
+    padding: 0 var(--s-1);
+    min-width: 0;
+  }
+
+  .line .fate {
+    grid-column: 1 / -1;
   }
 
   .verbs {

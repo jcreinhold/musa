@@ -108,9 +108,10 @@ test("a reading the search is sure of asks nothing and is kept in one press", as
   await expect(choices(page).getByRole("button", { name: /^bar/ })).toHaveCount(0);
 
   await page.getByRole("button", { name: "Accept", exact: true }).click();
-  await expect(page.getByText("Kept — ready to place.")).toBeVisible();
-  // Keeping settles what the phrase is. Placing it is prompt 208's
-  // transaction, and no source has moved here.
+  // Accepting settles what the phrase *is*, and the margin turns to saying
+  // where it would go. Writing it is one more press, and until it is pressed
+  // no source has moved.
+  await expect(page.getByText("4 notes in 1 bar into p’s v")).toBeVisible();
   expect(await page.evaluate(() => window.__musaEdits)).toHaveLength(0);
 });
 

@@ -367,10 +367,20 @@
             <span class="port" title="Auditions the selected source instrument; never writes notes">
               {sound?.instrument ?? "Instrument"} — {snapshot.midiPort}
             </span>
+            <!--
+              Whether the transport is running is what decides the take's
+              clock: playing counts the phrase in and the take carries the
+              piece's pulse, and playing free leaves Review to ask for one.
+              Said before the phrase is played, because afterwards it is a
+              question and not a choice (`05-states.md` §2).
+            -->
             <button
               type="button"
               class="text"
               aria-pressed={snapshot.midiCapture.state === "capturing"}
+              title={snapshot.playback.playing
+                ? "Counted in — the take keeps the piece’s pulse"
+                : "Played free — Review will ask for the pulse"}
               onclick={() =>
                 void (snapshot.midiCapture.state === "capturing"
                   ? session.stopMidiCapture()
@@ -390,6 +400,9 @@
                 type="button"
                 class="text"
                 disabled={snapshot.midiCapture.recentEvents === 0}
+                title={snapshot.midiCapture.recentEvents === 0
+                  ? "Nothing played yet — play a phrase and it can be kept"
+                  : "Keep the phrase just played, from the last silence"}
                 onclick={() => void session.keepRecentMidi(workspace.caretAt?.id ?? null)}>Keep that</button
               >
               <button
@@ -401,9 +414,11 @@
               >
                 {snapshot.midiCapture.state === "capturing"
                   ? `Capturing ${midiSeconds(snapshot.midiCapture.captureMicros)}`
-                  : snapshot.midiCapture.recentTruncated
-                    ? `Recent suffix only · ${midiSeconds(snapshot.midiCapture.recentMicros)}`
-                    : `Recent phrase on · ${midiSeconds(snapshot.midiCapture.recentMicros)}`}
+                  : snapshot.midiCapture.recentEvents === 0
+                    ? "Recent phrase on — play something"
+                    : snapshot.midiCapture.recentTruncated
+                      ? `Recent suffix only · ${midiSeconds(snapshot.midiCapture.recentMicros)}`
+                      : `Recent phrase on · ${midiSeconds(snapshot.midiCapture.recentMicros)}`}
               </button>
               <button
                 type="button"

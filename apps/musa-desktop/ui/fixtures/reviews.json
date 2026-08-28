@@ -1,6 +1,8 @@
 {
   "straight-known": {
     "takeName": "straight-known",
+    "part": "p",
+    "voice": "v",
     "revision": 0,
     "current": true,
     "meter": "4/4",
@@ -54,6 +56,8 @@
   },
   "swing-known": {
     "takeName": "swing-known",
+    "part": "p",
+    "voice": "v",
     "revision": 0,
     "current": true,
     "meter": "4/4",
@@ -186,6 +190,8 @@
   },
   "rolled-and-block-chords": {
     "takeName": "rolled-and-block-chords",
+    "part": "p",
+    "voice": "v",
     "revision": 0,
     "current": true,
     "meter": "4/4",
@@ -360,6 +366,8 @@
   },
   "crossing-voices": {
     "takeName": "crossing-voices",
+    "part": "p",
+    "voice": "v",
     "revision": 0,
     "current": true,
     "meter": "4/4",
@@ -555,6 +563,8 @@
   },
   "rubato-free": {
     "takeName": "rubato-free",
+    "part": "p",
+    "voice": "v",
     "revision": 0,
     "current": true,
     "meter": "4/4",

@@ -21,6 +21,8 @@ import type { ErrorDto } from "./generated/ErrorDto";
 import type { ExportTargetDto } from "./generated/ExportTargetDto";
 import type { GroupEditDto } from "./generated/GroupEditDto";
 import type { GroupEditPlanDto } from "./generated/GroupEditPlanDto";
+import type { PlacementPlanDto } from "./generated/PlacementPlanDto";
+import type { PlacementReportDto } from "./generated/PlacementReportDto";
 import type { ReviewActionDto } from "./generated/ReviewActionDto";
 import type { ReviewAuditionDto } from "./generated/ReviewAuditionDto";
 import type { ReviewFactsDto } from "./generated/ReviewFactsDto";
@@ -80,6 +82,8 @@ export type Link = Pick<
   | "reviewAudition"
   | "reviewAccept"
   | "reviewDiscard"
+  | "reviewPlacementPlan"
+  | "reviewPlace"
   | "transport"
   | "exportTo"
   | "snapshot"
@@ -188,6 +192,25 @@ export class Session {
    * questions — all three read this one reading.
    */
   review = $state<ReviewFactsDto | null>(null);
+
+  /**
+   * What keeping the accepted phrase would write, or null while nothing has
+   * been accepted.
+   *
+   * Held beside the reading rather than inside the Review screen because it
+   * is an answer about *this* document: it stops being true the moment the
+   * document changes, and the session is what knows that it did.
+   */
+  placement = $state<PlacementPlanDto | null>(null);
+
+  /**
+   * Why the project would not write the phrase, in its own words.
+   *
+   * A refusal is not a failure of the session — the source, the undo stack,
+   * and the take are all exactly as they were — so it shows beside the
+   * question it answers rather than in the passing top-margin line.
+   */
+  placementRefusal = $state<string | null>(null);
 
   /** Which analysis is in flight, so the panel can say it is reading. */
   reading = $state<string | null>(null);
@@ -652,18 +675,69 @@ export class Session {
     );
   }
 
-  /** Accept the reading; the phrase is settled. */
+  /**
+   * Accept the reading; the phrase is settled.
+   *
+   * Accepting still writes nothing. What it settles is the *notation*, and
+   * the placement plan that follows says where that notation would go — so
+   * the composer reads the sentence before there is anything to undo.
+   */
   async acceptReview(): Promise<void> {
     await this.reading_(
       () => this.#link?.reviewAccept(),
       () => "Kept.",
     );
+    if (this.review?.sealed) await this.planReviewPlacement([]);
+  }
+
+  /**
+   * Ask what keeping the accepted phrase would write.
+   *
+   * Nothing is written, and a refusal leaves the last good plan on screen:
+   * a name half-typed is not a reason to take the naming away from the
+   * person typing it.
+   */
+  async planReviewPlacement(voices: string[]): Promise<void> {
+    const pending = this.#link?.reviewPlacementPlan(voices);
+    if (!pending) return;
+    try {
+      this.placement = await pending;
+      this.placementRefusal = null;
+    } catch (thrown) {
+      this.placementRefusal = isFailure(thrown) ? thrown.message : String(thrown);
+    }
+  }
+
+  /**
+   * Keep the accepted phrase: one project revision, or none.
+   *
+   * Success closes the review, because there is no longer a take — the notes
+   * are ordinary source, originating at their new spans exactly as typed
+   * notes do. The report names what to select. A refusal leaves the source,
+   * the undo stack, and the review exactly as they were.
+   */
+  async placeReview(voices: string[]): Promise<PlacementReportDto | null> {
+    const pending = this.#link?.reviewPlace(voices);
+    if (!pending) return null;
+    try {
+      const report = await pending;
+      this.review = null;
+      this.placement = null;
+      this.placementRefusal = null;
+      this.say({ tone: "result", message: report.summary });
+      return report;
+    } catch (thrown) {
+      this.placementRefusal = isFailure(thrown) ? thrown.message : String(thrown);
+      return null;
+    }
   }
 
   /** Close the review and drop the take with it. */
   async discardReview(): Promise<void> {
     const link = this.#link;
     this.review = null;
+    this.placement = null;
+    this.placementRefusal = null;
     if (!link) return;
     try {
       await link.reviewDiscard();

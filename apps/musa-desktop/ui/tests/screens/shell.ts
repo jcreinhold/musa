@@ -403,6 +403,59 @@ export async function stubShell(
       const readings: Record<string, unknown>[] = [];
 
       /**
+       * A refusal the project would give and the stub cannot reach on its
+       * own — that the phrase would not compile where it is going, most of
+       * all. Set for one call and consumed by it.
+       */
+      let refusePlacement: string | null = null;
+
+      /** The lines a placement would write, under the names it was given. */
+      function planned(names: string[]): Record<string, unknown> {
+        if (!review) throw { kind: "backend", message: "there is no take under review" };
+        if (review.sealed !== true) throw { kind: "document", message: "this reading has not been accepted yet" };
+        const held = (review.voice as string | null) ?? "voice";
+        const count = review.voiceCount as number;
+        const offered = Array.from({ length: count }, (_, at) => (at === 0 ? held : `captured${at > 1 ? at : ""}`));
+        const chosen = names.length > 0 ? names : offered;
+        if (chosen.length !== count) {
+          throw {
+            kind: "document",
+            message: `this phrase is written in ${count} lines and ${names.length} were named; name each line before keeping it`,
+          };
+        }
+        for (const [at, name] of chosen.entries()) {
+          if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) {
+            throw { kind: "document", message: `\`${name}\` is not a name a voice can have` };
+          }
+          if (chosen.slice(0, at).includes(name)) {
+            throw { kind: "document", message: `two lines of this phrase were both pointed at \`${name}\`` };
+          }
+        }
+        const voices = chosen.map((name, at) => ({
+          proposalVoice: at,
+          name,
+          added: name !== held,
+          bars: 1,
+        }));
+        const added = voices.filter((line) => line.added).length;
+        const notes = (review.notes as unknown[]).length;
+        const where = voices.map((line) => line.name).join(" and ");
+        const bars = voices.length === 1 ? "1 bar" : `${voices.length} bars`;
+        return {
+          takeName: review.takeName,
+          capturedAt: review.revision,
+          revision: current.revision,
+          policy: review.policy,
+          part: review.part,
+          voices,
+          source: `${current.source as string}\n`,
+          summary:
+            `${notes === 1 ? "1 note" : `${notes} notes`} in ${bars} into ${review.part}\u2019s ${where}` +
+            (added === 0 ? "" : added === 1 ? ", adding one line" : `, adding ${added} lines`),
+        };
+      }
+
+      /**
        * Restate the reading in force: which performance it is, and which of its
        * decisions the composer kept. It mints a revision, because a different
        * reading is a different score to lay out — and because keeping a
@@ -813,6 +866,38 @@ export async function stubShell(
           readings.length = 0;
           return null;
         },
+        review_placement_plan: (args) => planned((args.voices as string[]) ?? []),
+        // Keeping is one revision or none: the plan is recomputed, refused as
+        // a whole, or written as a whole. That the text it writes is the
+        // right text is `musa-project`'s placement laws, not this file's.
+        review_place: (args) => {
+          const plan = planned((args.voices as string[]) ?? []);
+          const notes = ((review?.notes as unknown[]) ?? []).length;
+          if (refusePlacement !== null) {
+            const message = refusePlacement;
+            refusePlacement = null;
+            throw { kind: "document", message };
+          }
+          history.push(current);
+          const revision = (current.revision as number) + 1;
+          // The stub cannot compile, so the notes it reports as written are
+          // the last notes of the score it has. What the tests judge is that
+          // the interface selects exactly what the report names, which is
+          // true of any ids the project could return.
+          const all = (((current.score as Score | null)?.events ?? []) as { id: string }[]).map((event) => event.id);
+          const wrote = all.slice(Math.max(0, all.length - notes));
+          current = { ...current, revision, scoreRevision: revision, unsaved: true };
+          answer();
+          review = null;
+          readings.length = 0;
+          return {
+            revision,
+            summary: plan.summary,
+            part: plan.part,
+            voices: (plan.voices as { name: string }[]).map((line) => line.name),
+            events: wrote,
+          };
+        },
         export: () => ({ path: "/tmp/glass-mountain.mei" }),
         // The file dialogs are the platform's, not musa's, so the stub answers
         // them the way a composer who picked a file would: with a path.
@@ -856,6 +941,7 @@ export async function stubShell(
             ...patch,
             revision: (current.revision as number) + 1,
           };
+          window.__musaRevision = current.revision as number;
           window.__musaEmit("musa://snapshot", current);
         },
       });
@@ -867,6 +953,15 @@ export async function stubShell(
         value: (facts: Record<string, unknown> | null) => {
           review = facts;
           readings.length = 0;
+        },
+      });
+
+      // The one refusal the stub cannot reach on its own: whether the
+      // document the phrase would write compiles is the compiler's answer,
+      // and there is no compiler here.
+      Object.defineProperty(window, "__musaRefusePlacement", {
+        value: (message: string | null) => {
+          refusePlacement = message;
         },
       });
 
@@ -899,6 +994,8 @@ declare global {
     __musaReview: (facts: Record<string, unknown> | null) => void;
     /** Every review gesture the interface has made, in order. */
     __musaReviewActs: Record<string, unknown>[];
+    /** Make the next placement be refused, the way the compiler would. */
+    __musaRefusePlacement: (message: string | null) => void;
     /** The revision the stub last answered with, so undo can be seen to land. */
     __musaRevision: number;
     /** How many times the interface has asked the shell to save. */

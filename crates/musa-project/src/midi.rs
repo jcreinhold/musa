@@ -583,6 +583,18 @@ impl MidiPerformanceBuffer {
         self.takes.last()
     }
 
+    /// Let go of every take and of the recent buffer behind them.
+    ///
+    /// Called when a phrase becomes source: from then on the notes originate
+    /// at their own spans like any others, and keeping the performance they
+    /// came from would be a second, hidden record of the same music
+    /// (prompt 208). Undo moves between source revisions, never back into a
+    /// take.
+    pub(crate) fn release_takes(&mut self) {
+        self.takes.clear();
+        self.clear_recent();
+    }
+
     pub(crate) fn facts(&self) -> MidiCaptureFacts {
         let recent_micros = self.recent.front().zip(self.recent.back()).map_or(0, |(first, last)| {
             last.project_micros.saturating_sub(first.project_micros)

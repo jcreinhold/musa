@@ -1,7 +1,7 @@
 ---
 id: 208
 slug: accept-captured-phrase
-status: pending
+status: done
 depends_on: [202, 207]
 phase: 2
 ---

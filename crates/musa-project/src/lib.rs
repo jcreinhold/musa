@@ -56,6 +56,7 @@ mod position;
 mod project;
 mod realization;
 mod review;
+mod review_placement;
 mod rhythm;
 mod session;
 mod sf2;
@@ -101,9 +102,10 @@ pub use crate::packages::{fetch_packages, verify_packages};
 pub use crate::position::Position;
 pub use crate::project::{Project, ProjectMeta};
 pub use crate::review::{
-    AmbiguityKind, ReviewAction, ReviewAmbiguity, ReviewAudition, ReviewChoice, ReviewDecision, ReviewError,
-    ReviewFacts, ReviewNote,
+    AmbiguityKind, ReviewAction, ReviewAmbiguity, ReviewAudition, ReviewChoice, ReviewDecision, ReviewDestination,
+    ReviewError, ReviewFacts, ReviewNote, ReviewRequest,
 };
+pub use crate::review_placement::{PlacedVoice, PlacementError, PlacementPlan, PlacementReport};
 pub use crate::rhythm::RhythmTranscriptionReport;
 pub use crate::session::ProjectSession;
 pub use crate::sf2::{Sf2InstrumentFacts, Sf2Limits};
@@ -117,6 +119,7 @@ pub use crate::template::Template;
 pub use crate::transcription_pairing::GroupShape;
 pub use crate::transcription_proposal::{
     NotationProposal, PROPOSAL_VERSION, ProposalError, ProposalGroup, ProposalLoss, ProposalNote, ProposalSource,
+    ProposalVoice,
 };
 pub use crate::transcription_search::{
     Candidate, CostRecord, REPORT_VERSION, Refusal, ReviewRegion, RhythmEvent, SearchOutcome, Take, TakeClock,

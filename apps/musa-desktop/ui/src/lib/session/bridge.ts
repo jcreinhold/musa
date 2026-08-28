@@ -10,6 +10,8 @@
 
 import type { CommandDto } from "./generated/CommandDto";
 import type { BarlinePreviewDto } from "./generated/BarlinePreviewDto";
+import type { PlacementPlanDto } from "./generated/PlacementPlanDto";
+import type { PlacementReportDto } from "./generated/PlacementReportDto";
 import type { EditDto } from "./generated/EditDto";
 import type { ErrorDto } from "./generated/ErrorDto";
 import type { ExportTargetDto } from "./generated/ExportTargetDto";
@@ -85,6 +87,14 @@ export const bridge = {
   reviewAccept: () => call<ReviewFactsDto>("review_accept", {}),
   /** Close the review and drop the take with it. */
   reviewDiscard: () => call<null>("review_discard", {}),
+  /**
+   * What keeping the accepted phrase would write, before it is written.
+   * `voices` names one destination voice per line; empty asks for the names
+   * the project would offer.
+   */
+  reviewPlacementPlan: (voices: string[]) => call<PlacementPlanDto>("review_placement_plan", { voices }),
+  /** Keep the accepted phrase: one revision, or none. */
+  reviewPlace: (voices: string[]) => call<PlacementReportDto>("review_place", { voices }),
   transport: (command: TransportDto) => call<ProjectSnapshot>("transport", { command }),
   exportTo: (target: ExportTargetDto, path: string | null) =>
     call<{ path: string }>("export", { request: { target, path } }),

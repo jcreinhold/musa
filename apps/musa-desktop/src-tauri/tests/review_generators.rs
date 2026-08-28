@@ -153,16 +153,21 @@ fn review_fixtures_are_current() -> Result {
             .find(|fixture| fixture.id == id)
             .ok_or_else(|| format!("the corpus has no `{id}` fixture"))?;
         let mut session = session();
+        let events = synthesize(fixture);
         let facts = session
-            .begin_review(
-                &fixture.id,
-                &synthesize(fixture),
-                clock_of(&fixture.clock),
-                96,
-                "4/4",
-                None,
-                "standard",
-            )
+            .begin_review(&musa_project::ReviewRequest {
+                take_name: &fixture.id,
+                destination: musa_project::ReviewDestination {
+                    part: "p".to_owned(),
+                    voice: Some("v".to_owned()),
+                },
+                events: &events,
+                clock: clock_of(&fixture.clock),
+                bar_ticks: 96,
+                meter: "4/4",
+                key: None,
+                policy_name: "standard",
+            })
             .map_err(|error| format!("`{id}` did not compose: {error:?}"))?;
         readings.insert(id.to_owned(), serde_json::to_value(ReviewFactsDto::from(&facts))?);
     }

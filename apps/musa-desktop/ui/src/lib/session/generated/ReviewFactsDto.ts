@@ -6,7 +6,15 @@ import type { ReviewNoteDto } from "./ReviewNoteDto";
 /**
  * Everything the Review surface reads.
  */
-export type ReviewFactsDto = { takeName: string, revision: bigint, 
+export type ReviewFactsDto = { takeName: string, 
+/**
+ * The part the take was played into — where keeping it would write it.
+ */
+part: string, 
+/**
+ * The voice within that part, when the caret named one.
+ */
+voice: string | null, revision: bigint, 
 /**
  * Whether the review still describes the session's revision.
  */

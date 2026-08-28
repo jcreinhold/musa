@@ -678,25 +678,9 @@ impl ProjectSession {
     /// — the same refusals [`Self::propose_notation`] reports.
     pub fn begin_review(
         &mut self,
-        take_name: &str,
-        events: &[crate::CapturedMidiEvent],
-        clock: crate::TakeClock,
-        bar_ticks: u32,
-        meter: &str,
-        key: Option<musa_score::Key>,
-        policy_name: &str,
+        request: &crate::ReviewRequest<'_>,
     ) -> Result<crate::ReviewFacts, crate::ProposalError> {
-        let review = crate::review::Review::begin(
-            self.revision,
-            take_name,
-            events,
-            clock,
-            bar_ticks,
-            meter,
-            key,
-            policy_name,
-            self.bar_spacing(),
-        )?;
+        let review = crate::review::Review::begin(self.revision, request, self.bar_spacing())?;
         let facts = review.facts(self.revision);
         self.review = Some(review);
         Ok(facts)
@@ -756,7 +740,19 @@ impl ProjectSession {
             .score
             .key_at(musa_score::Scope::Piece, musa_score::MusicalTime::ZERO);
         let name = format!("{}@{}", context.part, context.revision);
-        self.begin_review(&name, &events, clock, bar_ticks, &meter, key, policy_name)
+        self.begin_review(&crate::ReviewRequest {
+            take_name: &name,
+            destination: crate::ReviewDestination {
+                part: context.part.clone(),
+                voice: context.voice,
+            },
+            events: &events,
+            clock,
+            bar_ticks,
+            meter: &meter,
+            key,
+            policy_name,
+        })
     }
 
     /// What the Review surface reads, or `None` when nothing is under review.
@@ -837,6 +833,186 @@ impl ProjectSession {
     /// Close the review and drop the take with it.
     pub fn discard_review(&mut self) {
         self.review = None;
+        self.midi_performance.release_takes();
+    }
+
+    /// What keeping the accepted phrase would write, before it is written.
+    ///
+    /// A query against the *current* source, not the capture revision: the
+    /// anchor is the part and voice the take was played into, and those are
+    /// names, so unrelated edits since the capture leave this plan valid and
+    /// an edit that removed the part makes it a refusal. Byte offsets from
+    /// the capture revision are never applied to a later document.
+    ///
+    /// `names` gives one destination voice per line the phrase writes, in
+    /// proposal-voice order. An empty slice asks for the names this would
+    /// offer — the caret's own voice for the first line, and a free name for
+    /// each line the score does not have yet. [`Self::place_review`] requires
+    /// them explicitly whenever the phrase writes more than one line, because
+    /// adding a line to somebody's score is their decision and not a default.
+    ///
+    /// # Errors
+    /// [`crate::PlacementError`] when nothing is under review, the reading
+    /// has not been accepted, it has no exactly-writable phrase, the piece
+    /// does not compile, the part is gone, or the names are not names.
+    pub fn plan_review_placement(&self, names: &[String]) -> Result<crate::PlacementPlan, crate::PlacementError> {
+        use crate::PlacementError as Refusal;
+
+        let review = self.review.as_ref().ok_or(Refusal::NotReviewing)?;
+        if !review.sealed() {
+            return Err(Refusal::NotAccepted);
+        }
+        let preview = review.proposal().source().ok_or(Refusal::NoPhrase)?;
+        let lines = preview.voices();
+        if lines.is_empty() {
+            return Err(Refusal::NoPhrase);
+        }
+        let valid = self.valid.as_ref().ok_or(Refusal::NoValidScore)?;
+        let destination = review.destination();
+        let part = valid
+            .facts
+            .parts
+            .iter()
+            .find(|declared| declared.name == destination.part)
+            .ok_or_else(|| Refusal::PieceChanged(destination.part.clone()))?;
+        let existing: Vec<String> = part.voices.iter().map(|voice| voice.name.clone()).collect();
+
+        let chosen = if names.is_empty() {
+            crate::review_placement::suggest(lines, destination, &existing)
+        } else {
+            names.to_vec()
+        };
+        if chosen.len() != lines.len() {
+            return Err(Refusal::NeedsVoiceNames {
+                needed: lines.len(),
+                given: names.len(),
+            });
+        }
+        for (at, name) in chosen.iter().enumerate() {
+            if !crate::review_placement::is_name(name) {
+                return Err(Refusal::NotAName(name.clone()));
+            }
+            if chosen.get(..at).is_some_and(|before| before.contains(name)) {
+                return Err(Refusal::SameVoiceTwice(name.clone()));
+            }
+        }
+
+        let voices: Vec<crate::PlacedVoice> = lines
+            .iter()
+            .zip(&chosen)
+            .map(|(line, name)| crate::PlacedVoice {
+                proposal_voice: line.voice,
+                name: name.clone(),
+                added: !existing.iter().any(|held| held == name),
+                bars: line.bars.clone(),
+            })
+            .collect();
+
+        // One line at a time, against the text the line before it left. Two
+        // structural insertions computed against one parse would describe two
+        // byte ranges of a document only one of them is true of — and a new
+        // voice and the voice after it anchor at the same point, so which one
+        // won would depend on the order they were listed in.
+        let mut candidate = self.source.clone();
+        for line in &voices {
+            let intent = if line.added {
+                musa_syntax::EditIntent::AddVoice {
+                    part: part.name.clone(),
+                    voice: line.name.clone(),
+                    bars: line.bars.clone(),
+                }
+            } else {
+                musa_syntax::EditIntent::AppendPhrase {
+                    part: part.name.clone(),
+                    voice: line.name.clone(),
+                    bars: line.bars.clone(),
+                }
+            };
+            let edits = musa_syntax::compute_edits(&candidate, &intent)
+                .map_err(|error| Refusal::Uneditable(error.to_string()))?;
+            candidate = musa_syntax::apply_edits(&candidate, &edits);
+        }
+
+        let summary = crate::review_placement::summarize(review.proposal().notes().len(), &voices, &part.name);
+        Ok(crate::PlacementPlan {
+            take_name: review.take_name().to_owned(),
+            captured_at: review.captured_at(),
+            revision: self.revision,
+            policy: review.policy().to_owned(),
+            part: part.name.clone(),
+            voices,
+            source: candidate,
+            summary,
+        })
+    }
+
+    /// Keep the accepted phrase: write it into the score as one revision.
+    ///
+    /// The whole transaction, or none of it. The plan is recomputed against
+    /// the current source, the document it would write is compiled before
+    /// anything is committed, and only then does the source move — so a
+    /// refusal leaves source, history, autosave, and the installed plan
+    /// exactly as they were, with the review still open to go back to.
+    ///
+    /// Acceptance ends the phrase's special provenance. The notes it writes
+    /// originate at their new spans exactly as typed notes do, and the take
+    /// behind them — timestamps, velocities, calibration, and the decisions
+    /// made about them — is released rather than filed away. Undo restores
+    /// the source revision, which is the whole of what changed.
+    ///
+    /// # Errors
+    /// Every [`crate::PlacementError`] [`Self::plan_review_placement`]
+    /// returns, plus [`crate::PlacementError::NeedsVoiceNames`] when the
+    /// phrase writes more than one line and they were not named, and
+    /// [`crate::PlacementError::Rejected`] when the document it would write
+    /// does not compile.
+    pub fn place_review(&mut self, names: &[String]) -> Result<crate::PlacementReport, crate::PlacementError> {
+        use crate::PlacementError as Refusal;
+
+        let plan = self.plan_review_placement(names)?;
+        // A second line is a line the score did not have; the composer names
+        // it or the phrase waits. The plan offers names, but offering is not
+        // deciding.
+        if plan.voices.len() > 1 && names.len() != plan.voices.len() {
+            return Err(Refusal::NeedsVoiceNames {
+                needed: plan.voices.len(),
+                given: names.len(),
+            });
+        }
+        if let Some(reason) = self.first_error(&plan.source) {
+            return Err(Refusal::Rejected(reason));
+        }
+
+        let before: std::collections::BTreeSet<String> = self
+            .valid
+            .as_ref()
+            .map(|valid| valid.facts.events.iter().map(|event| event.id.clone()).collect())
+            .unwrap_or_default();
+        let update = self.set_source(plan.source.clone());
+        if !update.source_changed {
+            return Err(Refusal::Uneditable(
+                "keeping this phrase would write nothing".to_owned(),
+            ));
+        }
+        let events = self.valid.as_ref().map_or_else(Vec::new, |valid| {
+            valid
+                .facts
+                .events
+                .iter()
+                .filter(|event| !before.contains(&event.id))
+                .map(|event| event.id.clone())
+                .collect()
+        });
+
+        self.review = None;
+        self.midi_performance.release_takes();
+        Ok(crate::PlacementReport {
+            revision: self.revision,
+            summary: plan.summary,
+            part: plan.part,
+            voices: plan.voices.into_iter().map(|line| line.name).collect(),
+            events,
+        })
     }
 
     /// How this piece's project wants its bars laid out.

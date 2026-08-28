@@ -52,6 +52,8 @@ pub fn run() -> tauri::Result<()> {
             commands::review_audition,
             commands::review_accept,
             commands::review_discard,
+            commands::review_placement_plan,
+            commands::review_place,
             commands::transport,
             commands::export,
             commands::snapshot,

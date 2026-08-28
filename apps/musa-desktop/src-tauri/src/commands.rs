@@ -183,6 +183,31 @@ pub fn review_discard(session: State<'_, SessionHandle>) -> Result<Value, ErrorD
     session.review_discard()
 }
 
+/// What keeping the accepted phrase would write, before it is written.
+///
+/// `voices` names one destination voice per line the phrase writes; empty
+/// asks for the names the project would offer.
+///
+/// # Errors
+/// If no piece is open, nothing is under review, the reading has not been
+/// accepted, the piece does not compile, the part the take was played into is
+/// gone, or a name is not a name.
+#[tauri::command]
+pub fn review_placement_plan(voices: Vec<String>, session: State<'_, SessionHandle>) -> Result<Value, ErrorDto> {
+    session.review_placement_plan(voices)
+}
+
+/// Keep the accepted phrase: write it into the score as one revision.
+///
+/// # Errors
+/// Everything `review_placement_plan` refuses, plus an unnamed extra line and
+/// a document the phrase would stop compiling. A refusal writes nothing and
+/// leaves the review open.
+#[tauri::command]
+pub fn review_place(voices: Vec<String>, session: State<'_, SessionHandle>) -> Result<Value, ErrorDto> {
+    session.review_place(voices)
+}
+
 /// Play, stop, seek, or set the loop.
 ///
 /// # Errors

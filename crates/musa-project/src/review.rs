@@ -184,11 +184,53 @@ pub struct ReviewNote {
     pub derivation: [u64; 2],
 }
 
+/// Where a take was played, and therefore where its notation would go.
+///
+/// Names, never offsets. The take is read against the revision it was played
+/// at and kept against whatever the revision is by then, and a part and a
+/// voice are the two identities that survive the edits in between — a byte
+/// range from the capture revision does not (`obligations.md`, exact
+/// identity).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ReviewDestination {
+    /// The part the caret was in.
+    pub part: String,
+    /// The voice within it, when the caret named one.
+    pub voice: Option<String>,
+}
+
+/// Everything one review needs to begin.
+///
+/// A struct because these are eight facts about one take and not eight
+/// arguments: a caller that swapped `meter` and `policy` would be told by the
+/// compiler here and by a wrong transcription there.
+#[derive(Clone, Debug)]
+pub struct ReviewRequest<'a> {
+    /// The take's stable name.
+    pub take_name: &'a str,
+    /// Where its notation would go.
+    pub destination: ReviewDestination,
+    /// The captured events, in order.
+    pub events: &'a [CapturedMidiEvent],
+    /// What is known about the take's clock.
+    pub clock: TakeClock,
+    /// One bar of the destination meter, in grid ticks.
+    pub bar_ticks: u32,
+    /// The destination meter, e.g. `4/4`.
+    pub meter: &'a str,
+    /// The destination key, when the piece states one.
+    pub key: Option<Key>,
+    /// The checked search policy to read the take under.
+    pub policy_name: &'a str,
+}
+
 /// Everything a Review surface reads.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ReviewFacts {
     /// The take's stable identity.
     pub take_name: String,
+    /// Where keeping it would write it.
+    pub destination: ReviewDestination,
     /// The revision the take was captured at.
     pub revision: Revision,
     /// Whether that is still the session's revision; a stale review is shown
@@ -337,6 +379,7 @@ struct ReviewStep {
 /// One take under review.
 pub(crate) struct Review {
     take_name: String,
+    destination: ReviewDestination,
     events: Vec<CapturedMidiEvent>,
     clock: TakeClock,
     bar_ticks: u32,
@@ -356,35 +399,30 @@ impl Review {
     /// Begin one review: compose the take with no decisions yet.
     pub(crate) fn begin(
         revision: Revision,
-        take_name: &str,
-        events: &[CapturedMidiEvent],
-        clock: TakeClock,
-        bar_ticks: u32,
-        meter: &str,
-        key: Option<Key>,
-        policy: &str,
+        request: &ReviewRequest<'_>,
         spacing: BarSpacing,
     ) -> Result<Self, ProposalError> {
         let proposal = crate::transcription_proposal::propose(
             revision,
-            take_name,
-            events,
-            clock,
-            bar_ticks,
-            meter,
-            key,
-            policy,
+            request.take_name,
+            request.events,
+            request.clock,
+            request.bar_ticks,
+            request.meter,
+            request.key,
+            request.policy_name,
             &[],
             spacing,
         )?;
         Ok(Self {
-            take_name: take_name.to_owned(),
-            events: events.to_vec(),
-            clock,
-            bar_ticks,
-            meter: meter.to_owned(),
-            key,
-            policy: policy.to_owned(),
+            take_name: request.take_name.to_owned(),
+            destination: request.destination.clone(),
+            events: request.events.to_vec(),
+            clock: request.clock,
+            bar_ticks: request.bar_ticks,
+            meter: request.meter.to_owned(),
+            key: request.key,
+            policy: request.policy_name.to_owned(),
             revision,
             spacing,
             steps: Vec::new(),
@@ -410,6 +448,31 @@ impl Review {
     /// transaction against the source.
     pub(crate) const fn seal(&mut self) {
         self.sealed = true;
+    }
+
+    /// Whether the reading has been accepted.
+    pub(crate) const fn sealed(&self) -> bool {
+        self.sealed
+    }
+
+    /// Where keeping it would write it.
+    pub(crate) const fn destination(&self) -> &ReviewDestination {
+        &self.destination
+    }
+
+    /// The checked policy the reading was searched under.
+    pub(crate) fn policy(&self) -> &str {
+        &self.policy
+    }
+
+    /// The take's stable name.
+    pub(crate) fn take_name(&self) -> &str {
+        &self.take_name
+    }
+
+    /// The revision the take was played at.
+    pub(crate) const fn captured_at(&self) -> Revision {
+        self.revision
     }
 
     /// Take back the last action.
@@ -447,6 +510,7 @@ impl Review {
         let resolved = self.resolved();
         ReviewFacts {
             take_name: self.take_name.clone(),
+            destination: self.destination.clone(),
             revision: self.revision,
             current: self.revision == revision,
             meter: self.meter.clone(),

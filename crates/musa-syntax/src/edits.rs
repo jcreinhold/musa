@@ -7,10 +7,12 @@
 //! statement ends. That keeps the syntax knowledge in the crate that owns the
 //! syntax, and keeps the project layer free to be about provenance.
 
+use core::fmt::Write as _;
+
 use text_size::{TextRange, TextSize};
 
 use crate::SyntaxKind;
-use crate::ast::{AstNode, PieceDecl, ScoreDecl, VoiceDecl, quote, unquote};
+use crate::ast::{AstNode, PartDecl, PieceDecl, ScoreDecl, VoiceDecl, quote, unquote};
 use crate::language::{SyntaxElement, SyntaxNode};
 use crate::parser::parse;
 
@@ -363,6 +365,36 @@ pub enum EditIntent {
         /// The motif's name.
         name: String,
     },
+    /// Write whole bars at the end of a voice that already exists.
+    ///
+    /// A phrase, not a statement: [`Self::Insert`] writes one note into the
+    /// bar a caret is in, and this writes music that already knows where its
+    /// bar lines are — what a transcribed take is. The bars arrive spelled,
+    /// because spelling a measured duration is the transcriber's decision and
+    /// not the editor's; what this owns is where the text goes and how it is
+    /// indented.
+    AppendPhrase {
+        /// The part's name.
+        part: String,
+        /// The voice's name within that part.
+        voice: String,
+        /// One complete bar of voice content per entry, without its `|`.
+        bars: Vec<String>,
+    },
+    /// Add a voice to a part, holding the music it starts life with.
+    ///
+    /// Separate from [`Self::AppendPhrase`] because adding a line to a score
+    /// is a different decision from writing into one, and a caller that meant
+    /// one and got the other would silently change what the piece is. A name
+    /// the part already uses is refused rather than merged into.
+    AddVoice {
+        /// The part's name.
+        part: String,
+        /// The new voice's name, which the part must not already use.
+        voice: String,
+        /// One complete bar of voice content per entry, without its `|`.
+        bars: Vec<String>,
+    },
 }
 
 /// What kind of event a statement writes.
@@ -647,6 +679,21 @@ pub enum EditError {
     NoPiece,
     /// A piece must be called something.
     CannotEmptyTitle,
+    /// No such part in the score.
+    NoPart {
+        /// The part that was looked for.
+        part: String,
+    },
+    /// The part already has a voice by that name.
+    VoiceExists {
+        /// The part.
+        part: String,
+        /// The name that is already taken.
+        voice: String,
+    },
+    /// A phrase with no bars in it writes nothing, so it is a mistake rather
+    /// than a no-op: a caller that computed an empty phrase computed nothing.
+    EmptyPhrase,
 }
 
 impl core::fmt::Display for EditError {
@@ -668,6 +715,11 @@ impl core::fmt::Display for EditError {
             Self::NoScore => write!(formatter, "the piece has no `score` block"),
             Self::NoPiece => write!(formatter, "the document has no `piece`"),
             Self::CannotEmptyTitle => write!(formatter, "a piece has to be called something"),
+            Self::NoPart { ref part } => write!(formatter, "no part `{part}` in the score"),
+            Self::VoiceExists { ref part, ref voice } => {
+                write!(formatter, "part `{part}` already has a voice `{voice}`")
+            }
+            Self::EmptyPhrase => write!(formatter, "a phrase with no bars writes nothing"),
         }
     }
 }
@@ -746,6 +798,16 @@ fn edits_for(root: &SyntaxNode, source: &str, intent: &EditIntent) -> Result<Vec
         EditIntent::SpecializeAll { at, ref overrides } => specialize_all(&root, at, overrides),
         EditIntent::SetHeader { field, ref value } => set_header(&root, source, field, value),
         EditIntent::ExtractMotif { first, last, ref name } => extract_motif(&root, source, first, last, name),
+        EditIntent::AppendPhrase {
+            ref part,
+            ref voice,
+            ref bars,
+        } => append_phrase(&root, source, part, voice, bars),
+        EditIntent::AddVoice {
+            ref part,
+            ref voice,
+            ref bars,
+        } => add_voice(&root, source, part, voice, bars),
     }
 }
 
@@ -1298,6 +1360,143 @@ fn item_syntax(item: &crate::ast::VoiceItem) -> &SyntaxNode {
         crate::ast::VoiceItem::Mobile(ref it) => it.syntax(),
         crate::ast::VoiceItem::Improvise(ref it) => it.syntax(),
     }
+}
+
+/// Write whole bars at the end of a voice that already exists.
+///
+/// The shape of the block decides the shape of the writing: a voice written on
+/// one line stays on one line, and a voice written over several gets one bar a
+/// line at the indent its music already uses. A captured phrase is the first
+/// music most pieces gain without a composer typing it, and it should read
+/// afterwards like music they typed.
+fn append_phrase(
+    root: &SyntaxNode,
+    source: &str,
+    part: &str,
+    voice: &str,
+    bars: &[String],
+) -> Result<Vec<TextEdit>, EditError> {
+    if bars.is_empty() {
+        return Err(EditError::EmptyPhrase);
+    }
+    let block = find_voice(root, part, voice).ok_or_else(|| EditError::NoVoice {
+        part: part.to_owned(),
+        voice: voice.to_owned(),
+    })?;
+    let node = block.syntax();
+    // The block's own text, not the node's: a node carries the trivia after
+    // its closing brace, so asking the node whether it spans a line would call
+    // every voice a multi-line one.
+    let one_line = !spanned(source, trimmed(node)).contains('\n');
+    match block.items().last() {
+        Some(item) => {
+            let range = trimmed(item_syntax(item));
+            let point = TextRange::empty(range.end());
+            if one_line {
+                return Ok(vec![TextEdit::new(point, written_inline(bars))]);
+            }
+            let indent = indent_at(source, u32::from(range.start()));
+            Ok(vec![TextEdit::new(point, written_lines(bars, &indent))])
+        }
+        // An empty voice: the phrase is the first thing in it, one level in
+        // from the `voice` keyword.
+        None => {
+            let brace = open_brace(node);
+            let indent = indent_at(source, u32::from(node.text_range().start()));
+            if one_line {
+                return Ok(vec![TextEdit::new(brace, written_inline(bars))]);
+            }
+            Ok(vec![TextEdit::new(
+                brace,
+                written_lines(bars, &format!("{indent}{INDENT}")),
+            )])
+        }
+    }
+}
+
+/// Add a voice to a part, holding the music it starts life with.
+fn add_voice(
+    root: &SyntaxNode,
+    source: &str,
+    part: &str,
+    voice: &str,
+    bars: &[String],
+) -> Result<Vec<TextEdit>, EditError> {
+    if bars.is_empty() {
+        return Err(EditError::EmptyPhrase);
+    }
+    let declared = find_part(root, part).ok_or_else(|| EditError::NoPart { part: part.to_owned() })?;
+    let voices = declared.voices();
+    if voices.iter().any(|existing| existing.name().as_deref() == Some(voice)) {
+        return Err(EditError::VoiceExists {
+            part: part.to_owned(),
+            voice: voice.to_owned(),
+        });
+    }
+    let node = declared.syntax();
+    // A new line joins the part after the last line it has, at that line's
+    // indent; a part with no voices yet opens one level in from `part`.
+    let (point, indent) = match voices.last() {
+        Some(last) => {
+            let range = trimmed(last.syntax());
+            (
+                TextRange::empty(range.end()),
+                indent_at(source, u32::from(range.start())),
+            )
+        }
+        None => (
+            open_brace(node),
+            format!("{}{INDENT}", indent_at(source, u32::from(node.text_range().start()))),
+        ),
+    };
+    let mut text = format!("\n{indent}voice {voice} {{");
+    for bar in bars {
+        let _ = write!(text, "\n{indent}{INDENT}| {bar}");
+    }
+    let _ = write!(text, "\n{indent}}}");
+    Ok(vec![TextEdit::new(point, text)])
+}
+
+/// The point just inside a block's `{`, or its end when it has none.
+/// The source `range` covers, or `""` when it does not land on one.
+fn spanned(source: &str, range: TextRange) -> &str {
+    source
+        .get(usize::from(range.start())..usize::from(range.end()))
+        .unwrap_or_default()
+}
+
+fn open_brace(node: &SyntaxNode) -> TextRange {
+    node.descendants_with_tokens()
+        .filter_map(SyntaxElement::into_token)
+        .find(|token| token.kind() == SyntaxKind::LBrace)
+        .map_or_else(
+            || TextRange::empty(node.text_range().end()),
+            |token| TextRange::empty(token.text_range().end()),
+        )
+}
+
+/// Bars written along one line, each behind its own barline.
+fn written_inline(bars: &[String]) -> String {
+    bars.iter().fold(String::new(), |mut text, bar| {
+        let _ = write!(text, " | {bar}");
+        text
+    })
+}
+
+/// Bars written one to a line, at `indent`.
+fn written_lines(bars: &[String], indent: &str) -> String {
+    bars.iter().fold(String::new(), |mut text, bar| {
+        let _ = write!(text, "\n{indent}| {bar}");
+        text
+    })
+}
+
+fn find_part(root: &SyntaxNode, part: &str) -> Option<PartDecl> {
+    PieceDecl::from_root(root)?
+        .score()?
+        .parts()
+        .into_iter()
+        .find(|declared| declared.name().as_deref() == Some(part))
 }
 
 fn find_voice(root: &SyntaxNode, part: &str, voice: &str) -> Option<VoiceDecl> {

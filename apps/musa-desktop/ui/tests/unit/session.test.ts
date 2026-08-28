@@ -13,12 +13,17 @@ import { SETTLE_MS, Session, type Link } from "../../src/lib/session/session.sve
 import fixture from "../../fixtures/glass-mountain.snapshot.json";
 import type { ProjectSnapshot } from "../../src/lib/state/snapshot";
 import type { ReviewFactsDto } from "../../src/lib/session/generated/ReviewFactsDto";
+import type { PlacedVoiceDto } from "../../src/lib/session/generated/PlacedVoiceDto";
+import type { PlacementPlanDto } from "../../src/lib/session/generated/PlacementPlanDto";
+import type { PlacementReportDto } from "../../src/lib/session/generated/PlacementReportDto";
 
 const VALID = fixture as unknown as ProjectSnapshot;
 
 /** One reading of a take, as the project composes one. */
 const REVIEW: ReviewFactsDto = {
   takeName: "keyboard@3",
+  part: "piano",
+  voice: "upper",
   revision: VALID.revision as unknown as bigint,
   current: true,
   meter: "4/4",
@@ -91,6 +96,33 @@ function snapshotOf(source: string, revision: number, compiles = true): ProjectS
   };
 }
 
+/** The lines a plan would write, under whatever names were asked for. */
+function named(voices: string[]): PlacedVoiceDto[] {
+  const chosen = voices.length > 0 ? voices : ["upper"];
+  return chosen.map((name, at) => ({ proposalVoice: at, name, added: name !== "upper", bars: 1 }));
+}
+
+/** What the project would write, as it answers before anything is written. */
+const PLAN: PlacementPlanDto = {
+  takeName: "keyboard@3",
+  capturedAt: VALID.revision as unknown as bigint,
+  revision: VALID.revision as unknown as bigint,
+  policy: "standard",
+  part: "piano",
+  voices: named([]),
+  source: "part piano { voice upper { | c4 } }",
+  summary: "1 note in 1 bar into piano\u2019s upper",
+};
+
+/** What it reports once it has. */
+const REPORT: PlacementReportDto = {
+  revision: (VALID.revision + 1) as unknown as bigint,
+  summary: "1 note in 1 bar into piano\u2019s upper",
+  part: "piano",
+  voices: ["upper"],
+  events: ["e-1"],
+};
+
 interface Recorder extends Link {
   applied: string[];
   answer: (source: string) => ProjectSnapshot;
@@ -149,6 +181,8 @@ function recorder(): Recorder {
     reviewAudition: vi.fn(async (mode) => ({ ...REVIEW, audition: mode })),
     reviewAccept: vi.fn(async () => ({ ...REVIEW, sealed: true })),
     reviewDiscard: vi.fn(async () => null),
+    reviewPlacementPlan: vi.fn(async (voices) => ({ ...PLAN, voices: named(voices) })),
+    reviewPlace: vi.fn(async () => REPORT),
     transport: vi.fn(async () => VALID),
     exportTo: vi.fn(async () => ({ path: "/tmp/out.mei" })),
     snapshot: vi.fn(async () => VALID),
@@ -632,6 +666,69 @@ describe("reviewing a take", () => {
     await session.discardReview();
     expect(session.review).toBeNull();
     expect(link.reviewDiscard).toHaveBeenCalled();
+  });
+
+  it("accepting asks what keeping it would write, and writes nothing", async () => {
+    const link = recorder();
+    const session = new Session(link);
+    session.receive(VALID);
+    await session.beginReview();
+
+    await session.acceptReview();
+    expect(link.reviewPlacementPlan).toHaveBeenCalledWith([]);
+    expect(session.placement?.summary).toBe("1 note in 1 bar into piano\u2019s upper");
+    expect(link.applied).toEqual([]);
+    expect(link.reviewPlace).not.toHaveBeenCalled();
+  });
+
+  it("renaming a line re-asks, and a refusal leaves the last plan standing", async () => {
+    const link = recorder();
+    const session = new Session(link);
+    session.receive(VALID);
+    await session.beginReview();
+    await session.acceptReview();
+
+    link.reviewPlacementPlan = vi.fn(async () => {
+      throw { kind: "document", message: "`1 upper` is not a name Musa can write" };
+    });
+    await session.planReviewPlacement(["1 upper"]);
+    // The naming has to stay on screen: taking it away from the person
+    // typing is how a typo becomes a dead end.
+    expect(session.placement?.voices).toHaveLength(1);
+    expect(session.placementRefusal).toBe("`1 upper` is not a name Musa can write");
+  });
+
+  it("keeping it closes the review and says what to select", async () => {
+    const link = recorder();
+    const session = new Session(link);
+    session.receive(VALID);
+    await session.beginReview();
+    await session.acceptReview();
+
+    const report = await session.placeReview(["upper"]);
+    expect(link.reviewPlace).toHaveBeenCalledWith(["upper"]);
+    expect(report?.events).toEqual(["e-1"]);
+    // The take is gone because there is no take any more: the notes are
+    // ordinary source, originating where they were written.
+    expect(session.review).toBeNull();
+    expect(session.placement).toBeNull();
+    expect(session.notice?.message).toBe("1 note in 1 bar into piano\u2019s upper");
+  });
+
+  it("a refused placement keeps the review open and changes nothing", async () => {
+    const link = recorder();
+    const session = new Session(link);
+    session.receive(VALID);
+    await session.beginReview();
+    await session.acceptReview();
+
+    link.reviewPlace = vi.fn(async () => {
+      throw { kind: "document", message: "Piece changed—review this phrase against the current score" };
+    });
+    expect(await session.placeReview(["upper"])).toBeNull();
+    expect(session.review?.sealed).toBe(true);
+    expect(session.placementRefusal).toBe("Piece changed—review this phrase against the current score");
+    expect(link.applied).toEqual([]);
   });
 
   it("a refused take says so and leaves nothing under review", async () => {

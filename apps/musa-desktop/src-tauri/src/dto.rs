@@ -847,6 +847,10 @@ pub struct ReviewNoteDto {
 #[ts(export, export_to = "../../ui/src/lib/session/generated/")]
 pub struct ReviewFactsDto {
     pub take_name: String,
+    /// The part the take was played into — where keeping it would write it.
+    pub part: String,
+    /// The voice within that part, when the caret named one.
+    pub voice: Option<String>,
     pub revision: u64,
     /// Whether the review still describes the session's revision.
     pub current: bool,
@@ -871,6 +875,8 @@ impl From<&musa_project::ReviewFacts> for ReviewFactsDto {
     fn from(facts: &musa_project::ReviewFacts) -> Self {
         Self {
             take_name: facts.take_name.clone(),
+            part: facts.destination.part.clone(),
+            voice: facts.destination.voice.clone(),
             revision: facts.revision.0,
             current: facts.current,
             meter: facts.meter.clone(),
@@ -922,6 +928,92 @@ impl From<&musa_project::ReviewFacts> for ReviewFactsDto {
                 .iter()
                 .map(|&note| u32::try_from(note).unwrap_or(u32::MAX))
                 .collect(),
+        }
+    }
+}
+
+/// One line a placement would write.
+#[derive(Clone, Debug, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "../../ui/src/lib/session/generated/")]
+pub struct PlacedVoiceDto {
+    /// The proposal voice, 0..4.
+    pub proposal_voice: u8,
+    /// The destination voice's name.
+    pub name: String,
+    /// The part does not have this voice yet.
+    pub added: bool,
+    /// How many bars it would write there.
+    pub bars: u32,
+}
+
+/// What keeping the accepted phrase would do, before it is done.
+#[derive(Clone, Debug, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "../../ui/src/lib/session/generated/")]
+pub struct PlacementPlanDto {
+    pub take_name: String,
+    /// The revision the take was played at.
+    pub captured_at: u64,
+    /// The revision this plan describes, and the only one it fits.
+    pub revision: u64,
+    pub policy: String,
+    /// The part the phrase joins.
+    pub part: String,
+    /// The lines it writes, in proposal-voice order.
+    pub voices: Vec<PlacedVoiceDto>,
+    /// The document as it would read afterwards.
+    pub source: String,
+    /// One musical sentence.
+    pub summary: String,
+}
+
+impl From<&musa_project::PlacementPlan> for PlacementPlanDto {
+    fn from(plan: &musa_project::PlacementPlan) -> Self {
+        Self {
+            take_name: plan.take_name.clone(),
+            captured_at: plan.captured_at.0,
+            revision: plan.revision.0,
+            policy: plan.policy.clone(),
+            part: plan.part.clone(),
+            voices: plan
+                .voices
+                .iter()
+                .map(|line| PlacedVoiceDto {
+                    proposal_voice: line.proposal_voice,
+                    name: line.name.clone(),
+                    added: line.added,
+                    bars: u32::try_from(line.bars.len()).unwrap_or(u32::MAX),
+                })
+                .collect(),
+            source: plan.source.clone(),
+            summary: plan.summary.clone(),
+        }
+    }
+}
+
+/// What keeping a phrase reports once it is source.
+#[derive(Clone, Debug, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "../../ui/src/lib/session/generated/")]
+pub struct PlacementReportDto {
+    pub revision: u64,
+    pub summary: String,
+    pub part: String,
+    /// The voices it wrote into, in the order it wrote them.
+    pub voices: Vec<String>,
+    /// The engraved ids of the notes it added — what to select.
+    pub events: Vec<String>,
+}
+
+impl From<&musa_project::PlacementReport> for PlacementReportDto {
+    fn from(report: &musa_project::PlacementReport) -> Self {
+        Self {
+            revision: report.revision.0,
+            summary: report.summary.clone(),
+            part: report.part.clone(),
+            voices: report.voices.clone(),
+            events: report.events.clone(),
         }
     }
 }

@@ -100,11 +100,27 @@ pub enum ProposalLoss {
     DeferredDuration { note_index: usize },
 }
 
-/// A compiled source preview: the canonical, formatted source and the
-/// compilation identity it was proven to carry.
+/// One line of the preview: which proposal voice it writes, and the bars it
+/// writes it as.
+///
+/// The bars are the spelling the preview was proven to compile with, kept
+/// rather than re-derived: placing this phrase into a real score writes the
+/// same bars into a real voice, and a placement that re-spelled them could
+/// disagree with the preview the composer accepted.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ProposalVoice {
+    /// The proposal voice, 0..4.
+    pub voice: u8,
+    /// One complete bar of voice content per entry, without its `|`.
+    pub bars: Vec<String>,
+}
+
+/// A compiled source preview: the canonical, formatted source, the lines it
+/// spells, and the compilation identity it was proven to carry.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ProposalSource {
     source: String,
+    voices: Vec<ProposalVoice>,
     kind: DocumentKind,
     identity: SemanticHash,
 }
@@ -113,6 +129,11 @@ impl ProposalSource {
     /// The canonical formatted source, a complete `piece`.
     pub fn source(&self) -> &str {
         &self.source
+    }
+
+    /// The lines the preview writes, lowest-numbered voice first.
+    pub fn voices(&self) -> &[ProposalVoice] {
+        &self.voices
     }
 
     /// The compiled document kind of the preview.
@@ -452,6 +473,7 @@ fn build_source(
     }
 
     let mut voice_lines = Vec::new();
+    let mut voices = Vec::new();
     for (voice_id, indices) in by_voice {
         let entries = indices
             .iter()
@@ -477,6 +499,7 @@ fn build_source(
             "            voice voice{voice_id} {{ {} }}",
             bars.iter().map(|bar| format!("| {bar}")).collect::<Vec<_>>().join(" ")
         ));
+        voices.push(ProposalVoice { voice: voice_id, bars });
     }
 
     if voice_lines.is_empty() {
@@ -517,6 +540,7 @@ fn build_source(
 
     Ok(Some(ProposalSource {
         source: formatted,
+        voices,
         kind: compilation.kind(),
         identity: compilation.identity(),
     }))

@@ -26,7 +26,10 @@ use musa_project::{
 use serde_json::Value;
 use tauri::{AppHandle, Emitter};
 
-use crate::dto::{BarlinePreviewDto, ErrorDto, ErrorKindDto, ExportedDto, GroupEditPlanDto, ReviewFactsDto};
+use crate::dto::{
+    BarlinePreviewDto, ErrorDto, ErrorKindDto, ExportedDto, GroupEditPlanDto, PlacementPlanDto, PlacementReportDto,
+    ReviewFactsDto,
+};
 
 /// How often the position is reported while playing (`06-frame-budgets.md` §3).
 /// At rest the thread blocks: there is no timer anywhere in the application.
@@ -91,6 +94,16 @@ enum Job {
     ReviewAudition(musa_project::ReviewAudition),
     ReviewAccept,
     ReviewDiscard,
+    /// What keeping the accepted phrase would write, before it is written.
+    ///
+    /// A query like the reviews above: it computes a candidate document and
+    /// commits nothing, so it emits no snapshot either.
+    ReviewPlacementPlan(Vec<String>),
+    /// Keep the accepted phrase: one revision, or none.
+    ///
+    /// The one review job that *is* mutating, because it is the step where a
+    /// take stops being evidence and becomes source.
+    ReviewPlace(Vec<String>),
     /// Read the last valid score, and report what one analysis saw.
     ///
     /// A job like the others because it reads the session's score, and
@@ -209,6 +222,14 @@ impl SessionHandle {
         self.ask(Job::ReviewDiscard)
     }
 
+    pub(crate) fn review_placement_plan(&self, voices: Vec<String>) -> Reply {
+        self.ask(Job::ReviewPlacementPlan(voices))
+    }
+
+    pub(crate) fn review_place(&self, voices: Vec<String>) -> Reply {
+        self.ask(Job::ReviewPlace(voices))
+    }
+
     pub(crate) fn listen_to_midi(&self, listening: bool, caret: Option<String>) -> Reply {
         self.ask(Job::Midi(listening, caret))
     }
@@ -295,6 +316,7 @@ fn run(app: &AppHandle, inbox: &Receiver<(Job, Sender<Reply>)>) {
                     | Job::ReviewAudition(_)
                     | Job::ReviewAccept
                     | Job::ReviewDiscard
+                    | Job::ReviewPlacementPlan(_)
                     | Job::Midi(..)
                     | Job::MidiSelect(_)
                     | Job::MidiCaptureStart(_)
@@ -525,6 +547,22 @@ fn perform(session: &mut Option<Project>, job: Job) -> Reply {
             let piece = session.as_mut().ok_or_else(no_project)?.current_mut();
             piece.discard_review();
             Ok(serde_json::Value::Null)
+        }
+        Job::ReviewPlacementPlan(voices) => {
+            let piece = session.as_ref().ok_or_else(no_project)?.current();
+            let plan = piece
+                .plan_review_placement(&voices)
+                .map_err(|error| ErrorDto::shell(ErrorKindDto::Document, error.to_string()))?;
+            serde_json::to_value(PlacementPlanDto::from(&plan))
+                .map_err(|error| ErrorDto::shell(ErrorKindDto::Backend, error.to_string()))
+        }
+        Job::ReviewPlace(voices) => {
+            let piece = session.as_mut().ok_or_else(no_project)?.current_mut();
+            let report = piece
+                .place_review(&voices)
+                .map_err(|error| ErrorDto::shell(ErrorKindDto::Document, error.to_string()))?;
+            serde_json::to_value(PlacementReportDto::from(&report))
+                .map_err(|error| ErrorDto::shell(ErrorKindDto::Backend, error.to_string()))
         }
         Job::Snapshot => session.as_mut().map(snapshot_json).ok_or_else(no_project),
         Job::Analyze(kind) => {

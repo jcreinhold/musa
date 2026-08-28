@@ -16,13 +16,18 @@ import {
   barlines,
   destination,
   extent,
+  fate,
   keepable,
   marked,
   marksOver,
+  naming,
   nextMark,
+  placeable,
   rows,
   taps,
 } from "../../src/lib/state/review";
+import type { PlacedVoiceDto } from "../../src/lib/session/generated/PlacedVoiceDto";
+import type { PlacementPlanDto } from "../../src/lib/session/generated/PlacementPlanDto";
 import type { ReviewAmbiguityDto } from "../../src/lib/session/generated/ReviewAmbiguityDto";
 import type { ReviewFactsDto } from "../../src/lib/session/generated/ReviewFactsDto";
 import type { ReviewNoteDto } from "../../src/lib/session/generated/ReviewNoteDto";
@@ -54,6 +59,8 @@ function mark(partial: Partial<ReviewAmbiguityDto> = {}): ReviewAmbiguityDto {
 function facts(partial: Partial<ReviewFactsDto> = {}): ReviewFactsDto {
   return {
     takeName: "piano@3",
+    part: "piano",
+    voice: "upper",
     revision: 3n,
     current: true,
     meter: "4/4",
@@ -167,8 +174,13 @@ describe("the marks", () => {
 
 describe("what the top margin says", () => {
   it("names the phrase in the project's own words", () => {
-    expect(destination(facts())).toBe("1 note in one line, in 4/4");
-    expect(destination(facts({ notes: [note(), note()], voiceCount: 2 }))).toBe("2 notes in 2 lines, in 4/4");
+    expect(destination(facts())).toBe("1 note in one line, into piano\u2019s upper, in 4/4");
+    expect(destination(facts({ notes: [note(), note()], voiceCount: 2 }))).toBe(
+      "2 notes in 2 lines, into piano\u2019s upper, in 4/4",
+    );
+    // A caret that named no line still names the part it is in: where the
+    // phrase goes is a fact about the take, not about the selection.
+    expect(destination(facts({ voice: null }))).toBe("1 note in one line, into piano, in 4/4");
   });
 
   it("keeps a reading that writes exactly and is still the session's", () => {
@@ -182,6 +194,60 @@ describe("what the top margin says", () => {
   it("cannot keep a reading twice, or one the source has moved past", () => {
     expect(keepable(facts({ sealed: true }))).toBe(false);
     expect(keepable(facts({ current: false }))).toBe(false);
+  });
+});
+
+function line(partial: Partial<PlacedVoiceDto> = {}): PlacedVoiceDto {
+  return { proposalVoice: 0, name: "upper", added: false, bars: 1, ...partial };
+}
+
+function plan(partial: Partial<PlacementPlanDto> = {}): PlacementPlanDto {
+  return {
+    takeName: "piano@3",
+    capturedAt: 3n,
+    revision: 3n,
+    policy: "straight",
+    part: "piano",
+    voices: [line()],
+    source: "part piano { voice upper { | c4 } }",
+    summary: "1 note in 1 bar into piano\u2019s upper",
+    ...partial,
+  };
+}
+
+describe("keeping the phrase", () => {
+  it("waits for the project to say what it would write", () => {
+    expect(placeable(facts({ sealed: true }), null)).toBe(false);
+    expect(placeable(facts({ sealed: true }), plan())).toBe(true);
+  });
+
+  it("will not write a phrase nobody has accepted yet", () => {
+    expect(placeable(facts(), plan())).toBe(false);
+  });
+
+  it("will not write a plan of a document the session has moved past", () => {
+    expect(placeable(facts({ sealed: true, current: false }), plan())).toBe(false);
+  });
+
+  it("says whether a name is a line the part has, or one this adds", () => {
+    expect(fate(line(), "piano")).toBe("1 bar into piano\u2019s upper");
+    expect(fate(line({ name: "lower", added: true, bars: 2 }), "piano")).toBe("2 bars into a new line");
+  });
+
+  it("offers the project's names, and then keeps what was typed", () => {
+    expect(naming(plan(), [])).toEqual(["upper"]);
+    // Re-planning answers with the names it was given; reseeding from that
+    // answer would fight the person typing.
+    expect(naming(plan({ voices: [line({ name: "up" })] }), ["up"])).toEqual(["up"]);
+  });
+
+  it("offers nothing while there is no plan", () => {
+    expect(naming(null, ["upper"])).toEqual([]);
+  });
+
+  it("re-offers when the phrase turns out to write a different number of lines", () => {
+    const two = plan({ voices: [line(), line({ proposalVoice: 1, name: "lower", added: true })] });
+    expect(naming(two, ["upper"])).toEqual(["upper", "lower"]);
   });
 });
 
