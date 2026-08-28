@@ -19,11 +19,82 @@ use crate::schedule::{
     merge_schedules, schedule,
 };
 use crate::spec::GraphOptions;
-use crate::studio::{lower_studio, lower_studio_for_sources};
+use crate::studio::{TapRole, lower_studio, lower_studio_for_sources};
 
 /// Opaque prepared event input for one score part's audition instrument.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct PreparedAuditionTarget(usize);
+
+/// Which declared route a tap reads.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum AudioTapRole {
+    /// One part's own instrument chain, before any bus it sends to.
+    Part,
+    /// One named bus or return, after its own chain.
+    Bus,
+}
+
+/// One point on the routing the source declared, readable beside the master.
+///
+/// A tap is an identity, not a mixer channel: it names a route that already
+/// exists and carries no level, mute, or solo of its own. Reading one cannot
+/// change what the master hears.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct AudioTap {
+    role: AudioTapRole,
+    name: String,
+}
+
+impl AudioTap {
+    /// Whether this reads a part output or a bus output.
+    pub const fn role(&self) -> AudioTapRole {
+        self.role
+    }
+
+    /// The part or bus name the source wrote.
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+}
+
+/// Whether a declared edge carries the whole signal or a share of it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum AudioRouteKind {
+    /// `route a -> b`: the signal goes there instead.
+    Route,
+    /// `send a -> b`: a share of the signal goes there as well.
+    Send,
+}
+
+/// One declared routing edge, reported so a consumer can read the projection
+/// the taps sit on.
+///
+/// This is what makes the taps legible without promising they add up: a send
+/// duplicates signal and a return may share nonlinear processing, so the
+/// edges say where the signal went rather than how to reconstruct a mix.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct AudioRoute {
+    kind: AudioRouteKind,
+    source: String,
+    destination: String,
+}
+
+impl AudioRoute {
+    /// Whether the edge is a route or a send.
+    pub const fn kind(&self) -> AudioRouteKind {
+        self.kind
+    }
+
+    /// The part or bus the signal leaves.
+    pub fn source(&self) -> &str {
+        &self.source
+    }
+
+    /// The bus it arrives at, or `master`.
+    pub fn destination(&self) -> &str {
+        &self.destination
+    }
+}
 
 /// One callback-safe event for ephemeral selected-instrument audition.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -140,6 +211,10 @@ pub struct PreparedAudio {
     lanes: Vec<PreparedLane>,
     media: Option<crate::PreparedMedia>,
     media_inputs: Vec<String>,
+    // Tap i in this list is buffer tap i of the plan. The compact index is
+    // private; what crosses the facade is the source identity beside it.
+    taps: Vec<AudioTap>,
+    routes: Vec<AudioRoute>,
     tuning: Tuning,
     sample_rate: u32,
     total_frames: u64,
@@ -333,6 +408,28 @@ impl PreparedAudio {
         }
     }
 
+    /// Every readable point on the routing this studio declared, in the
+    /// order a tapped step reports them: part outputs first, then buses.
+    ///
+    /// The list is derived from checked source routing alone. It is empty for
+    /// a studio that declares nothing, and it never contains the master —
+    /// which [`Self::step`] already returns.
+    ///
+    /// A tap reports what its route delivered towards the master. A part the
+    /// studio routes nowhere delivers nothing, so its tap is silent; that is
+    /// the studio's statement about the part, not a failure to read it.
+    pub fn taps(&self) -> &[AudioTap] {
+        &self.taps
+    }
+
+    /// Every declared routing edge, so a consumer can read what the taps sit
+    /// on without being told the taps sum to the master. They do not: a send
+    /// duplicates signal, and a nonlinear master chain is not the sum of what
+    /// reaches it.
+    pub fn routes(&self) -> &[AudioRoute] {
+        &self.routes
+    }
+
     /// Execute exactly one reference frame, reading this frame's event batch
     /// before producing its stereo output. No allocation, lock, I/O, or log
     /// occurs on this path.
@@ -359,6 +456,31 @@ impl PreparedAudio {
         let frame = self.plan.finish_step();
         self.position = self.position.saturating_add(1);
         frame
+    }
+
+    /// Execute the same one reference frame and also report what each tap
+    /// wrote during it.
+    ///
+    /// `into` is filled from the front, one stereo frame per entry of
+    /// [`Self::taps`]; entries beyond that are zeroed, and a shorter slice
+    /// simply reports fewer taps. Allocation-free, and identical to
+    /// [`Self::step`] in every effect it has on state — the taps are reads of
+    /// buffers the frame already wrote, so the master returned here is the
+    /// master `step` would have returned.
+    pub fn step_with_taps(&mut self, into: &mut [[f32; 2]]) -> [f32; 2] {
+        // Past the finite extent nothing is stepped, so the plan's buffers
+        // still hold the last frame that was. Reporting them again would
+        // invent signal after the piece ended.
+        let sounding = self.position < self.total_frames;
+        let master = self.step();
+        for (index, slot) in into.iter_mut().enumerate() {
+            *slot = if sounding && index < self.taps.len() {
+                self.plan.tap_frame(index)
+            } else {
+                [0.0; 2]
+            };
+        }
+        master
     }
 
     /// Fill an interleaved stereo host block by repeated reference steps.
@@ -533,8 +655,10 @@ fn prepare_audio(
         .enumerate()
         .map(|(slot, input)| (input.node, slot))
         .collect::<Vec<_>>();
-    let mut plan = prepare_routed_plan_with_external(&graph, &graph_options, &event_inputs, &external_inputs)
-        .map_err(|error| AudioPrepareError::Primitive(error.to_string()))?;
+    let tap_nodes = lowering.taps.iter().map(|tap| tap.node).collect::<Vec<_>>();
+    let mut plan =
+        prepare_routed_plan_with_external(&graph, &graph_options, &event_inputs, &external_inputs, &tap_nodes)
+            .map_err(|error| AudioPrepareError::Primitive(error.to_string()))?;
     let (schedule, lane_schedules) = schedule_gestures(gestures, options)?;
     let mut lane_controls = Vec::with_capacity(lane_schedules.len());
     let mut audition = Vec::with_capacity(lane_schedules.len());
@@ -575,6 +699,31 @@ fn prepare_audio(
             control_cursor: 0,
         })
         .collect();
+    let taps = lowering
+        .taps
+        .iter()
+        .map(|tap| AudioTap {
+            role: match tap.role {
+                TapRole::Part => AudioTapRole::Part,
+                TapRole::Bus => AudioTapRole::Bus,
+            },
+            name: tap.name.clone(),
+        })
+        .collect();
+    let routes = studio
+        .routes()
+        .iter()
+        .map(|route| AudioRoute {
+            kind: AudioRouteKind::Route,
+            source: route.source.clone(),
+            destination: route.destination.clone(),
+        })
+        .chain(studio.sends().iter().map(|send| AudioRoute {
+            kind: AudioRouteKind::Send,
+            source: send.source.clone(),
+            destination: send.bus.clone(),
+        }))
+        .collect();
     Ok(PreparedAudio {
         _instrument_contracts: instrument_contracts,
         _instrument_machine: instrument_machine,
@@ -585,6 +734,8 @@ fn prepare_audio(
         lanes,
         media,
         media_inputs: prepared_media_inputs.into_iter().map(|input| input.name).collect(),
+        taps,
+        routes,
         tuning: options.tuning,
         sample_rate,
         total_frames,

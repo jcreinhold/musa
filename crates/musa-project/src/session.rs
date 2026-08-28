@@ -1111,6 +1111,26 @@ impl ProjectSession {
         Ok(self.travel_to(target))
     }
 
+    /// Render the mix and one aligned stem per declared part output and
+    /// named bus, from the last score that compiled.
+    ///
+    /// One preparation, one traversal: the master here is byte-for-byte the
+    /// one [`ExportRequest::Wav`] produces, and every stem shares its frame
+    /// zero and its length. The stems do not sum to the master and the
+    /// result does not claim they do — [`crate::StemSet::routes`] reports the
+    /// declared edges instead.
+    ///
+    /// # Errors
+    /// [`ProjectError::NoValidScore`] if the piece has never compiled, or
+    /// [`ProjectError::Performance`] if preparation, rendering, or WAV
+    /// encoding fails.
+    pub fn export_stems(&self) -> Result<crate::StemSet, ProjectError> {
+        let span = tracing::info_span!("export_stems", revision = self.revision.0);
+        let _entered = span.enter();
+        let valid = self.valid.as_ref().ok_or(ProjectError::NoValidScore)?;
+        crate::stems::to_stems(&valid.score, &valid.studio_execution, &self.assets)
+    }
+
     /// Produce an export from the last score that compiled.
     ///
     /// # Errors

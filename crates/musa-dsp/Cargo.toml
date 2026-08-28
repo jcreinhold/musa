@@ -44,3 +44,7 @@ name = "schedule_step"
 [[bench]]
 harness = false
 name = "sampler"
+
+[[bench]]
+harness = false
+name = "stem_render"

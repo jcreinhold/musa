@@ -1,7 +1,7 @@
 ---
 id: 211
 slug: aligned-stem-rendering
-status: pending
+status: done
 depends_on: [210]
 phase: 4
 ---

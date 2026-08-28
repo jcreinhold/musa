@@ -17,7 +17,7 @@ pub(crate) fn sample_rate() -> u32 {
 }
 
 /// Exact gesture lowering → checked scheduling → prepared audio machine.
-fn build(
+pub(crate) fn build(
     score: &ScoreSnapshot,
     studio: &musa_dsp::StudioExecution,
     assets: &crate::assets::AssetInventory,
@@ -167,7 +167,7 @@ fn polymetric(score: &ScoreSnapshot) -> bool {
 }
 
 /// Encode rendered audio as a 32-bit float stereo WAV (§13.8).
-fn wav_bytes(audio: &musa_dsp::RenderedAudio) -> Result<Vec<u8>, ProjectError> {
+pub(crate) fn wav_bytes(audio: &musa_dsp::RenderedAudio) -> Result<Vec<u8>, ProjectError> {
     let spec = hound::WavSpec {
         channels: 2,
         sample_rate: audio.sample_rate(),

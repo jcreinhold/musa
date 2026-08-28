@@ -62,6 +62,7 @@ mod session;
 mod sf2;
 mod sfz;
 mod snapshot;
+mod stems;
 mod studio;
 mod template;
 mod transcription_pairing;
@@ -111,6 +112,7 @@ pub use crate::session::ProjectSession;
 pub use crate::sf2::{Sf2InstrumentFacts, Sf2Limits};
 pub use crate::sfz::{SfzInstrumentFacts, SfzLimits};
 pub use crate::snapshot::{PlaybackState, ProjectSnapshot};
+pub use crate::stems::{StemFile, StemKind, StemRoute, StemRouteKind, StemSet};
 pub use crate::studio::{
     AssignmentFacts, ContainerFacts, ContainerKind, MediaSourceFacts, ParamFacts, RouteFacts, SendFacts, StageFacts,
     StudioEdit, StudioFacts,

@@ -25,6 +25,7 @@ mod review_placement_laws;
 mod rhythm_transcription_laws;
 mod sampler_laws;
 mod session_laws;
+mod stem_laws;
 mod studio_laws;
 mod transcription_corpus;
 mod transcription_trial_laws;

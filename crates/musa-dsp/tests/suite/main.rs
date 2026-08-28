@@ -19,6 +19,7 @@ mod routing_laws;
 mod rt;
 mod sampler_laws;
 mod schedule;
+mod stem_tap_laws;
 mod studio_laws;
 mod studio_lowering_laws;
 mod synth_laws;

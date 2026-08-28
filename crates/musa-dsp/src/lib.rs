@@ -32,8 +32,8 @@ mod studio_source;
 mod voice;
 
 pub use crate::audio::{
-    AudioOptions, AudioPrepareError, AuditionEvent, AuditionOutcome, PreparedAudio, PreparedAuditionTarget,
-    prepare_execution, prepare_execution_with_media,
+    AudioOptions, AudioPrepareError, AudioRoute, AudioRouteKind, AudioTap, AudioTapRole, AuditionEvent,
+    AuditionOutcome, PreparedAudio, PreparedAuditionTarget, prepare_execution, prepare_execution_with_media,
 };
 pub use crate::instrument_source::{
     InstrumentAuditionBinding, InstrumentContract, InstrumentContracts, InstrumentContractsError,
@@ -42,7 +42,7 @@ pub use crate::instrument_source::{
 };
 pub use crate::machine::{MachineValue, PrepareError, PreparedMachine, StartedMachine, StepError, prepare_machine};
 pub use crate::media::{MediaLimits, MediaPrepareError, PreparedMedia, prepare_media};
-pub use crate::offline::{RenderedAudio, render_offline};
+pub use crate::offline::{RenderedAudio, RenderedMultitrack, RenderedStem, render_offline, render_offline_multitrack};
 pub use crate::primitive::{AudioLimits, VocabularyAgreementError, check_studio_vocabulary};
 pub use crate::sample_source::{SampleMap, SampleMapError, decode_sample_map, sample_map_schema};
 pub use crate::sampler::{

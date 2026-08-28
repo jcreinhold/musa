@@ -48,6 +48,32 @@ pub(crate) struct StudioLowering {
     /// tail was enough while every note stopped when it ended; a patch with
     /// a 3.5 s release would be cut off mid-fade by one.
     pub(crate) release_tail: f32,
+    /// Where a caller may read the signal this studio already routes: one
+    /// entry per part output and one per named bus, in that order.
+    ///
+    /// These are not a second mixer. Each names a node the graph writes
+    /// anyway, so reading one cannot change what the master hears.
+    pub(crate) taps: Vec<TapPoint>,
+}
+
+/// Which kind of declared route a tap reads.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum TapRole {
+    /// The output of one part's own instrument chain, before any bus.
+    Part,
+    /// The output of one named bus, after its own chain.
+    Bus,
+}
+
+/// One readable point on the routing the source declared.
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) struct TapPoint {
+    /// Whether this is a part output or a bus output.
+    pub(crate) role: TapRole,
+    /// The name the source wrote, kept for the caller to name the tap by.
+    pub(crate) name: String,
+    /// The node whose output buffer carries it.
+    pub(crate) node: NodeId,
 }
 
 /// One part-local event input created while lowering the compatibility studio.
@@ -121,6 +147,19 @@ pub(crate) fn lower_studio_for_sources(
                 part: (*part).to_owned(),
                 declaration: "std.sound.basic_sine@1".to_owned(),
                 node: NodeId(0),
+            })
+            .into_iter()
+            .collect();
+        // The default instrument graph *is* the part's output, so the one
+        // part a piece without a studio can have taps the graph output.
+        lowering.taps = parts
+            .first()
+            .and_then(|part| {
+                graph.output().map(|node| TapPoint {
+                    role: TapRole::Part,
+                    name: (*part).to_owned(),
+                    node,
+                })
             })
             .into_iter()
             .collect();
@@ -279,6 +318,23 @@ pub(crate) fn lower_studio_for_sources(
     graph.set_output(master);
 
     lower_modulations(&mut graph, studio, &addresses, &mut lowering);
+    // Parts first, then buses, each in the order lowering met them. Recorded
+    // media is deliberately absent: it is an input the studio routes, not a
+    // part the score has, and the master already carries it.
+    lowering.taps = part_outputs
+        .iter()
+        .take(parts.len())
+        .map(|(name, node)| TapPoint {
+            role: TapRole::Part,
+            name: (*name).to_owned(),
+            node: *node,
+        })
+        .chain(bus_outputs.iter().map(|(name, node)| TapPoint {
+            role: TapRole::Bus,
+            name: (*name).to_owned(),
+            node: *node,
+        }))
+        .collect();
     (graph, lowering, inputs, media_inputs)
 }
 

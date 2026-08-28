@@ -1,6 +1,6 @@
 # 10 — Audio performance closure
 
-Status: **descriptive measurement record for prompt 191**. The semantic contracts remain
+Status: **descriptive measurement record for prompts 191 and 211**. The semantic contracts remain
 [`08-performance-and-sound.md`](08-performance-and-sound.md),
 [`../events/07-backend-contract.md`](../events/07-backend-contract.md), and the across-stage machine calculus. A timing
 cannot weaken them.
@@ -106,6 +106,38 @@ Preloading also meets every current workload and its explicit memory bounds. Str
 SoundFont, WAV, package, digest, and resource-limit cases remain outside timed success samples and inside their bounded
 law suites.
 
+## Stem taps beside the mix
+
+Prompt 211 required the choice between one traversal and one render per output to be measured rather than argued.
+Measured on 2026-08-28 on the same Apple M4 Pro (12 cores, 24 GB), arm64 macOS 26.6.2, rustc/cargo 1.98.0, by
+`cargo bench -p musa-dsp --bench stem_render`. The benchmark owns its generated source, so the workload cannot drift
+independently of the harness:
+
+| workload | scale |
+| --- | --- |
+| routed mix | 8 parts, 4 shared returns, 512 gestures, 12 taps, 144,000 output frames |
+
+| operation | median | observed range | maximum live | allocations / allocated bytes |
+| --- | ---: | ---: | ---: | ---: |
+| render the mix alone | 38.69 ms | 38.38–39.21 ms | 2 / 2.129 MB | 2 / 65.53 KB |
+| render the mix and 12 stems in one traversal | 46.03 ms | 45.12–46.62 ms | 29 / 14.97 MB | 29 / 14.97 MB |
+| render 13 outputs, one pass each | 504.4 ms | 503.1–508.1 ms | 2 / 14.91 MB | 26 / 851.9 KB |
+
+One traversal costs **19% more than the mix alone** and **10.9 times less than a pass per output**, because the graph is
+walked once for thirteen reads of it rather than thirteen times for one read each. That settles the design's "measure
+before choosing" in favour of the single traversal, which is also the shape that makes alignment structural: a tap is
+read from the buffer the same frame wrote, so no stem can drift from the master or from another stem.
+
+Memory is the output itself and nothing else. Thirteen stereo f32 outputs of 144,000 frames are 14.976 MB, and the
+measured 14.97 MB maximum live is that number: the collectors are reserved at their final size, the per-tap scratch is
+one stereo frame, and no decoded asset is stored a second time. The separate-pass shape holds the same audio in less
+transient allocation but thirteen independent graph states, which is what its 26 allocations and 10.9× time are.
+
+The 29 allocations are the thirteen output collectors, their thirteen `Vec` headers, and the tap list; the render itself
+still allocates nothing per frame. The callback path is untouched — `step_with_taps` is `step` plus one read per tap of
+a buffer that frame already wrote — and the mix it returns is byte-for-byte the mix `render_offline` produces, which is
+a law rather than an observation (`suite::stem_tap_laws`).
+
 ## Interface and ownership result
 
 The prompt 191 Playwright run passed 191/191 tests. Its measured p95 values were B1 2 ms, B2 253 ms (2 ms stubbed round
@@ -123,5 +155,6 @@ Reproduction commands are the prompt's Check plus:
 cargo bench -p musa-compiler -- p1_compile p2_elaborate
 cargo bench -p musa-dsp --bench audio_bridge
 cargo bench -p musa-dsp --bench sampler
+cargo bench -p musa-dsp --bench stem_render
 cargo nextest run -p musa-dsp audio_performance_laws
 ```

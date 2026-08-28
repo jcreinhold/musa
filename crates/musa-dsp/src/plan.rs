@@ -33,6 +33,11 @@ pub(crate) struct RenderPlan {
     master_channels: usize,
     /// Private slot to dedicated unconnected stereo input buffer.
     external_inputs: Vec<(usize, usize)>,
+    /// One entry per requested tap, in the order the caller asked: the buffer
+    /// that node writes and how many channels it writes there. `None` is a
+    /// tap on a node the output cannot reach, which is silence rather than an
+    /// error — a part routed nowhere is the studio's statement (§13.3).
+    taps: Vec<Option<(usize, usize)>>,
 }
 
 struct Step {
@@ -429,17 +434,23 @@ pub(crate) fn prepare_routed_plan(
     options: &GraphOptions,
     event_inputs: &[(NodeId, usize)],
 ) -> Result<RenderPlan, GraphError> {
-    prepare_routed_plan_with_external(spec, options, event_inputs, &[])
+    prepare_routed_plan_with_external(spec, options, event_inputs, &[], &[])
 }
 
 /// Compile event lanes and dedicated control-side stereo source slots into
 /// one graph. Each external node must be a stereo passthrough; its otherwise
 /// unconnected input receives one preallocated frame buffer.
+///
+/// `taps` names nodes whose output frame the caller wants to read beside the
+/// master, in its own order. A tap changes nothing about the render: it is a
+/// read of a buffer the graph already writes, so the frames it reports are the
+/// ones the master heard.
 pub(crate) fn prepare_routed_plan_with_external(
     spec: &StudioGraphSpec,
     options: &GraphOptions,
     event_inputs: &[(NodeId, usize)],
     external_bindings: &[(NodeId, usize)],
+    taps: &[NodeId],
 ) -> Result<RenderPlan, GraphError> {
     let span = tracing::info_span!(
         "prepare_audio_primitives",
@@ -580,6 +591,17 @@ pub(crate) fn prepare_routed_plan_with_external(
         external_inputs = external_inputs.len(),
         "compiled a render plan"
     );
+    let taps = taps
+        .iter()
+        .map(|node| {
+            let buffer = port_buffers.get(&(*node, 0)).copied()?;
+            let channels = spec
+                .processor_of(*node)
+                .and_then(|processor| processor.output_ports().first().copied())
+                .map_or(1, channels_of);
+            Some((buffer, channels))
+        })
+        .collect();
     Ok(RenderPlan {
         sample_rate: options.sample_rate,
         schedule,
@@ -587,6 +609,7 @@ pub(crate) fn prepare_routed_plan_with_external(
         master,
         master_channels,
         external_inputs,
+        taps,
     })
 }
 
@@ -944,6 +967,27 @@ impl RenderPlan {
     pub(crate) fn step(&mut self, events: &[EventMessage<Gesture>], tuning: Tuning) -> [f32; 2] {
         self.apply_events(0, events, tuning);
         self.finish_step()
+    }
+
+    /// The stereo frame one tap wrote during the step just finished.
+    ///
+    /// Read-only, allocation-free, and taken after `finish_step` has put every
+    /// output buffer back, so it observes the same frame the master mixed.
+    pub(crate) fn tap_frame(&self, tap: usize) -> [f32; 2] {
+        const FRAME_WIDTH: usize = 1;
+        let Some(Some((buffer, channels))) = self.taps.get(tap).copied() else {
+            return [0.0; 2];
+        };
+        let Some(samples) = self.buffers.get(buffer) else {
+            return [0.0; 2];
+        };
+        let left = samples.first().copied().unwrap_or(0.0);
+        let right = if channels > 1 {
+            samples.get(FRAME_WIDTH).copied().unwrap_or(0.0)
+        } else {
+            left
+        };
+        [finite(left), finite(right)]
     }
 
     fn master_frame(&self, channel_stride: usize) -> [f32; 2] {

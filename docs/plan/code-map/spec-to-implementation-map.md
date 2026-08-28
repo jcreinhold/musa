@@ -55,13 +55,13 @@ is gone, and audition, Capture, Keep that, Review, and Accept are the only route
 ## The workstation boundary
 
 The governing contract is `docs/rules/across-stages/06-daw-boundary.md`, added by prompt 210. It fixes identity, time
-ownership, the derivation record, and the loss discipline before any transport exists; every row here is therefore
-**absent**, and the prompt named is where it is built.
+ownership, the derivation record, and the loss discipline before any transport exists; the prompt named beside each row
+is where it is built.
 
 | Capability | State | Planned owner |
 | --- | --- | --- |
-| Frame-aligned part, bus, and master stems | absent | prompt 211, over the existing checked routing graph in `musa-dsp`/`musa-project` |
-| Deterministic export bundle, manifest, and origin/loss sidecar | absent | prompt 212, packaging the existing `ExportRequest` targets plus prompt 211's audio |
+| Frame-aligned part, bus, and master stems | implemented | prompt 211: `musa-dsp`'s private tap projection (`AudioTap`, `render_offline_multitrack`) read by `ProjectSession::export_stems` |
+| Deterministic export bundle, manifest, and origin/loss sidecar | absent | prompt 212, packaging the existing `ExportRequest` targets plus prompt 211's `StemSet` |
 | Versioned DAW derivation record | absent | prompt 212 defines version 1; every later boundary carries it |
 | Live CoreMIDI projection of score or performance MIDI | absent | prompt 213, reusing the Standard MIDI exporter's musical decisions |
 | One declared clock authority, leader and follower | absent | prompt 214; MIDI clock and MTC losses stated before a session starts |
