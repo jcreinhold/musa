@@ -80,6 +80,10 @@ Body sections (a prompt omits a section when it has nothing to add):
       only the Rust one is how prompts 158 through 161 each shipped Markdown that `mdwright` would rewrap, ten files'
       worth by the time commit `9904677a` swept them. `make fmt-check` runs `cargo fmt --all --check` itself, so it
       replaces the line rather than joining it;
+    - `make lint-ui` whenever the prompt writes `apps/musa-desktop/ui` or `packages/`. Clippy reads only the Rust half,
+      and ESLint carries Svelte rules — `svelte/prefer-svelte-reactivity` among them — that no Rust gate can see.
+      Prompts 206 and 209 each added a plain `new Set(...)` to a `.svelte`/`.svelte.ts` file and shipped green because
+      neither Check named this command;
     - the prompt's behavior checks on `examples/*.musa` fixtures.
 5. If a prompt turns out to be mis-scoped (two independent features, or a missing prerequisite), repair the prompt files
    first, run `python3 scripts/renumber-prompts.py audit`, commit that repair, then implement.

@@ -135,6 +135,7 @@ export class Workspace {
    * is played, whatever order the rectangle met them in.
    */
   selectMany(ids: readonly string[]): void {
+    // eslint-disable-next-line svelte/prefer-svelte-reactivity -- local membership test, never state
     const wanted = new Set(ids);
     const events = (this.snapshot?.score?.events ?? []).filter((event) => wanted.has(event.id));
     this.adrift = null;

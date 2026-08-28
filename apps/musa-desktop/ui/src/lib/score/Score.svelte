@@ -672,6 +672,7 @@
     const top = bandBox.top - host.scrollTop + box.top;
     const right = left + bandBox.width;
     const bottom = top + bandBox.height;
+    // eslint-disable-next-line svelte/prefer-svelte-reactivity -- local set, never state
     const found = new Set<string>();
     for (const drawn of host.querySelectorAll('[id^="event-"]')) {
       const at = drawn.getBoundingClientRect();
