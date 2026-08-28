@@ -19,6 +19,8 @@ import type { BarlinePreviewDto } from "./generated/BarlinePreviewDto";
 type BarlineRewritePreview = Extract<BarlinePreviewDto, { status: "rewrite" }>;
 import type { ErrorDto } from "./generated/ErrorDto";
 import type { ExportTargetDto } from "./generated/ExportTargetDto";
+import type { GroupEditDto } from "./generated/GroupEditDto";
+import type { GroupEditPlanDto } from "./generated/GroupEditPlanDto";
 import type { TemplateDto } from "./generated/TemplateDto";
 import type { EditDto } from "./generated/EditDto";
 import type { StudioEditDto } from "./generated/StudioEditDto";
@@ -67,6 +69,7 @@ export type Link = Pick<
   | "apply"
   | "editImpact"
   | "barlineRewrite"
+  | "groupEditPlan"
   | "transport"
   | "exportTo"
   | "snapshot"
@@ -92,7 +95,16 @@ export type Link = Pick<
  * arriving, and dropping the draft on its way back would undo whatever was
  * typed while it was in flight.
  */
-const REWRITES = new Set(["format", "insertBarlines", "undo", "redo", "editScore", "editStudio", "restoreRecovery"]);
+const REWRITES = new Set([
+  "format",
+  "insertBarlines",
+  "applyGroupEdit",
+  "undo",
+  "redo",
+  "editScore",
+  "editStudio",
+  "restoreRecovery",
+]);
 
 /**
  * The file extension an export writes, for the targets whose name is not it.
@@ -148,6 +160,15 @@ export class Session {
 
   /** The current command-palette wording, computed by the project facade. */
   barlinePreview = $state<BarlineRewritePreview | null>(null);
+
+  /**
+   * The group transformation waiting to be accepted, or null.
+   *
+   * Held here rather than in a component because it is a state of the
+   * document's editing, not of a panel: the score haloes the notes it would
+   * change while the inspector asks, and both read this.
+   */
+  groupPlan = $state<GroupEditPlanDto | null>(null);
 
   /** Which analysis is in flight, so the panel can say it is reading. */
   reading = $state<string | null>(null);
@@ -224,6 +245,10 @@ export class Session {
     if (current?.document === snapshot.document && snapshot.revision < current.revision) return;
     this.snapshot = snapshot;
     this.barlinePreview = null;
+    // A plan describes byte ranges of the revision it was made against, and
+    // the session refuses a stale one. Dropping it here is the interface
+    // saying the same thing before the composer can press Accept.
+    this.groupPlan = null;
     if (this.draft !== null && this.draft === snapshot.source) this.draft = null;
     if (!snapshot.compiles && !this.#announcedProblems) {
       this.#announcedProblems = true;
@@ -533,6 +558,44 @@ export class Session {
     } catch (thrown) {
       this.fail(thrown);
     }
+  }
+
+  /**
+   * Ask what one musical command would do to a selection.
+   *
+   * Nothing is applied and no revision is minted. A refusal — a tie, a
+   * tuplet, a bar that would not hold the result — is reported in the
+   * composer's words and leaves the previous preview cleared, because a panel
+   * still showing the last answer would be answering a question nobody asked.
+   */
+  async planGroupEdit(edit: GroupEditDto): Promise<GroupEditPlanDto | null> {
+    const link = this.#link;
+    if (!link || edit.events.length === 0) return null;
+    try {
+      const plan = await link.groupEditPlan(edit);
+      this.groupPlan = plan;
+      return plan;
+    } catch (thrown) {
+      this.groupPlan = null;
+      this.fail(thrown);
+      return null;
+    }
+  }
+
+  /**
+   * Commit exactly the plan the composer read, at the revision they read it
+   * at. One transaction, one entry in the history.
+   */
+  async acceptGroupEdit(): Promise<void> {
+    const plan = this.groupPlan;
+    if (!plan) return;
+    this.groupPlan = null;
+    await this.run({ kind: "applyGroupEdit", plan: plan.plan, revision: plan.revision }, () => `${plan.summary}.`);
+  }
+
+  /** Put the preview away, changing nothing. */
+  cancelGroupEdit(): void {
+    this.groupPlan = null;
   }
 
   /**

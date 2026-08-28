@@ -26,7 +26,7 @@ use musa_project::{
 use serde_json::Value;
 use tauri::{AppHandle, Emitter};
 
-use crate::dto::{BarlinePreviewDto, ErrorDto, ErrorKindDto, ExportedDto};
+use crate::dto::{BarlinePreviewDto, ErrorDto, ErrorKindDto, ExportedDto, GroupEditPlanDto};
 
 /// How often the position is reported while playing (`06-frame-budgets.md` §3).
 /// At rest the thread blocks: there is no timer anywhere in the application.
@@ -59,6 +59,11 @@ enum Job {
     Impact(EditCommand),
     /// Preview the compiler-proved barline transaction without applying it.
     BarlineRewrite,
+    /// Preview one group transformation without applying it.
+    ///
+    /// Mints a plan the session holds, so it needs the session mutably — and
+    /// still changes no source, which is why it emits no snapshot.
+    GroupEditPlan(musa_project::GroupEdit),
     /// Re-read the current snapshot without changing anything.
     Snapshot,
     /// Start or stop reading the MIDI keyboard, and say where the caret is.
@@ -159,6 +164,10 @@ impl SessionHandle {
         self.ask(Job::BarlineRewrite)
     }
 
+    pub(crate) fn group_edit_plan(&self, edit: musa_project::GroupEdit) -> Reply {
+        self.ask(Job::GroupEditPlan(edit))
+    }
+
     pub(crate) fn listen_to_midi(&self, listening: bool, caret: Option<String>) -> Reply {
         self.ask(Job::Midi(listening, caret))
     }
@@ -237,6 +246,7 @@ fn run(app: &AppHandle, inbox: &Receiver<(Job, Sender<Reply>)>) {
                 Job::Snapshot
                     | Job::Impact(_)
                     | Job::BarlineRewrite
+                    | Job::GroupEditPlan(_)
                     | Job::Midi(..)
                     | Job::MidiSelect(_)
                     | Job::MidiCaptureStart(_)
@@ -382,6 +392,14 @@ fn perform(session: &mut Option<Project>, job: Job) -> Reply {
                 ErrorDto::from(&error)
             })?;
             serde_json::to_value(BarlinePreviewDto::from(rewrite.as_ref()))
+                .map_err(|error| ErrorDto::shell(ErrorKindDto::Backend, error.to_string()))
+        }
+        Job::GroupEditPlan(edit) => {
+            let open = session.as_mut().ok_or_else(no_project)?;
+            let piece = open.current_mut();
+            let offsets = Utf16Offsets::new(piece.snapshot().source());
+            let plan = piece.plan_group_edit(&edit).map_err(|error| ErrorDto::from(&error))?;
+            serde_json::to_value(GroupEditPlanDto::new(plan, &offsets))
                 .map_err(|error| ErrorDto::shell(ErrorKindDto::Backend, error.to_string()))
         }
         Job::Snapshot => session.as_mut().map(snapshot_json).ok_or_else(no_project),

@@ -641,6 +641,59 @@
     }
   }
 
+  /**
+   * The rubber band, in the page's own coordinate space.
+   *
+   * A rectangle drawn over blank paper is the composer saying "these notes",
+   * and the answer may cross voices and staves — the one selection that does
+   * (`03-interaction.md` §1). Held in the scroll container's content
+   * coordinates so it stays over the same music while the page scrolls.
+   */
+  let band = $state<{ x0: number; y0: number; x1: number; y1: number } | null>(null);
+
+  const bandBox = $derived(
+    band && {
+      left: Math.min(band.x0, band.x1),
+      top: Math.min(band.y0, band.y1),
+      width: Math.abs(band.x1 - band.x0),
+      height: Math.abs(band.y1 - band.y0),
+    },
+  );
+
+  /** Where a pointer is, in the coordinates the band is held in. */
+  function inHost(event: PointerEvent): { x: number; y: number } | null {
+    if (!host) return null;
+    const box = host.getBoundingClientRect();
+    return {
+      x: event.clientX - box.left + host.scrollLeft,
+      y: event.clientY - box.top + host.scrollTop,
+    };
+  }
+
+  /**
+   * Every engraved event the band covers.
+   *
+   * A hit test over drawn boxes, which is the only thing on this side that
+   * knows where a note ended up. What comes back is a set of ids; everything
+   * musical about them is still the core's.
+   */
+  function withinBand(): string[] {
+    if (!host || !bandBox) return [];
+    const box = host.getBoundingClientRect();
+    const left = bandBox.left - host.scrollLeft + box.left;
+    const top = bandBox.top - host.scrollTop + box.top;
+    const right = left + bandBox.width;
+    const bottom = top + bandBox.height;
+    const found = new Set<string>();
+    for (const drawn of host.querySelectorAll('[id^="event-"]')) {
+      const at = drawn.getBoundingClientRect();
+      if (at.right < left || at.left > right || at.bottom < top || at.top > bottom) continue;
+      const id = eventIdOf(drawn);
+      if (id) found.add(id);
+    }
+    return [...found];
+  }
+
   function onpointerdown(event: PointerEvent): void {
     // The page's own front matter first: it is the one thing on the page that
     // is not music, and clicking it is a different question from clicking a
@@ -658,7 +711,15 @@
     mark("select");
     const id = eventIdOf(event.target as Element);
     if (!id) {
-      if (!writeAt(event)) workspace.clear();
+      if (writeAt(event)) return;
+      workspace.clear();
+      // Blank paper is where a rectangle starts. Nothing is selected until
+      // the pointer travels, so a plain click still means "select nothing".
+      const at = inHost(event);
+      if (at) {
+        band = { x0: at.x, y0: at.y, x1: at.x, y1: at.y };
+        (event.currentTarget as Element).setPointerCapture(event.pointerId);
+      }
       return;
     }
     // Held lens: a click asks about provenance, so the unit is the whole
@@ -780,6 +841,14 @@
   }
 
   function onpointermove(event: PointerEvent): void {
+    if (band) {
+      const at = inHost(event);
+      if (at) {
+        band = { ...band, x1: at.x, y1: at.y };
+        workspace?.selectMany(withinBand());
+      }
+      return;
+    }
     if (drag.event !== null) {
       const element = (event.target as Element).closest<HTMLElement>(".arriving") ?? host;
       const at = element ? pointIn(element, event.clientX, event.clientY) : null;
@@ -819,6 +888,7 @@
   }
 
   function onpointerup(): void {
+    band = null;
     const written = drag.release();
     if (written) onedit?.(written);
   }
@@ -842,6 +912,7 @@
   });
 
   function onpointerleave(): void {
+    band = null;
     hovered = null;
     handled = false;
     focus?.leave();
@@ -892,7 +963,10 @@
   {onpointerdown}
   {onpointermove}
   {onpointerup}
-  onpointercancel={() => drag.cancel()}
+  onpointercancel={() => {
+    band = null;
+    drag.cancel();
+  }}
   {onpointerleave}
   {onwheel}
 >
@@ -916,6 +990,15 @@
     title is where they type. It sits outside `.pages` so a pinch cannot carry
     it, and its box was measured against this scroll container.
   -->
+  {#if bandBox && (bandBox.width > 0 || bandBox.height > 0)}
+    <div
+      class="band"
+      style:left="{bandBox.left}px"
+      style:top="{bandBox.top}px"
+      style:width="{bandBox.width}px"
+      style:height="{bandBox.height}px"
+    ></div>
+  {/if}
   {#if hovered && !renaming}
     <div
       class="hairline"
@@ -947,6 +1030,17 @@
 </div>
 
 <style>
+  /*
+   * The band is a hairline and a wash, not a control: it says what the
+   * pointer is covering and then goes away (`01-visual-language.md` §7).
+   */
+  .band {
+    position: absolute;
+    pointer-events: none;
+    border: 1px solid var(--plate);
+    background: var(--plate-wash);
+  }
+
   .engraving {
     height: 100%;
     overflow: auto;

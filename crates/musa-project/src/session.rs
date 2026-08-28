@@ -124,6 +124,17 @@ pub struct ProjectSession {
     /// Work a previous session left behind, until this one keeps or discards
     /// it (roadmap §15.7).
     recovery: Option<String>,
+    /// The group transformations previewed at the current revision, by the
+    /// identity applying one consumes.
+    ///
+    /// Kept here because a shell that previews one and then applies it sends
+    /// the identity back and not the plan: the transaction has to be the one
+    /// that was previewed, or the composer accepted a different edit from the
+    /// one they read. Cleared whenever the source changes, which is what makes
+    /// a stale acceptance a refusal rather than a replay.
+    group_plans: std::collections::HashMap<u64, crate::GroupEditPlan>,
+    /// The next group-plan identity to mint. Never reused within a session.
+    next_group_plan: u64,
     /// The MIDI keyboard, opened on request so a session that never enters
     /// notes never touches the MIDI host.
     midi: Option<MidiInput>,
@@ -515,6 +526,7 @@ impl ProjectSession {
                 }
                 Ok(self.set_source(rewrite.source().to_owned()))
             }
+            ProjectCommand::ApplyGroupEdit { plan, revision } => self.apply_group_edit(plan, revision),
             ProjectCommand::Save => {
                 self.save()?;
                 Ok(ProjectUpdate::unchanged(self.revision, self.validity()))
@@ -1177,6 +1189,8 @@ impl ProjectSession {
             total_frames: 0,
             installed: None,
             recovery: None,
+            group_plans: std::collections::HashMap::new(),
+            next_group_plan: 1,
             midi: None,
             midi_preferred_id: None,
             midi_devices: Vec::new(),
@@ -1213,6 +1227,146 @@ impl ProjectSession {
             });
         }
         Ok(self.set_source(candidate))
+    }
+
+    /// Preview one musical command over a selection, without changing the
+    /// source or the history (prompt 206).
+    ///
+    /// A question, like [`Self::edit_impact`] — and a bigger one, because it
+    /// answers with the whole transaction: the events that change, the ones
+    /// the command does not apply to, the statements it rewrites grouped by
+    /// definition, the exact edits, the source they produce, the bars that end
+    /// up holding something different, and the compiler's own diagnostics
+    /// about that source. Every one of them is computed by the code that would
+    /// apply it, so an interface showing this preview is showing the edit.
+    ///
+    /// The plan is remembered under the identity it minted until the source
+    /// changes. Applying it is [`ProjectCommand::ApplyGroupEdit`], which
+    /// consumes that identity: a plan cannot be applied twice, and a plan from
+    /// a revision that has moved on is stale rather than replayed.
+    ///
+    /// # Errors
+    /// [`ProjectError::NoValidScore`] when the piece has never compiled,
+    /// [`ProjectError::NoSuchEvent`] for an id this revision does not have,
+    /// and [`ProjectError::Uneditable`] carrying the musical refusal and the
+    /// smallest next action — a tied link, a tuplet member, an inverted block,
+    /// a pitch named by a parameter, a selection with nothing applicable in it.
+    pub fn plan_group_edit(&mut self, edit: &crate::GroupEdit) -> Result<&crate::GroupEditPlan, ProjectError> {
+        let facts = &self.valid.as_ref().ok_or(ProjectError::NoValidScore)?.facts;
+        let resolution = crate::group_edit::resolution(facts, &self.source, edit)?;
+        let edits = musa_syntax::compute_group_edits(&self.source, &resolution.intents)
+            .map_err(|error| ProjectError::Uneditable(error.to_string()))?;
+        let candidate = musa_syntax::apply_edits(&self.source, &edits);
+        let (diagnostics, after) = self.preview_compile(&candidate);
+        // A preview that cannot be applied is not a preview: the transaction
+        // refuses uncompilable source, so refusing it here is the same
+        // promise made one step earlier, where the composer can still act.
+        if let Some(reason) = diagnostics
+            .iter()
+            .find(|diagnostic| diagnostic.severity == crate::diagnostic::Severity::Error)
+        {
+            return Err(ProjectError::RejectedEdit {
+                intent: resolution.summary,
+                reason: reason.message.clone(),
+            });
+        }
+        let bars = after
+            .as_ref()
+            .map(|after| crate::group_edit::bar_effects(facts, after))
+            .unwrap_or_default();
+        let id = self.next_group_plan;
+        self.next_group_plan = self.next_group_plan.saturating_add(1);
+        let plan = crate::GroupEditPlan {
+            id,
+            revision: self.revision,
+            summary: resolution.summary,
+            changed: resolution.changed,
+            unchanged: resolution.unchanged,
+            definitions: resolution.definitions,
+            edits: edits
+                .iter()
+                .map(|edit| {
+                    TextEdit::new(
+                        crate::diagnostic::Span {
+                            start: u32::from(edit.range.start()),
+                            end: u32::from(edit.range.end()),
+                        },
+                        edit.replacement.clone(),
+                    )
+                })
+                .collect(),
+            source: candidate,
+            diagnostics,
+            bars,
+            specializable: resolution.specializable,
+        };
+        Ok(self.group_plans.entry(id).or_insert(plan))
+    }
+
+    /// The plan one identity names, while it is still live.
+    ///
+    /// A shell that previewed a transformation and then redrew its window asks
+    /// for it again rather than keeping a copy: the session is where a plan's
+    /// liveness is decided, and a copy held elsewhere could outlive it.
+    #[must_use]
+    pub fn group_edit_plan(&self, id: u64) -> Option<&crate::GroupEditPlan> {
+        self.group_plans.get(&id)
+    }
+
+    /// Commit a previewed group transformation, once.
+    fn apply_group_edit(&mut self, id: u64, revision: Revision) -> Result<ProjectUpdate, ProjectError> {
+        if revision != self.revision {
+            return Err(ProjectError::Uneditable(
+                "the source moved since this transformation was previewed; ask for it again".to_owned(),
+            ));
+        }
+        let plan = self.group_plans.remove(&id).ok_or_else(|| {
+            ProjectError::Uneditable(
+                "this transformation has already been applied, or belongs to an earlier revision".to_owned(),
+            )
+        })?;
+        if let Some(reason) = self.first_error(plan.source()) {
+            return Err(ProjectError::RejectedEdit {
+                intent: plan.summary().to_owned(),
+                reason,
+            });
+        }
+        Ok(self.set_source(plan.source))
+    }
+
+    /// What a candidate source compiles to: its diagnostics, and its facts
+    /// when it produces a score.
+    ///
+    /// One extra compile, spent so that a preview can state the bars and the
+    /// problems the composer would get rather than predicting them — the same
+    /// trade [`Self::edit_score`] already makes to be transactional.
+    fn preview_compile(&self, candidate: &str) -> (Vec<Diagnostic>, Option<crate::facts::ScoreFacts>) {
+        let document = SourceDocument::new(candidate.to_owned(), self.name.clone());
+        let compilation = musa_compiler::compile(&document, &self.options());
+        let lines = crate::position::Lines::new(candidate);
+        let diagnostics: Vec<Diagnostic> = compilation
+            .diagnostics()
+            .iter()
+            .map(|diagnostic| Diagnostic::from_compiler(diagnostic, &lines, &self.imports))
+            .collect();
+        let decisions = if compilation.has_errors() {
+            Vec::new()
+        } else {
+            compilation.decisions().to_vec()
+        };
+        let derivation = if compilation.has_errors() {
+            None
+        } else {
+            compilation.derivation().cloned()
+        };
+        let facts = if compilation.has_errors() {
+            None
+        } else {
+            compilation
+                .into_snapshot()
+                .map(|score| crate::facts::ScoreFacts::derive(&score, candidate, &decisions, derivation.as_ref()))
+        };
+        (diagnostics, facts)
     }
 
     /// Ask a region's adapter to serve one command, and apply what it answers
@@ -1421,6 +1575,10 @@ impl ProjectSession {
         if text == self.source {
             return ProjectUpdate::unchanged(self.revision, self.validity());
         }
+        // Every previewed transformation described byte ranges of the text
+        // that is being replaced, so none of them survives this. Dropping
+        // them here is what makes a stale acceptance a refusal.
+        self.group_plans.clear();
         // A new edit after an undo abandons the redo branch, as everywhere else.
         self.history.truncate(self.cursor.saturating_add(1));
         self.revision = Revision(self.next_revision);
@@ -1447,6 +1605,9 @@ impl ProjectSession {
             return ProjectUpdate::unchanged(self.revision, self.validity());
         };
         self.cursor = index;
+        // Undo restores an *earlier* revision, so a plan previewed against the
+        // one being left behind describes text that is no longer there.
+        self.group_plans.clear();
         self.source = entry.source.clone();
         self.realization = entry.realization.clone();
         self.revision = entry.revision;

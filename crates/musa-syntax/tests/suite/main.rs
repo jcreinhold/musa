@@ -8,6 +8,7 @@ mod adapter_region_laws;
 mod editing_laws;
 mod expression_syntax_laws;
 mod formatter;
+mod group_editing_laws;
 mod highlight_laws;
 mod literal_parts_laws;
 mod parser;

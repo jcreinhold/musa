@@ -17,7 +17,7 @@ use std::path::PathBuf;
 use serde_json::Value;
 use tauri::State;
 
-use crate::dto::{CommandDto, EditDto, ErrorDto, ErrorKindDto, ExportDto, TemplateDto, TransportDto};
+use crate::dto::{CommandDto, EditDto, ErrorDto, ErrorKindDto, ExportDto, GroupEditDto, TemplateDto, TransportDto};
 use crate::session::SessionHandle;
 
 /// Open a `.musa` file, or a folder of them, as the session's project.
@@ -92,6 +92,21 @@ pub fn edit_impact(edit: EditDto, session: State<'_, SessionHandle>) -> Result<V
 #[tauri::command]
 pub fn barline_rewrite(session: State<'_, SessionHandle>) -> Result<Value, ErrorDto> {
     session.barline_rewrite()
+}
+
+/// Preview one group transformation: what it would change, what it would
+/// leave alone, and the definitions it rewrites.
+///
+/// Nothing is applied. The reply carries the plan's identity, and accepting
+/// it is `CommandDto::ApplyGroupEdit` at the same revision.
+///
+/// # Errors
+/// If no piece is open, it has never compiled, the selection names an event
+/// this revision does not have, the command is musically refused, or the
+/// result would not compile.
+#[tauri::command]
+pub fn group_edit_plan(edit: GroupEditDto, session: State<'_, SessionHandle>) -> Result<Value, ErrorDto> {
+    session.group_edit_plan(edit.into())
 }
 
 /// Play, stop, seek, or set the loop.

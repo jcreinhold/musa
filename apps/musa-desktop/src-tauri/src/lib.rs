@@ -44,6 +44,7 @@ pub fn run() -> tauri::Result<()> {
             commands::apply,
             commands::edit_impact,
             commands::barline_rewrite,
+            commands::group_edit_plan,
             commands::transport,
             commands::export,
             commands::snapshot,

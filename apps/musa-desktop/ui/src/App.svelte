@@ -39,11 +39,13 @@
   import { Playhead, soundingAt } from "./lib/state/playhead.svelte";
   import { NoteEntry } from "./lib/state/entry.svelte";
   import { anchorFor, stroke } from "./lib/state/compose";
+  import { durationIntent, respellIntent, transposeIntent } from "./lib/state/group";
   import { definitionAt, usesAt } from "./lib/state/terms";
   import type { Candidate } from "./lib/state/gesture.svelte";
-  import { shiftAccidental, shiftStep } from "./lib/score/steps";
   import type { EditDto } from "./lib/session/generated/EditDto";
   import type { InsertAtDto } from "./lib/session/generated/InsertAtDto";
+  import type { GroupIntentDto } from "./lib/session/generated/GroupIntentDto";
+  import type { GeneratedEditModeDto } from "./lib/session/generated/GeneratedEditModeDto";
   import type { EditImpact } from "./lib/state/snapshot";
   import { Workspace } from "./lib/state/selection.svelte";
   import type { Selection } from "./lib/state/selection.svelte";
@@ -112,6 +114,22 @@
 
   /** The candidate the core was last asked about, so a stale answer is dropped. */
   let asking: string | null = null;
+
+  /**
+   * Whether the inspector is asking for an interval to transpose by.
+   *
+   * Inline, in the margin, beside the notes it would move — never a dialog,
+   * which would take the music off the screen at the moment the composer is
+   * deciding how far to move it (`03-interaction.md` §4).
+   */
+  let transposing = $state(false);
+
+  /**
+   * The command the open preview answers, kept so the other answer — write it
+   * onto the call instead of into the motif — can be asked without the
+   * composer typing it again.
+   */
+  let planned = $state<GroupIntentDto | null>(null);
 
   /** The edit a released gesture issues, which is the keyboard's edit exactly. */
   function editFor(moving: Candidate): EditDto {
@@ -231,7 +249,9 @@
    */
   let naming = $state<{ events: string[] } | null>(null);
 
-  const origin = $derived(held || pinned || choice !== null);
+  const origin = $derived(
+    held || pinned || choice !== null || (session.groupPlan?.definitions.some((one) => one.motif !== null) ?? false),
+  );
 
   /** A source span to put the caret at, once: the inspector's line number,
       or the diagnostic a composer just clicked (`05-states.md` §5). */
@@ -347,6 +367,11 @@
       settingsOpen = false;
       return;
     }
+    if (session.groupPlan) return session.cancelGroupEdit();
+    if (transposing) {
+      transposing = false;
+      return;
+    }
     if (choice) return cancelChoice();
     if (naming) {
       naming = null;
@@ -444,25 +469,54 @@
   }
 
   /**
-   * The keyboard's half of the respelling gestures (`03-interaction.md` §2).
+   * The keyboard's half of the respelling gestures, over the whole selection
+   * (`03-interaction.md` §2).
    *
    * Every pointer gesture has a key that does the same thing, so a composer
-   * who never touches the trackpad can write everything a drag can. The
-   * arithmetic is the same as the drag's, on the same spelling the core
-   * published, so the two roads reach the same note.
+   * who never touches the trackpad can write everything a drag can
+   * (WCAG 2.5.7). What the arrows send is the *command* — walk the staff, or
+   * move the sign — and the core spells the notes: one note or forty, the
+   * arithmetic is the same and it is not the interface's (§7).
    */
   function respell(steps: number, accidental: boolean): void {
-    const note = workspace.chosen;
-    const spelling = note?.pitchSpellings[0];
-    if (!note || spelling === undefined) return;
-    const pitch = accidental ? shiftAccidental(spelling, steps) : shiftStep(spelling, steps);
-    if (pitch === null || pitch === spelling) return;
-    void issue({
-      kind: "changePitch",
-      event: note.id,
-      pitch,
-      mode: "editDefinition",
-    });
+    void group(respellIntent(steps, accidental));
+  }
+
+  /**
+   * Ask the core what one musical command would do to the selection.
+   *
+   * Nothing changes yet: what comes back is the preview the inspector shows,
+   * and accepting it is a second act. With nothing selected the keys do
+   * nothing at all — there is no implicit "the note you are near", because a
+   * command that silently picked one would be picking for the composer.
+   */
+  async function group(intent: GroupIntentDto | null, mode: GeneratedEditModeDto = "editDefinition"): Promise<void> {
+    const events = workspace.selected;
+    if (!intent || events.length === 0) return;
+    transposing = false;
+    planned = intent;
+    await session.planGroupEdit({ events, intent, mode });
+  }
+
+  /** The interval the composer typed, asked of the core as a command. */
+  async function transposeBy(interval: string): Promise<void> {
+    await group(transposeIntent(interval));
+  }
+
+  /**
+   * Take the other answer: write the transformation onto the calls instead of
+   * into the motif they run (§4). Offered only where the overrides can say
+   * the whole selection, which is the core's judgement, not this one's.
+   */
+  async function specializeGroup(): Promise<void> {
+    await group(planned, "specialize");
+  }
+
+  /** Ask for an interval, in the margin, beside the notes it would move. */
+  function askForInterval(): void {
+    if (workspace.selected.length === 0) return;
+    session.cancelGroupEdit();
+    transposing = true;
   }
 
   /**
@@ -516,6 +570,7 @@
     origin: () => (pinned = !pinned),
     entry: toggleEntry,
     respell,
+    transpose: askForInterval,
     extract,
     definition: goToDefinition,
     uses: selectUses,
@@ -573,6 +628,26 @@
       if (asked.kind !== "pass") {
         event.preventDefault();
         if (asked.kind === "edit") void write(asked.edit, asked.at);
+        return;
+      }
+    }
+    // With the score focused and a selection made, the duration keys are a
+    // command against that selection rather than a setting for the next note
+    // — `03-interaction.md` §1's rule that the same shortcut changes what is
+    // selected. Entry mode has already had its turn above, so this is the
+    // no-mode path, and with nothing selected it is not a shortcut at all.
+    if (
+      scopeOf(event.target) === "score" &&
+      !event.metaKey &&
+      !event.ctrlKey &&
+      !event.altKey &&
+      !event.shiftKey &&
+      workspace.selected.length > 0
+    ) {
+      const asked = durationIntent(event.key);
+      if (asked) {
+        event.preventDefault();
+        void group(asked);
         return;
       }
     }
@@ -818,6 +893,8 @@
     {pinned}
     {entry}
     choice={choice?.impact ?? null}
+    plan={session.groupPlan}
+    {transposing}
     naming={naming?.events.length ?? null}
     {flash}
     {reveal}
@@ -831,6 +908,11 @@
     onconfirm={() => void confirmChoice()}
     onspecialize={() => void specializeChoice()}
     oncancel={cancelChoice}
+    onacceptplan={() => void session.acceptGroupEdit()}
+    onspecializeplan={() => void specializeGroup()}
+    oncancelplan={() => session.cancelGroupEdit()}
+    ontranspose={(interval) => void transposeBy(interval)}
+    oncanceltranspose={() => (transposing = false)}
     onname={(name) => void nameMotif(name)}
     oncancelname={() => (naming = null)}
     {candidate}

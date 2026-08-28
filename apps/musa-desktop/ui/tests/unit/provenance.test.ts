@@ -110,3 +110,23 @@ describe("a diagnostic's place in the music", () => {
     expect(workspace().eventsForSpan(null)).toEqual([]);
   });
 });
+
+describe("a rectangle drawn over the page", () => {
+  it("selects across voices, in the order the score plays them", () => {
+    const events = snapshot.score?.events ?? [];
+    const lead = events.find((event) => event.voice === "lead");
+    const upper = events.find((event) => event.voice === "upper");
+    if (!lead || !upper) throw new Error("the fixture has two voices");
+
+    const space = workspace();
+    // The rectangle met them bottom-up; the selection reads top-down.
+    space.selectMany([upper.id, lead.id]);
+    expect(space.selected).toEqual([lead.id, upper.id]);
+  });
+
+  it("selects nothing when it covered nothing", () => {
+    const space = workspace();
+    space.selectMany(["not-an-event"]);
+    expect(space.selection).toEqual({ kind: "none" });
+  });
+});

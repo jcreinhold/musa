@@ -13,6 +13,8 @@ import type { BarlinePreviewDto } from "./generated/BarlinePreviewDto";
 import type { EditDto } from "./generated/EditDto";
 import type { ErrorDto } from "./generated/ErrorDto";
 import type { ExportTargetDto } from "./generated/ExportTargetDto";
+import type { GroupEditDto } from "./generated/GroupEditDto";
+import type { GroupEditPlanDto } from "./generated/GroupEditPlanDto";
 import type { TemplateDto } from "./generated/TemplateDto";
 import type { TransportDto } from "./generated/TransportDto";
 import type { AnalysisFacts, EditImpact, LibraryDocument, MidiEntry, ProjectSnapshot } from "../state/snapshot";
@@ -57,6 +59,12 @@ export const bridge = {
   editImpact: (edit: EditDto) => call<EditImpact>("edit_impact", { edit }),
   /** The exact proved barline transaction, asked before it is applied. */
   barlineRewrite: () => call<BarlinePreviewDto>("barline_rewrite", {}),
+  /**
+   * What one musical command would do to a selection, asked before it is
+   * done. The reply is the transaction, named by an identity that accepting
+   * it consumes.
+   */
+  groupEditPlan: (edit: GroupEditDto) => call<GroupEditPlanDto>("group_edit_plan", { edit }),
   transport: (command: TransportDto) => call<ProjectSnapshot>("transport", { command }),
   exportTo: (target: ExportTargetDto, path: string | null) =>
     call<{ path: string }>("export", { request: { target, path } }),

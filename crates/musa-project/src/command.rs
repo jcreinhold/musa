@@ -109,6 +109,17 @@ pub enum ProjectCommand {
         /// The revision previewed by the caller.
         revision: Revision,
     },
+    /// Apply one previewed group transformation as one source transaction.
+    ///
+    /// The plan is named by the identity its preview minted, and a plan from
+    /// another revision — or one already applied — is refused rather than
+    /// replayed: what the composer accepted is the edit they read, or nothing.
+    ApplyGroupEdit {
+        /// The identity from [`crate::GroupEditPlan::id`].
+        plan: u64,
+        /// The revision the caller previewed it at.
+        revision: Revision,
+    },
     /// Save the current source to the project path.
     Save,
     /// Take back the work a previous session left in its recovery copy,
@@ -156,6 +167,7 @@ impl ProjectCommand {
             Self::ApplyEdits(_) => "apply-edits",
             Self::Format => "format",
             Self::InsertBarlines { .. } => "insert-barlines",
+            Self::ApplyGroupEdit { .. } => "apply-group-edit",
             Self::Save => "save",
             Self::RestoreRecovery => "restore-recovery",
             Self::DiscardRecovery => "discard-recovery",

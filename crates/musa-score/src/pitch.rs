@@ -197,6 +197,42 @@ impl WrittenPitch {
         })
     }
 
+    /// Move by whole diatonic steps, carrying the accidental.
+    ///
+    /// Not transposition, and the difference is the whole point of the
+    /// separate name: a step is a move along the staff, so `g#4` up one step
+    /// is `a#4` and not `a4` — the letter changes and the alteration written
+    /// on it comes with it (Open Music Theory `016`). What a step *sounds*
+    /// like depends on the collection in force here, which is the key
+    /// signature's business and not this function's; what it *looks* like is
+    /// one line or space, in every key and on every clef.
+    ///
+    /// Failure means only that the fixed machine integer was exceeded.
+    pub fn step(self, steps: i64) -> Option<Self> {
+        let height = self.diatonic_height().checked_add(steps)?;
+        Some(Self {
+            letter: Letter::from_steps(i8::try_from(height.rem_euclid(7)).ok()?)?,
+            accidental: self.accidental,
+            octave: i32::try_from(height.div_euclid(7)).ok()?,
+        })
+    }
+
+    /// Move along the accidental ladder, carrying the letter.
+    ///
+    /// The other half of [`Self::step`], and the other half of roadmap
+    /// §14.5's ambiguity: `eb4` raised once is `e4` and raised again is `e#4`,
+    /// because what changed is the alteration and never the staff position.
+    /// No magnitude is rejected — [`Accidental`] is an integer coordinate, so
+    /// a triply raised note is spelled rather than refused.
+    ///
+    /// Failure means only that the fixed machine integer was exceeded.
+    pub fn alter(self, by: i32) -> Option<Self> {
+        Some(Self {
+            accidental: Accidental(self.accidental.0.checked_add(by)?),
+            ..self
+        })
+    }
+
     /// Transpose by a written interval without respelling.
     ///
     /// Failure means only that the fixed machine integer was exceeded; no

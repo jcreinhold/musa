@@ -40,8 +40,8 @@ mod types;
 
 pub use crate::document::{DocumentAlternative, EVENTS_MARKER, alternative};
 pub use crate::edits::{
-    Anchor, EditError, EditIntent, HeaderField, Statement, TextEdit, apply_edits, compute_edits, read_header,
-    spell_duration,
+    Anchor, EditError, EditIntent, HeaderField, Statement, TextEdit, WrittenKind, WrittenStatement, apply_edits,
+    compute_edits, compute_group_edits, read_header, read_statements, spell_duration,
 };
 pub use crate::error::SyntaxError;
 pub use crate::formatter::{BarSpacing, FormattedSource, format};

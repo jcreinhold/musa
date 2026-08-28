@@ -13,8 +13,8 @@
 use std::path::PathBuf;
 
 use musa_project::{
-    ContainerKind, EditCommand, ExportRequest, GeneratedEditMode, HeaderField, InsertAt, NoteSpec, ProjectCommand,
-    ProjectError, Span, StudioEdit, Template, TextEdit, TransportRequest,
+    ContainerKind, EditCommand, ExportRequest, GeneratedEditMode, GroupEdit, GroupIntent, HeaderField, InsertAt,
+    NoteSpec, ProjectCommand, ProjectError, Span, StudioEdit, Template, TextEdit, TransportRequest, Utf16Offsets,
 };
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
@@ -115,6 +115,12 @@ pub enum CommandDto {
     InsertBarlines {
         revision: u64,
     },
+    /// Commit one previewed group transformation, once.
+    #[serde(rename_all = "camelCase")]
+    ApplyGroupEdit {
+        plan: u64,
+        revision: u64,
+    },
     Save,
     /// Take the work a crash left behind and make it the source.
     RestoreRecovery,
@@ -159,6 +165,173 @@ impl From<GeneratedEditModeDto> for GeneratedEditMode {
         match mode {
             GeneratedEditModeDto::EditDefinition => Self::EditDefinition,
             GeneratedEditModeDto::Specialize => Self::Specialize,
+        }
+    }
+}
+
+/// One musical command against a selection (roadmap §11).
+///
+/// Five commands rather than one, because they are five different musical
+/// questions: writing a value on every note, scaling the rhythm that is
+/// already there, walking the staff, changing the sign, and moving by an
+/// interval are not variants of "change the notes" (OMT ch. 009–012, 016).
+/// A webview that offered one and a parameter would be deciding which of
+/// them the composer meant.
+#[derive(Clone, Debug, Deserialize, Serialize, TS)]
+#[serde(tag = "kind", rename_all = "camelCase")]
+#[ts(export, export_to = "../../ui/src/lib/session/generated/")]
+pub enum GroupIntentDto {
+    /// Write this duration on every selected event.
+    #[serde(rename_all = "camelCase")]
+    SetEachDuration { duration: String },
+    /// Multiply every selected duration by this factor.
+    #[serde(rename_all = "camelCase")]
+    ScaleDurations { ratio: String },
+    /// Move every selected pitch this many staff steps, sign unchanged.
+    #[serde(rename_all = "camelCase")]
+    MoveDiatonically { steps: i32 },
+    /// Move every selected pitch this many semitones up the accidental
+    /// ladder, notehead unchanged.
+    #[serde(rename_all = "camelCase")]
+    ShiftAccidentals { steps: i32 },
+    /// Transpose every selected pitch by an interval the composer spelled.
+    #[serde(rename_all = "camelCase")]
+    TransposeBy { interval: String },
+}
+
+impl From<GroupIntentDto> for GroupIntent {
+    fn from(intent: GroupIntentDto) -> Self {
+        match intent {
+            GroupIntentDto::SetEachDuration { duration } => Self::SetEachDuration { duration },
+            GroupIntentDto::ScaleDurations { ratio } => Self::ScaleDurations { ratio },
+            GroupIntentDto::MoveDiatonically { steps } => Self::MoveDiatonically { steps },
+            GroupIntentDto::ShiftAccidentals { steps } => Self::ShiftAccidentals { steps },
+            GroupIntentDto::TransposeBy { interval } => Self::TransposeBy { interval },
+        }
+    }
+}
+
+/// A selection and what to do to it.
+#[derive(Clone, Debug, Deserialize, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "../../ui/src/lib/session/generated/")]
+pub struct GroupEditDto {
+    /// The engraved event ids the composer selected, in any order.
+    pub events: Vec<String>,
+    pub intent: GroupIntentDto,
+    pub mode: GeneratedEditModeDto,
+}
+
+impl From<GroupEditDto> for GroupEdit {
+    fn from(edit: GroupEditDto) -> Self {
+        Self {
+            events: edit.events,
+            intent: edit.intent.into(),
+            mode: edit.mode.into(),
+        }
+    }
+}
+
+/// One statement the transformation would rewrite, with what depends on it.
+#[derive(Clone, Debug, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "../../ui/src/lib/session/generated/")]
+pub struct GroupDefinitionDto {
+    pub definition: SpanDto,
+    pub motif: Option<String>,
+    pub occurrences: Vec<String>,
+    pub selected: Vec<String>,
+    pub events: Vec<String>,
+    pub before: String,
+    pub after: String,
+}
+
+/// One bar that ends up holding something else.
+#[derive(Clone, Debug, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "../../ui/src/lib/session/generated/")]
+pub struct GroupBarEffectDto {
+    pub part: String,
+    pub voice: String,
+    pub bar: u32,
+    /// Written content before and after, spelled as the composer writes a
+    /// duration (`1/4`, `3/8`) rather than as a decimal.
+    pub before: String,
+    pub after: String,
+}
+
+/// The preview a composer accepts or cancels.
+///
+/// Everything in it was computed by the code that would apply it, so the
+/// panel is showing the transaction rather than a second guess at it. The
+/// plan is named by an identity that applying consumes.
+#[derive(Clone, Debug, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "../../ui/src/lib/session/generated/")]
+pub struct GroupEditPlanDto {
+    pub plan: u64,
+    pub revision: u64,
+    pub summary: String,
+    /// Every event that changes, selected or not.
+    pub changed: Vec<String>,
+    /// The selected events this command does not apply to.
+    pub unchanged: Vec<String>,
+    pub definitions: Vec<GroupDefinitionDto>,
+    pub bars: Vec<GroupBarEffectDto>,
+    /// What the compiler still says about the candidate source. Never an
+    /// error: a transformation that would not compile is refused rather than
+    /// previewed.
+    pub warnings: Vec<String>,
+    /// Whether the same selection could be written onto its call instead.
+    pub specializable: bool,
+}
+
+impl GroupEditPlanDto {
+    /// Restate one plan in the webview's measure.
+    ///
+    /// The offsets are the *current* source's, which is the source the plan
+    /// describes: a plan from another revision is refused before it reaches
+    /// here (`03-interaction.md` §7).
+    pub(crate) fn new(plan: &musa_project::GroupEditPlan, offsets: &Utf16Offsets) -> Self {
+        Self {
+            plan: plan.id(),
+            revision: plan.revision().0,
+            summary: plan.summary().to_owned(),
+            changed: plan.changed().to_vec(),
+            unchanged: plan.unchanged().to_vec(),
+            definitions: plan
+                .definitions()
+                .iter()
+                .map(|definition| GroupDefinitionDto {
+                    definition: SpanDto {
+                        start: offsets.to_utf16(definition.definition.start),
+                        end: offsets.to_utf16(definition.definition.end),
+                    },
+                    motif: definition.motif.clone(),
+                    occurrences: definition.occurrences.clone(),
+                    selected: definition.selected.clone(),
+                    events: definition.events.clone(),
+                    before: definition.before.clone(),
+                    after: definition.after.clone(),
+                })
+                .collect(),
+            bars: plan
+                .bars()
+                .iter()
+                .map(|bar| GroupBarEffectDto {
+                    part: bar.part.clone(),
+                    voice: bar.voice.clone(),
+                    bar: bar.bar,
+                    before: bar.before.to_string(),
+                    after: bar.after.to_string(),
+                })
+                .collect(),
+            warnings: plan
+                .diagnostics()
+                .iter()
+                .map(|diagnostic| diagnostic.message.clone())
+                .collect(),
+            specializable: plan.specializable(),
         }
     }
 }
@@ -381,6 +554,10 @@ impl CommandDto {
             Self::EditStudio { edit } => Request::Command(ProjectCommand::EditStudio(edit.into())),
             Self::Format => Request::Command(ProjectCommand::Format),
             Self::InsertBarlines { revision } => Request::Command(ProjectCommand::InsertBarlines {
+                revision: musa_project::Revision(revision),
+            }),
+            Self::ApplyGroupEdit { plan, revision } => Request::Command(ProjectCommand::ApplyGroupEdit {
+                plan,
                 revision: musa_project::Revision(revision),
             }),
             Self::Save => Request::Command(ProjectCommand::Save),

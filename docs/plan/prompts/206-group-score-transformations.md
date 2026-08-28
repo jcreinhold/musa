@@ -1,7 +1,7 @@
 ---
 id: 206
 slug: group-score-transformations
-status: in-progress
+status: done
 depends_on: [201, 205ca]
 phase: 2
 ---

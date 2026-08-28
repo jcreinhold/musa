@@ -65,6 +65,14 @@ export interface Surface {
    */
   respell(steps: number, accidental: boolean): void;
   /**
+   * Ask for an interval and transpose the whole selection by it.
+   *
+   * A command rather than a key per interval, because an interval is a thing
+   * a composer *writes* — `P5`, `down m3` — and the set of them is not a set
+   * of shortcuts (OMT ch. 016).
+   */
+  transpose(): void;
+  /**
    * Follow the name at the caret to where it is declared, opening the bundled
    * module when the declaration is in one (`08-elaboration.md` §2).
    */
@@ -194,6 +202,9 @@ export const COMMANDS: readonly Command[] = [
   own("score.accidental.down", "Lower the accidental", "Score", "Alt+Shift+ArrowDown", (surface) =>
     surface.respell(-1, true),
   ),
+  // `T` for transpose, and the interval is typed rather than bound: the
+  // composer says how far, in the language's own spelling.
+  own("score.transpose", "Transpose the selection", "Score", "T", (surface) => surface.transpose()),
   // Escape is the one Score command that is global: giving up is answered
   // wherever the composer happens to be, including the source column.
   own("score.clear", "Clear the selection", "Score", "Escape", (surface) => surface.escape(), "global"),

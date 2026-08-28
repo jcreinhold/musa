@@ -44,6 +44,7 @@ mod error;
 mod export;
 mod facts;
 mod format_support;
+mod group_edit;
 mod imports;
 mod library;
 mod lock;
@@ -88,6 +89,7 @@ pub use crate::facts::{
     StepFact, StepKind, TypeFact, VoiceFacts,
 };
 pub use crate::format_support::{FormatSupportFacts, format_support, format_supports};
+pub use crate::group_edit::{GroupBarEffect, GroupDefinition, GroupEdit, GroupEditPlan, GroupIntent};
 pub use crate::library::{LibraryDocument, library_document};
 pub use crate::logging::{FILTER_VARIABLE, Logging};
 pub use crate::midi::{

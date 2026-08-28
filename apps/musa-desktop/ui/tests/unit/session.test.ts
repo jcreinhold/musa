@@ -77,6 +77,17 @@ function recorder(): Recorder {
       inserted: 2,
       summary: "Insert 2 bar lines in 2 measures",
     })),
+    groupEditPlan: vi.fn(async (edit) => ({
+      plan: 1 as unknown as bigint,
+      revision: revision as unknown as bigint,
+      summary: "Move 2 notes up a step",
+      changed: edit.events,
+      unchanged: [],
+      definitions: [],
+      bars: [],
+      warnings: [],
+      specializable: false,
+    })),
     transport: vi.fn(async () => VALID),
     exportTo: vi.fn(async () => ({ path: "/tmp/out.mei" })),
     snapshot: vi.fn(async () => VALID),
@@ -426,5 +437,82 @@ describe("results and failures", () => {
 
     await vi.advanceTimersByTimeAsync(10_000);
     expect(session.notice?.tone).toBe("failure");
+  });
+
+  it("holds one group transformation at a time, and drops it when the source moves", async () => {
+    const link = recorder();
+    const session = new Session(link);
+    session.receive(VALID);
+
+    const plan = await session.planGroupEdit({
+      events: ["event-0", "event-1"],
+      intent: { kind: "moveDiatonically", steps: 1 },
+      mode: "editDefinition",
+    });
+    expect(plan?.changed).toEqual(["event-0", "event-1"]);
+    expect(session.groupPlan).not.toBeNull();
+
+    // A snapshot is a new revision, and a plan describes byte ranges of the
+    // one it was made against. Keeping it would let Accept commit an edit
+    // computed against text that is no longer there.
+    session.receive(snapshotOf('piece "x" {}', VALID.revision + 5));
+    expect(session.groupPlan).toBeNull();
+  });
+
+  it("asks the core nothing when nothing is selected", async () => {
+    const link = recorder();
+    const session = new Session(link);
+    session.receive(VALID);
+
+    const plan = await session.planGroupEdit({
+      events: [],
+      intent: { kind: "setEachDuration", duration: "1/4" },
+      mode: "editDefinition",
+    });
+    expect(plan).toBeNull();
+    expect(link.groupEditPlan).not.toHaveBeenCalled();
+  });
+
+  it("commits the plan it previewed, once, and says what it did", async () => {
+    const link = recorder();
+    const session = new Session(link);
+    session.receive(VALID);
+
+    await session.planGroupEdit({
+      events: ["event-0"],
+      intent: { kind: "transposeBy", interval: "P5" },
+      mode: "editDefinition",
+    });
+    await session.acceptGroupEdit();
+
+    expect(link.apply).toHaveBeenCalledWith(expect.objectContaining({ kind: "applyGroupEdit", plan: 1 }));
+    expect(session.notice).toEqual({ tone: "result", message: "Move 2 notes up a step." });
+    expect(session.groupPlan).toBeNull();
+
+    // The plan is spent: a second Accept asks the core for nothing.
+    const applied = (link.apply as unknown as { mock: { calls: unknown[] } }).mock.calls.length;
+    await session.acceptGroupEdit();
+    expect((link.apply as unknown as { mock: { calls: unknown[] } }).mock.calls.length).toBe(applied);
+  });
+
+  it("reports a refused transformation and shows no preview", async () => {
+    const link = recorder();
+    link.groupEditPlan = vi.fn(async () => {
+      throw { kind: "uneditable", message: "this note is tied; edit the whole tie" };
+    });
+    const session = new Session(link);
+    session.receive(VALID);
+
+    const plan = await session.planGroupEdit({
+      events: ["event-0"],
+      intent: { kind: "scaleDurations", ratio: "1/2" },
+      mode: "editDefinition",
+    });
+    expect(plan).toBeNull();
+    expect(session.groupPlan).toBeNull();
+    expect(session.notice).toEqual({
+      tone: "failure",
+      message: "this note is tied; edit the whole tie",
+    });
   });
 });

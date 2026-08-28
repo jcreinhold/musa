@@ -37,12 +37,15 @@
     specialization: "specialization",
   };
   import type { HeaderFieldDto } from "../lib/session/generated/HeaderFieldDto";
+  import type { GroupEditPlanDto } from "../lib/session/generated/GroupEditPlanDto";
 
   let {
     event,
     adrift = null,
     occurrence,
     choice = null,
+    plan = null,
+    transposing = false,
     naming = null,
     onorigin,
     decision = null,
@@ -51,6 +54,11 @@
     onconfirm,
     onspecialize,
     oncancel,
+    onacceptplan,
+    onspecializeplan,
+    oncancelplan,
+    ontranspose,
+    oncanceltranspose,
     onname,
     oncancelname,
     onpitch,
@@ -105,6 +113,22 @@
     onspecialize?: () => void;
     oncancel?: () => void;
     /**
+     * One musical command against the selection, previewed and waiting
+     * (`03-interaction.md` §4). Everything shown here — the counts, the
+     * statements, the bars, the warnings — was computed by the code that
+     * would apply it, so this panel is the transaction rather than a second
+     * guess at it.
+     */
+    plan?: GroupEditPlanDto | null;
+    onacceptplan?: () => void;
+    /** Take the other answer: write it onto the calls, not into the motif. */
+    onspecializeplan?: () => void;
+    oncancelplan?: () => void;
+    /** Whether an interval is being asked for, beside the notes it moves. */
+    transposing?: boolean;
+    ontranspose?: (interval: string) => void;
+    oncanceltranspose?: () => void;
+    /**
      * How many notes an extraction is waiting to cover, or null when none is.
      * The name is asked for here, beside them, rather than in a dialog
      * (§14.5).
@@ -136,6 +160,33 @@
       of the expansions it touches. */
   const notes = $derived(choice?.events.length ?? 0);
   const count = $derived(choice?.occurrences ?? 0);
+
+  /**
+   * The counts the preview states. Both are the core's: `changed` includes
+   * the notes the composer did not select but the same statement spelled, and
+   * `unchanged` is the part of the selection this command does not apply to —
+   * the rests under a pitch command. Stating the second is what makes a mixed
+   * selection honest rather than quietly partial.
+   */
+  const changing = $derived(plan?.changed.length ?? 0);
+  const skipping = $derived(plan?.unchanged.length ?? 0);
+  /** The statements being rewritten that a motif spells. */
+  const motifs = $derived(plan?.definitions.filter((one) => one.motif !== null) ?? []);
+
+  /** The interval being typed, and the field it is typed in. */
+  let interval = $state("");
+  let intervalField = $state<HTMLInputElement | null>(null);
+  $effect(() => {
+    if (transposing) {
+      interval = "";
+      intervalField?.focus();
+    }
+  });
+
+  function submitInterval(): void {
+    const written = interval.trim();
+    if (written !== "") ontranspose?.(written);
+  }
 
   /**
    * The motif name being typed, and the field it is typed in. It takes focus
@@ -209,6 +260,82 @@
         </button>
         <button type="button" class="cancel" onclick={() => oncancel?.()}>Cancel</button>
       </div>
+    {/if}
+
+    <!--
+      One musical command against the selection, previewed before it happens.
+      The counts, the statements, and the bars are the core's answer about the
+      exact source it would commit — so a composer reading this is reading the
+      transaction, and accepting it commits that and nothing else.
+    -->
+    {#if plan}
+      <div class="plan" role="group" aria-label="Transform the selection">
+        <p class="about">{plan.summary}.</p>
+        <p class="cost">
+          {changing}
+          {changing === 1 ? "note changes" : "notes change"}{#if skipping > 0}, and {skipping}
+            {skipping === 1 ? "note is" : "notes are"} left alone{/if}.
+        </p>
+        {#each motifs as one (one.definition.start)}
+          <p class="cost">
+            <span class="from">{one.motif}</span> writes
+            <span class="what">{one.before}</span>
+            → <span class="what">{one.after}</span>, in
+            {one.occurrences.length}
+            {one.occurrences.length === 1 ? "occurrence" : "occurrences"}.
+          </p>
+        {/each}
+        {#each plan.bars as bar (`${bar.part}/${bar.voice}/${bar.bar}`)}
+          <p class="cost">
+            {bar.voice}, bar {bar.bar}: {bar.before} → {bar.after}.
+          </p>
+        {/each}
+        {#each plan.warnings as warning (warning)}
+          <p class="cost">{warning}</p>
+        {/each}
+        <button type="button" class="option" onclick={() => onacceptplan?.()}>
+          <span class="what">Accept</span>
+        </button>
+        {#if plan.specializable}
+          <button type="button" class="option" onclick={() => onspecializeplan?.()}>
+            <span class="what">Just these occurrences</span>
+            <span class="cost">writes it onto the calls, leaving the motif alone</span>
+          </button>
+        {/if}
+        <button type="button" class="cancel" onclick={() => oncancelplan?.()}>Cancel</button>
+      </div>
+    {/if}
+
+    <!--
+      The interval, typed where the notes are. One field: an interval is a
+      thing a composer writes — `P5`, `down m3` — and the core is the only
+      side that knows whether what they wrote is one.
+    -->
+    {#if transposing}
+      <form
+        class="naming"
+        aria-label="Transpose the selection"
+        onsubmit={(submitted) => {
+          submitted.preventDefault();
+          submitInterval();
+        }}
+      >
+        <p class="about">Transpose by an interval.</p>
+        <input
+          class="name"
+          type="text"
+          aria-label="Interval"
+          placeholder="P5, down m3"
+          spellcheck="false"
+          autocomplete="off"
+          bind:this={intervalField}
+          bind:value={interval}
+          onkeydown={(pressed) => {
+            pressed.stopPropagation();
+            if (pressed.key === "Escape") oncanceltranspose?.();
+          }}
+        />
+      </form>
     {/if}
 
     <!--
@@ -477,6 +604,15 @@
    * as a dialog: no box, no shadow, no overlay. `--plate` marks it as being
    * about provenance, which is the only thing that colour ever means.
    */
+  /* Same left rule as the §4 choice: both are the source about to change. */
+  .plan {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-2);
+    border-left: 2px solid var(--plate);
+    padding-left: var(--s-3);
+  }
+
   .choice {
     display: flex;
     flex-direction: column;

@@ -286,6 +286,20 @@ pub enum EditIntent {
         /// The new written pitch.
         pitch: String,
     },
+    /// Respell every pitch of the note or chord at `at`, together.
+    ///
+    /// A chord is one statement and one event, so its members are respelled
+    /// in one intent rather than in one intent each: a group transformation
+    /// that wrote `[a3 c4 e4]` one member at a time would be three edits
+    /// inside one bracket, and the first of them would already have moved the
+    /// others' offsets.
+    SetPitches {
+        /// The statement's offset.
+        at: u32,
+        /// One new written pitch per pitch the statement writes, in the order
+        /// the statement writes them.
+        pitches: Vec<String>,
+    },
     /// Renotate the duration of the note, rest, or chord at `at`.
     SetDuration {
         /// The statement's offset.
@@ -312,6 +326,23 @@ pub enum EditIntent {
         /// The new written pitch.
         pitch: String,
     },
+    /// Respell several notes of one motif occurrence at once, by writing the
+    /// call's whole `with { … }` clause.
+    ///
+    /// [`Self::Specialize`] merges one override into whatever clause is there,
+    /// which is the right edit for one note and the wrong one for several:
+    /// two merges into one clause are two insertions at the same point, and
+    /// which of them wins would depend on the order they were computed in. A
+    /// group therefore states the clause it wants and writes it in one
+    /// replacement — the overrides already there are carried through, in
+    /// position order, so a composer who specialized note 2 last week and
+    /// note 4 today reads both back in playing order.
+    SpecializeAll {
+        /// The `use` statement's offset.
+        at: u32,
+        /// Which notes, counting from one, and what each becomes.
+        overrides: Vec<(u32, String)>,
+    },
     /// Set, add, or remove one of the piece's header statements.
     ///
     /// An empty `value` removes the statement — adding and removing a line of
@@ -334,6 +365,227 @@ pub enum EditIntent {
     },
 }
 
+/// What kind of event a statement writes.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum WrittenKind {
+    /// `g#4/8` — one pitch.
+    Note,
+    /// `rest/4`.
+    Rest,
+    /// `[a3 c4 e4]/2` — several pitches, one simultaneity.
+    Chord,
+    /// Something else that produces an event and is not written as a note,
+    /// rest, or chord — `stack c4 major7/4`. Named rather than omitted,
+    /// because a caller that resolved one has found a statement it may not
+    /// rewrite as if it were a note.
+    Other,
+}
+
+/// What one statement writes, as the source spells it — and what the source
+/// around it does to that spelling.
+///
+/// A caller resolving a group of events through provenance needs the *written*
+/// value at each definition, not the value the compiler computed from it: a
+/// note inside `tuplet 3/2 { … }` is written `/8` and lasts a twelfth, and a
+/// transformation that read the second and wrote it back into the first would
+/// renotate the group. Rather than have every caller re-derive that from
+/// tokens, this states it once, here, where the tree is.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct WrittenStatement {
+    /// The offset that was asked about — the statement's first significant
+    /// byte.
+    pub at: u32,
+    /// What it writes.
+    pub kind: WrittenKind,
+    /// Its written pitches, spelled as the source spells them, in the order
+    /// it writes them. Empty for a rest. A pitch named by a motif parameter
+    /// arrives as that name, which is not a pitch and is why a caller must
+    /// read it rather than assume one.
+    pub pitches: Vec<String>,
+    /// Its written duration in the long form, whichever form it is written
+    /// in: `/4.` reads back as `3/8`. A duration named by a parameter arrives
+    /// as that name. Absent when the statement carries no duration at all.
+    pub duration: Option<String>,
+    /// Every statement of the tied chain this one belongs to, in source
+    /// order, including this one. Empty when it is tied to nothing: a tie
+    /// makes several written values one sounding note, so renotating one link
+    /// of a chain is an edit to the chain.
+    pub chain: Vec<u32>,
+    /// Whether an enclosing block multiplies its written duration — `tuplet`
+    /// or `stretch`. What is written here is not what is counted in the bar.
+    pub duration_scaled: bool,
+    /// Whether an enclosing block reflects its written pitch — `invert`.
+    /// Moving what is written up moves what is read down.
+    pub pitch_mirrored: bool,
+}
+
+/// Read what the statements at `at` write, in one parse.
+///
+/// One answer per offset, in the order asked, and `None` where no note, rest,
+/// chord, or chord-stack statement starts there. Batched because a group
+/// transformation resolves many definitions at once and parsing the document
+/// once per note is the shape of the mistake root `AGENTS.md` names: the
+/// caller is handed what this crate already computed.
+#[must_use]
+pub fn read_statements(source: &str, at: &[u32]) -> Vec<Option<WrittenStatement>> {
+    let document = parse(source);
+    let root = document.syntax();
+    at.iter().map(|offset| read_one(&root, source, *offset)).collect()
+}
+
+fn read_one(root: &SyntaxNode, source: &str, at: u32) -> Option<WrittenStatement> {
+    let statement = written_statement_at(root, at)?;
+    let kind = written_kind(statement.kind())?;
+    let pitches = pitch_ranges(&statement)
+        .into_iter()
+        .filter_map(|range| slice(source, range).map(str::to_owned))
+        .collect();
+    Some(WrittenStatement {
+        at,
+        kind,
+        pitches,
+        duration: written_duration(&statement),
+        chain: tie_chain(&statement),
+        duration_scaled: enclosed_by(&statement, &[SyntaxKind::TupletStmt, SyntaxKind::StretchStmt]),
+        pitch_mirrored: enclosed_by(&statement, &[SyntaxKind::InvertStmt]),
+    })
+}
+
+/// The innermost note, rest, chord, or stack statement covering `at`.
+///
+/// Deliberately *not* [`statement_at`]: that one resolves through the wider
+/// statement vocabulary, so an offset inside a `stack` would come back as the
+/// `transpose` block around it. A reader that found the wrong node would
+/// report the wrong spelling, which is worse than finding nothing.
+fn written_statement_at(root: &SyntaxNode, at: u32) -> Option<SyntaxNode> {
+    let offset = TextSize::new(at);
+    if !root.text_range().contains(offset) {
+        return None;
+    }
+    root.token_at_offset(offset)
+        .right_biased()?
+        .parent_ancestors()
+        .find(|node| written_kind(node.kind()).is_some() && node.text_range().contains(offset))
+}
+
+/// What a syntax kind writes, for the four kinds that write an event
+/// directly. `None` for everything else, which is what makes it a filter.
+fn written_kind(kind: SyntaxKind) -> Option<WrittenKind> {
+    if kind == SyntaxKind::NoteStmt {
+        return Some(WrittenKind::Note);
+    }
+    if kind == SyntaxKind::RestStmt {
+        return Some(WrittenKind::Rest);
+    }
+    if kind == SyntaxKind::ChordStmt {
+        return Some(WrittenKind::Chord);
+    }
+    (kind == SyntaxKind::StackStmt).then_some(WrittenKind::Other)
+}
+
+/// Where a statement's written pitches are, in the order it writes them.
+///
+/// Everything before the duration, which is what separates a pitch from an
+/// articulation: `c4/4 tenuto` puts the word in an `ArticulationList`, and
+/// `root 1/8` puts a parameter's name where a pitch literal would be.
+fn pitch_ranges(statement: &SyntaxNode) -> Vec<TextRange> {
+    let duration = statement
+        .children()
+        .find(|child| child.kind() == SyntaxKind::Duration)
+        .map(|node| node.text_range().start());
+    statement
+        .children_with_tokens()
+        .filter(|lexeme| matches!(lexeme.kind(), SyntaxKind::PitchLiteral | SyntaxKind::Identifier))
+        .map(|lexeme| lexeme.text_range())
+        .filter(|range| duration.is_none_or(|start| range.end() <= start))
+        .collect()
+}
+
+/// A statement's written duration in the long form.
+///
+/// The short form is expanded rather than passed through, because a caller
+/// computing with it wants a value: `/4.` is `3/8`, and `/4..` is `7/16`. The
+/// `to` bound is not part of the answer — a performed bound is a different
+/// fact from a notated value (roadmap §2).
+fn written_duration(statement: &SyntaxNode) -> Option<String> {
+    let node = statement
+        .children()
+        .find(|child| child.kind() == SyntaxKind::Duration)?;
+    let mut tokens = node
+        .children_with_tokens()
+        .filter_map(SyntaxElement::into_token)
+        .filter(|token| !token.kind().is_trivia())
+        .take_while(|token| token.kind() != SyntaxKind::ToKw);
+    let first = tokens.next()?;
+    if first.kind() != SyntaxKind::Slash {
+        return Some(first.text().trim().to_owned());
+    }
+    let value: u64 = tokens
+        .next()
+        .filter(|token| token.kind() == SyntaxKind::Integer)?
+        .text()
+        .parse()
+        .ok()?;
+    let dots = u32::try_from(tokens.filter(|token| token.kind() == SyntaxKind::Dot).count()).ok()?;
+    // `/N` with `d` dots is `(2^(d+1) − 1) / (N · 2^d)`, the inverse of what
+    // `spell_duration` writes, so the two forms round-trip.
+    let numerator = (2u64.checked_shl(dots)?).checked_sub(1)?;
+    let denominator = value.checked_mul(1u64.checked_shl(dots)?)?;
+    Some(format!("{numerator}/{denominator}"))
+}
+
+/// The tied chain a statement belongs to, in source order.
+///
+/// A tie is written postfix, so the chain runs from the earliest sibling that
+/// is reached by an unbroken run of `~` to the last one that does not carry
+/// it. Empty when this statement neither ties nor is tied to.
+fn tie_chain(statement: &SyntaxNode) -> Vec<u32> {
+    fn ties(node: &SyntaxNode) -> bool {
+        node.children_with_tokens()
+            .filter_map(SyntaxElement::into_token)
+            .any(|token| token.kind() == SyntaxKind::Tilde)
+    }
+    fn sibling(node: &SyntaxNode, forward: bool) -> Option<SyntaxNode> {
+        let mut next = if forward {
+            node.next_sibling()
+        } else {
+            node.prev_sibling()
+        };
+        while let Some(candidate) = next {
+            if written_kind(candidate.kind()).is_some() {
+                return Some(candidate);
+            }
+            next = if forward {
+                candidate.next_sibling()
+            } else {
+                candidate.prev_sibling()
+            };
+        }
+        None
+    }
+
+    let mut first = statement.clone();
+    while let Some(before) = sibling(&first, false).filter(ties) {
+        first = before;
+    }
+    if !ties(&first) {
+        return Vec::new();
+    }
+    let mut chain = vec![u32::from(trimmed(&first).start())];
+    let mut here = first;
+    while ties(&here) {
+        let Some(after) = sibling(&here, true) else { break };
+        chain.push(u32::from(trimmed(&after).start()));
+        here = after;
+    }
+    chain
+}
+
+/// Whether any block this statement is written inside is one of `kinds`.
+fn enclosed_by(statement: &SyntaxNode, kinds: &[SyntaxKind]) -> bool {
+    statement.ancestors().any(|node| kinds.contains(&node.kind()))
+}
+
 /// Why an intent could not be turned into edits.
 ///
 /// Every variant names a fact about the source rather than an internal
@@ -353,6 +605,25 @@ pub enum EditError {
     /// The statement there carries no duration token to replace.
     NoDuration {
         /// The offset of the statement.
+        at: u32,
+    },
+    /// The statement there writes a different number of pitches than the
+    /// intent brought spellings for.
+    WrongPitchCount {
+        /// The offset of the statement.
+        at: u32,
+        /// How many pitches it writes.
+        writes: usize,
+        /// How many spellings arrived.
+        given: usize,
+    },
+    /// Two edits in one group would rewrite the same text.
+    ///
+    /// A group transformation is one transaction, so it either writes every
+    /// replacement or none: two that collide are a fact about the selection
+    /// the caller resolved, and it is told rather than served half of them.
+    Overlapping {
+        /// Where the second of the two would start.
         at: u32,
     },
     /// No such voice in the score.
@@ -384,6 +655,11 @@ impl core::fmt::Display for EditError {
             Self::NoStatement { at } => write!(formatter, "no statement at byte {at}"),
             Self::NotANote { at } => write!(formatter, "the statement at byte {at} is not a note"),
             Self::NoDuration { at } => write!(formatter, "the statement at byte {at} has no duration"),
+            Self::WrongPitchCount { at, writes, given } => write!(
+                formatter,
+                "the statement at byte {at} writes {writes} pitches, not {given}"
+            ),
+            Self::Overlapping { at } => write!(formatter, "two edits of one group both rewrite byte {at}"),
             Self::NoVoice { ref part, ref voice } => write!(formatter, "no voice `{voice}` in part `{part}`"),
             Self::NotAnOccurrence { at } => {
                 write!(formatter, "the statement at byte {at} is not a motif occurrence")
@@ -414,9 +690,49 @@ const INDENT: &str = "    ";
 /// at a rest, a voice that does not exist.
 pub fn compute_edits(source: &str, intent: &EditIntent) -> Result<Vec<TextEdit>, EditError> {
     let document = parse(source);
+    edits_for(&document.syntax(), source, intent)
+}
+
+/// Compute the text edits that carry out every intent of one group, against
+/// one parse of `source`.
+///
+/// The result is one transaction: the edits are sorted, proved not to overlap,
+/// and applied together with [`apply_edits`]. Two intents that would rewrite
+/// the same text are a refusal rather than a race — which of them won would
+/// otherwise depend on the order the caller happened to list them in.
+///
+/// # Errors
+///
+/// The same [`EditError`]s [`compute_edits`] returns, from whichever intent
+/// the source cannot express, plus [`EditError::Overlapping`] when two of them
+/// collide.
+pub fn compute_group_edits(source: &str, intents: &[EditIntent]) -> Result<Vec<TextEdit>, EditError> {
+    let document = parse(source);
     let root = document.syntax();
+    let mut edits = Vec::with_capacity(intents.len());
+    for intent in intents {
+        edits.extend(edits_for(&root, source, intent)?);
+    }
+    edits.sort_by_key(|edit| (edit.range.start(), edit.range.end()));
+    let collision = edits
+        .windows(2)
+        .find_map(|pair| match pair {
+            [before, after] if before.range.end() > after.range.start() => Some(after.range.start()),
+            _ => None,
+        })
+        .map(u32::from);
+    match collision {
+        Some(at) => Err(EditError::Overlapping { at }),
+        None => Ok(edits),
+    }
+}
+
+/// One intent's edits against an already-parsed document.
+fn edits_for(root: &SyntaxNode, source: &str, intent: &EditIntent) -> Result<Vec<TextEdit>, EditError> {
+    let root = root.clone();
     match *intent {
         EditIntent::SetPitch { at, ref pitch } => set_pitch(&root, at, pitch),
+        EditIntent::SetPitches { at, ref pitches } => set_pitches(&root, at, pitches),
         EditIntent::SetDuration { at, ref duration } => set_duration(&root, at, duration),
         EditIntent::Insert {
             ref anchor,
@@ -427,6 +743,7 @@ pub fn compute_edits(source: &str, intent: &EditIntent) -> Result<Vec<TextEdit>,
             position,
             ref pitch,
         } => specialize(&root, at, position, pitch),
+        EditIntent::SpecializeAll { at, ref overrides } => specialize_all(&root, at, overrides),
         EditIntent::SetHeader { field, ref value } => set_header(&root, source, field, value),
         EditIntent::ExtractMotif { first, last, ref name } => extract_motif(&root, source, first, last, name),
     }
@@ -466,6 +783,70 @@ pub fn read_header(source: &str, field: HeaderField) -> Option<String> {
 
 fn slice(source: &str, range: TextRange) -> Option<&str> {
     source.get(usize::from(range.start())..usize::from(range.end()))
+}
+
+/// Write the whole `with { … }` clause of the `use` at `at`.
+///
+/// One replacement rather than one insertion per override, for the reason
+/// [`EditIntent::SpecializeAll`] gives: several merges into one clause are
+/// several edits at one point. The overrides already written on the call are
+/// read back and merged with the new ones — a position named by both takes the
+/// new spelling — and the result is written in position order, which is the
+/// order the notes are played.
+fn specialize_all(root: &SyntaxNode, at: u32, overrides: &[(u32, String)]) -> Result<Vec<TextEdit>, EditError> {
+    let statement = statement_at(root, at)?;
+    if statement.kind() != SyntaxKind::UseStmt {
+        return Err(EditError::NotAnOccurrence { at });
+    }
+    let clause = statement
+        .children()
+        .find(|child| child.kind() == SyntaxKind::WithClause);
+
+    let mut merged: Vec<(u32, String)> = Vec::new();
+    if let Some(ref clause) = clause {
+        for existing in clause
+            .children()
+            .filter(|child| child.kind() == SyntaxKind::OverrideStmt)
+        {
+            let mut lexemes = existing
+                .children_with_tokens()
+                .filter(|lexeme| !lexeme.kind().is_trivia());
+            let position = lexemes
+                .find(|lexeme| lexeme.kind() == SyntaxKind::Integer)
+                .and_then(|lexeme| lexeme.as_token().and_then(|token| token.text().parse::<u32>().ok()));
+            // A pitch is a *node* — letter, accidental, and octave are
+            // separate lexemes — so its spelling is its text, not a token's.
+            let pitch = lexemes
+                .find(|lexeme| lexeme.kind() == SyntaxKind::PitchLiteral)
+                .map(|lexeme| lexeme.to_string());
+            if let (Some(position), Some(pitch)) = (position, pitch) {
+                merged.push((position, pitch));
+            }
+        }
+    }
+    for (position, pitch) in overrides {
+        match merged.iter_mut().find(|(existing, _)| existing == position) {
+            Some(entry) => entry.1.clone_from(pitch),
+            None => merged.push((*position, pitch.clone())),
+        }
+    }
+    merged.sort_by_key(|(position, _)| *position);
+    let written: Vec<String> = merged
+        .iter()
+        .map(|(position, pitch)| format!("note {position} = {pitch};"))
+        .collect();
+    let text = format!("with {{ {} }}", written.join(" "));
+
+    match clause {
+        Some(clause) => Ok(vec![TextEdit::new(trimmed(&clause), text)]),
+        // `use sigh();` → `use sigh() with { … }`. The call stops being a
+        // statement and becomes a block, so its `;` goes with it.
+        None => {
+            let semicolon = token_of(&statement, &[SyntaxKind::Semicolon])
+                .unwrap_or_else(|| TextRange::empty(trimmed(&statement).end()));
+            Ok(vec![TextEdit::new(semicolon, format!(" {text}"))])
+        }
+    }
 }
 
 /// Add or merge one `note <n> = <pitch>;` override on the `use` at `at`.
@@ -713,6 +1094,32 @@ fn set_pitch(root: &SyntaxNode, at: u32, pitch: &str) -> Result<Vec<TextEdit>, E
     let range =
         token_of(&statement, &[SyntaxKind::PitchLiteral, SyntaxKind::Identifier]).ok_or(EditError::NotANote { at })?;
     Ok(vec![TextEdit::new(range, pitch)])
+}
+
+/// Respell every pitch of one note or chord.
+///
+/// The count has to match what the statement writes, because a chord's
+/// members are one simultaneity and not a list a caller may shorten: three
+/// spellings for a two-note chord is a caller that resolved the wrong
+/// statement, and it is told so rather than served two of them.
+fn set_pitches(root: &SyntaxNode, at: u32, pitches: &[String]) -> Result<Vec<TextEdit>, EditError> {
+    let statement = written_statement_at(root, at).ok_or(EditError::NoStatement { at })?;
+    if !matches!(statement.kind(), SyntaxKind::NoteStmt | SyntaxKind::ChordStmt) {
+        return Err(EditError::NotANote { at });
+    }
+    let ranges = pitch_ranges(&statement);
+    if ranges.len() != pitches.len() {
+        return Err(EditError::WrongPitchCount {
+            at,
+            writes: ranges.len(),
+            given: pitches.len(),
+        });
+    }
+    Ok(ranges
+        .into_iter()
+        .zip(pitches)
+        .map(|(range, pitch)| TextEdit::new(range, pitch.clone()))
+        .collect())
 }
 
 fn set_duration(root: &SyntaxNode, at: u32, duration: &str) -> Result<Vec<TextEdit>, EditError> {

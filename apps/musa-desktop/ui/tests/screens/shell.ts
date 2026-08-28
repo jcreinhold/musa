@@ -250,6 +250,7 @@ export async function stubShell(
       }
       interface Note {
         id: string;
+        kind: string;
         origin: {
           generated: boolean;
           occurrence: string | null;
@@ -348,6 +349,7 @@ export async function stubShell(
        */
       const history: Record<string, unknown>[] = [];
       window.__musaEdits = [];
+      window.__musaGroupEdits = [];
       window.__musaSaves = 0;
       window.__musaRevision = current.revision as number;
 
@@ -373,6 +375,9 @@ export async function stubShell(
 
       /** Which of the two committed readings of the open work is on screen. */
       let reading = 0;
+
+      /** Plan identities, minted per preview and never reused. */
+      let plans = 0;
 
       /**
        * Restate the reading in force: which performance it is, and which of its
@@ -432,6 +437,74 @@ export async function stubShell(
           return answer();
         },
         edit_impact: (args) => impactOf(args.edit as Record<string, unknown>),
+        // One musical command against a selection, previewed. The stub is not
+        // a compiler: what it answers is the *shape* the core guarantees —
+        // the same statement moves its events together, a pitch command
+        // leaves rests alone, and the plan is named by an identity that
+        // accepting it consumes. That the source it would write is the right
+        // source is `musa-project`'s group-edit laws.
+        group_edit_plan: (args) => {
+          const edit = args.edit as {
+            events: string[];
+            intent: { kind: string; steps?: number; duration?: string; ratio?: string; interval?: string };
+            mode: string;
+          };
+          const rhythmic = edit.intent.kind === "setEachDuration" || edit.intent.kind === "scaleDurations";
+          const wanted = new Set(edit.events);
+          const chosen = notes().filter((note) => wanted.has(note.id));
+          const applies = chosen.filter((note) => rhythmic || note.kind !== "rest");
+          if (applies.length === 0) {
+            throw {
+              kind: "uneditable",
+              message: "nothing in this selection has a pitch to move",
+            };
+          }
+          const spans = new Map<string, Note[]>();
+          for (const note of applies) {
+            const key = `${note.origin.definitionSpan.start}:${note.origin.definitionSpan.end}`;
+            spans.set(key, [
+              ...(spans.get(key) ?? []),
+              ...notes().filter(
+                (kin) =>
+                  kin.origin.definitionSpan.start === note.origin.definitionSpan.start &&
+                  kin.origin.definitionSpan.end === note.origin.definitionSpan.end,
+              ),
+            ]);
+          }
+          const changed = [...new Set([...spans.values()].flat().map((note) => note.id))];
+          const summary =
+            edit.intent.kind === "setEachDuration"
+              ? `Write ${edit.intent.duration} on ${applies.length} notes`
+              : edit.intent.kind === "scaleDurations"
+                ? `Scale ${applies.length} durations by ${edit.intent.ratio}`
+                : edit.intent.kind === "transposeBy"
+                  ? `Transpose ${applies.length} notes by ${edit.intent.interval}`
+                  : `Move ${applies.length} notes ${edit.intent.kind === "moveDiatonically" ? "a step" : "a semitone"}`;
+          plans += 1;
+          return {
+            plan: plans,
+            revision: current.revision as number,
+            summary,
+            changed,
+            unchanged: chosen.filter((note) => !applies.includes(note)).map((note) => note.id),
+            definitions: [...spans.entries()].map(([key, kin]) => {
+              const [start, end] = key.split(":");
+              const first = kin[0];
+              return {
+                definition: { start: Number(start), end: Number(end) },
+                motif: first?.origin.generated ? "sigh" : null,
+                occurrences: [...new Set(kin.map((note) => note.origin.occurrence).filter(Boolean))],
+                selected: kin.filter((note) => wanted.has(note.id)).map((note) => note.id),
+                events: kin.map((note) => note.id),
+                before: "c5",
+                after: "d5",
+              };
+            }),
+            bars: [],
+            warnings: [],
+            specializable: applies.every((note) => note.origin.generated),
+          };
+        },
         // A reading. The stub holds one real report and answers every other
         // question with the honest empty one — which is a state the panel has
         // to render, and the only one a stub can produce truthfully.
@@ -477,6 +550,8 @@ export async function stubShell(
             edit?: Record<string, unknown>;
             performance?: number;
             decision?: string;
+            plan?: number;
+            revision?: number;
           };
           if (command.kind === "setSource") {
             history.push(current);
@@ -543,6 +618,20 @@ export async function stubShell(
           if (command.kind === "save") {
             window.__musaSaves += 1;
             current = { ...current, unsaved: false };
+            return answer();
+          }
+          // Accepting a previewed transformation: one transaction, one entry
+          // in the history, and the plan is spent.
+          if (command.kind === "applyGroupEdit") {
+            history.push(current);
+            window.__musaGroupEdits.push({ plan: command.plan, revision: command.revision });
+            const revision = (current.revision as number) + 1;
+            current = {
+              ...current,
+              revision,
+              scoreRevision: revision,
+              unsaved: true,
+            };
             return answer();
           }
           if (command.kind === "undo") {
@@ -687,6 +776,8 @@ declare global {
     __musaLoop: [number, number] | null;
     /** Every score edit the interface has asked for, in order. */
     __musaEdits: Record<string, unknown>[];
+    /** Every group transformation it has committed, in order. */
+    __musaGroupEdits: Record<string, unknown>[];
     /** The revision the stub last answered with, so undo can be seen to land. */
     __musaRevision: number;
     /** How many times the interface has asked the shell to save. */

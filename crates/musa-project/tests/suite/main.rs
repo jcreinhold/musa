@@ -9,6 +9,7 @@ mod assets_laws;
 mod barline_laws;
 mod editing_laws;
 mod elaboration_backend_compatibility;
+mod group_edit_laws;
 mod large_score_generators;
 mod library_laws;
 mod logging_laws;

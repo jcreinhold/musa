@@ -33,6 +33,7 @@
     type Span,
   } from "../lib/state/snapshot";
   import type { HeaderFieldDto } from "../lib/session/generated/HeaderFieldDto";
+  import type { GroupEditPlanDto } from "../lib/session/generated/GroupEditPlanDto";
   import type { NoteEntry } from "../lib/state/entry.svelte";
   import SourcePane from "../lib/ui/SourcePane.svelte";
   import Inspector from "./Inspector.svelte";
@@ -56,6 +57,8 @@
     pinned,
     entry,
     choice,
+    plan,
+    transposing,
     naming,
     flash,
     reveal,
@@ -69,6 +72,11 @@
     onconfirm,
     onspecialize,
     oncancel,
+    onacceptplan,
+    onspecializeplan,
+    oncancelplan,
+    ontranspose,
+    oncanceltranspose,
     onname,
     oncancelname,
     candidate,
@@ -112,6 +120,10 @@
     entry: NoteEntry;
     /** An edit against generated music waiting to be confirmed (§4). */
     choice: EditImpact | null;
+    /** A group transformation previewed and waiting to be accepted. */
+    plan: GroupEditPlanDto | null;
+    /** Whether the inspector is asking for an interval to transpose by. */
+    transposing: boolean;
     /** How many notes an extraction is waiting on a name for, or null. */
     naming: number | null;
     /** Event ids a diagnostic points at; their systems flash once. */
@@ -129,6 +141,14 @@
     /** Take the other answer: change this occurrence only. */
     onspecialize: () => void;
     oncancel: () => void;
+    /** Commit the previewed transformation, exactly as previewed. */
+    onacceptplan: () => void;
+    /** Ask for the same transformation written onto the calls instead. */
+    onspecializeplan: () => void;
+    oncancelplan: () => void;
+    /** An interval was typed: transpose the selection by it. */
+    ontranspose: (interval: string) => void;
+    oncanceltranspose: () => void;
     onname: (name: string) => void;
     oncancelname: () => void;
     /** What a pointer gesture in flight would write, drawn in the source. */
@@ -539,6 +559,8 @@
             adrift={workspace.adrift}
             occurrence={workspace.selectedOccurrence}
             {choice}
+            {plan}
+            {transposing}
             {naming}
             onorigin={(depth) => workspace.selectOrigin(depth)}
             {decision}
@@ -547,6 +569,11 @@
             {onconfirm}
             {onspecialize}
             {oncancel}
+            {onacceptplan}
+            {onspecializeplan}
+            {oncancelplan}
+            {ontranspose}
+            {oncanceltranspose}
             {onname}
             {oncancelname}
             onpitch={session.live && chosen ? (pitch) => onpitch(chosen.id, pitch) : undefined}

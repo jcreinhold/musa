@@ -125,6 +125,22 @@ export class Workspace {
     this.selection = { kind: "event", events: [event.id] };
   }
 
+  /**
+   * Take a set of events collected by a pointer rectangle (§1).
+   *
+   * The one selection that may cross voices and staves: a rectangle drawn
+   * over the page is the composer saying "these notes", and which staff each
+   * one happens to sit on is not part of what they said. Ordered by the
+   * score, so what the interface reports about the set reads in the order it
+   * is played, whatever order the rectangle met them in.
+   */
+  selectMany(ids: readonly string[]): void {
+    const wanted = new Set(ids);
+    const events = (this.snapshot?.score?.events ?? []).filter((event) => wanted.has(event.id));
+    this.adrift = null;
+    this.selection = events.length === 0 ? { kind: "none" } : { kind: "event", events: events.map((e) => e.id) };
+  }
+
   /** Click a voice in the left margin: active voice, caret at its start. */
   selectVoice(part: string, voice: string): void {
     this.adrift = null;
