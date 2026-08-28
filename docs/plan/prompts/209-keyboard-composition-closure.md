@@ -73,7 +73,7 @@ make docs-check
 cargo deny check
 cargo insta test --workspace --unreferenced=reject
 cd apps/musa-desktop/ui && npx pnpm run check && npx pnpm run test:unit
-cd apps/musa-desktop/ui && npx playwright test --project=chromium
+cd apps/musa-desktop/ui && npx playwright test --project=screens
 python3 scripts/renumber-prompts.py audit
 ```
 

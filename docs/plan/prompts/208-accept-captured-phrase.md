@@ -68,7 +68,7 @@ cargo clippy --all-targets -p musa-syntax -p musa-project -p musa-desktop -- -D 
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make fmt-check
 cargo insta test --workspace --unreferenced=reject
 cd apps/musa-desktop/ui && npx pnpm run check && npx pnpm run test:unit
-cd apps/musa-desktop/ui && npx playwright test --project=chromium
+cd apps/musa-desktop/ui && npx playwright test --project=screens
 ```
 
 Commit as `Accept captured phrases as canonical Musa source`.

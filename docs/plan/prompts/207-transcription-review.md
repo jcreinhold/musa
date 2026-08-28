@@ -78,7 +78,7 @@ cargo clippy --all-targets -p musa-project -p musa-desktop -- -D warnings
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make fmt-check
 cargo insta test --workspace --unreferenced=reject
 cd apps/musa-desktop/ui && npx pnpm run check && npx pnpm run test:unit
-cd apps/musa-desktop/ui && npx playwright test --project=chromium
+cd apps/musa-desktop/ui && npx playwright test --project=screens
 ```
 
 Commit as `Review transcription as notation and musical choices`.
