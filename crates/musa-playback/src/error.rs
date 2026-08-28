@@ -21,4 +21,17 @@ pub enum EngineError {
     /// the audio side consumes).
     #[error("engine command queue is full")]
     QueueFull,
+    /// This platform publishes no MIDI output at all. macOS has `CoreMIDI`;
+    /// nothing else does, and saying so is better than a silent no-op.
+    #[error("this platform has no MIDI output")]
+    NoMidiOutput,
+    /// A destination was named that the host does not currently offer.
+    #[error("no MIDI destination `{id}` is connected")]
+    UnknownMidiDestination {
+        /// The stable identifier that was asked for.
+        id: String,
+    },
+    /// The platform refused to publish, open, or run MIDI output.
+    #[error("MIDI output failure: {0}")]
+    MidiOutput(String),
 }

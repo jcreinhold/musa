@@ -13,6 +13,7 @@ mod elaboration_backend_compatibility;
 mod group_edit_laws;
 mod large_score_generators;
 mod library_laws;
+mod live_midi_laws;
 mod logging_laws;
 mod notation_proposal_laws;
 mod package_laws;

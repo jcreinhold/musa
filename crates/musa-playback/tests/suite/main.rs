@@ -6,6 +6,7 @@
 
 mod engine;
 mod machine;
+mod midi_out;
 mod rt;
 mod support;
 mod transport_regressions;

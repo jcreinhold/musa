@@ -137,6 +137,9 @@ pub struct ProjectSession {
     /// The MIDI keyboard, opened on request so a session that never enters
     /// notes never touches the MIDI host.
     midi: Option<MidiInput>,
+    /// The live MIDI projection, opened on request for the same reason: a
+    /// session that never sends to a workstation publishes no ports.
+    midi_output: Option<musa_playback::MidiOutput>,
     /// Stable input identity chosen by the musician, retained across unplug.
     midi_preferred_id: Option<String>,
     /// Last control-side hot-plug enumeration for the device picker.
@@ -1143,6 +1146,90 @@ impl ProjectSession {
         crate::daw::export_bundle(&self.name, valid, &self.assets, options, destination)
     }
 
+    /// Every MIDI destination the host currently offers.
+    ///
+    /// Apple's words, used as Apple uses them: a **destination** is an
+    /// endpoint something else already publishes and Musa sends to. What
+    /// Musa itself publishes is a **source**, and those are named by the
+    /// report [`Self::start_midi_output`] returns.
+    pub fn midi_endpoints() -> Vec<musa_playback::MidiEndpoint> {
+        musa_playback::MidiOutput::endpoints()
+    }
+
+    /// What sending the last score that compiled would publish and play,
+    /// without publishing anything.
+    ///
+    /// The whole projection is decided here — parts, channels, ports,
+    /// messages, losses — so a machine with no workstation attached can still
+    /// be told exactly what it would send.
+    ///
+    /// # Errors
+    /// [`ProjectError::NoValidScore`] if the piece has never compiled, or
+    /// [`ProjectError::Performance`] / [`ProjectError::Notation`] if the
+    /// projection cannot be read.
+    pub fn plan_midi_output(
+        &self,
+        options: &crate::LiveMidiOptions,
+    ) -> Result<(crate::LiveMidiProjection, crate::LiveMidiReport), ProjectError> {
+        let valid = self.valid.as_ref().ok_or(ProjectError::NoValidScore)?;
+        let projection = crate::midi_out::project(&valid.score, options.mode)?;
+        let config = crate::midi_out::config(&self.name, options);
+        let preview = musa_playback::MidiOutput::preview(&config, projection.parts());
+        let report = crate::midi_out::report(options.mode, &projection, &preview);
+        Ok((projection, report))
+    }
+
+    /// Play the last score that compiled to a workstation, live.
+    ///
+    /// What is sent is the schedule the Standard MIDI writer reads, so a
+    /// take recorded from these ports and a `performance.mid` exported beside
+    /// it are the same performance. Starting while a run is in progress stops
+    /// that one first, releasing its notes rather than leaving them holding.
+    ///
+    /// # Errors
+    /// [`ProjectError::NoValidScore`] if the piece has never compiled;
+    /// [`ProjectError::Performance`] or [`ProjectError::Notation`] if the
+    /// projection cannot be read; and [`ProjectError::MidiOutput`] if the host
+    /// refused to publish, or offers no MIDI output at all.
+    pub fn start_midi_output(
+        &mut self,
+        options: &crate::LiveMidiOptions,
+    ) -> Result<crate::LiveMidiReport, ProjectError> {
+        let span = tracing::info_span!("start_midi_output", revision = self.revision.0);
+        let _entered = span.enter();
+        let valid = self.valid.as_ref().ok_or(ProjectError::NoValidScore)?;
+        let projection = crate::midi_out::project(&valid.score, options.mode)?;
+        self.stop_midi_output();
+        let config = crate::midi_out::config(&self.name, options);
+        let mut output = musa_playback::MidiOutput::open(&config, projection.parts())
+            .map_err(|error| ProjectError::MidiOutput(error.to_string()))?;
+        let report = crate::midi_out::report(options.mode, &projection, output.report());
+        output
+            .start(projection.packets().to_vec())
+            .map_err(|error| ProjectError::MidiOutput(error.to_string()))?;
+        self.midi_output = Some(output);
+        Ok(report)
+    }
+
+    /// End the live run, releasing every note it left sounding.
+    pub fn stop_midi_output(&mut self) {
+        if let Some(mut output) = self.midi_output.take() {
+            output.stop();
+        }
+    }
+
+    /// Whether a live run is still playing.
+    pub fn is_midi_output_running(&self) -> bool {
+        self.midi_output
+            .as_ref()
+            .is_some_and(musa_playback::MidiOutput::is_running)
+    }
+
+    /// What the live run has done so far, or `None` when none is open.
+    pub fn midi_output_counters(&self) -> Option<musa_playback::MidiOutputCounters> {
+        self.midi_output.as_ref().map(musa_playback::MidiOutput::counters)
+    }
+
     /// Render the mix and one aligned stem per declared part output and
     /// named bus, from the last score that compiled.
     ///
@@ -1537,6 +1624,7 @@ impl ProjectSession {
             group_plans: std::collections::HashMap::new(),
             next_group_plan: 1,
             midi: None,
+            midi_output: None,
             midi_preferred_id: None,
             midi_devices: Vec::new(),
             midi_performance: MidiPerformanceBuffer::default(),

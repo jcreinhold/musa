@@ -25,7 +25,8 @@ mod render;
 
 pub use crate::error::{NotationError, RenderError};
 pub use crate::midi::{
-    MidiMode, MidiOptions, MidiOrigin, MidiTrack, RenderedMidi, render_midi, render_midi_with_origins,
+    MidiLoss, MidiMeta, MidiMode, MidiOptions, MidiOrigin, MidiPart, MidiSchedule, MidiTrack, RenderedMidi,
+    ScheduledMessage, ScheduledMeta, midi_schedule, render_midi, render_midi_with_origins, write_schedule,
 };
 pub use crate::plan::{
     ARTICULATION_PLACEMENT, BeamGroup, DYNAMIC_PLACEMENT, FrontMatter, HairpinMark, HairpinRange, KeySignature,

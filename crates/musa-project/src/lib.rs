@@ -51,6 +51,7 @@ mod library;
 mod lock;
 mod logging;
 mod midi;
+mod midi_out;
 mod packages;
 mod playback;
 mod position;
@@ -101,6 +102,7 @@ pub use crate::midi::{
     CapturedMidiEvent, MidiCaptureFacts, MidiCaptureState, MidiDeviceFacts, MidiLossFacts, MidiPairingFact, MidiTake,
     MidiTakeContext,
 };
+pub use crate::midi_out::{LiveMidiOptions, LiveMidiPartFacts, LiveMidiProjection, LiveMidiReport};
 pub use crate::packages::{fetch_packages, verify_packages};
 pub use crate::position::Position;
 pub use crate::project::{Project, ProjectMeta};
@@ -135,6 +137,9 @@ pub use musa_compiler::DocumentKind;
 pub use musa_compiler::standard_library_source;
 pub use musa_compiler::{EventsTokenClass, events_bindings, events_classify, events_keyword_doc};
 pub use musa_notation::MidiMode;
+pub use musa_playback::{
+    LiveMidiPacket, LiveMidiPart, MidiEndpoint, MidiOutputCounters, MidiOutputMode, MidiOutputTarget, MidiPortReport,
+};
 pub use musa_score::{
     AnalysisKind, AnalysisProfile, AnalysisRequest, AnalysisScope, ChoicePath, ChoiceStep, ClaimDoc, Decision,
     DecisionRecord, Key, Mode, MusicalTime, Realization, Segmentation, assertion_claims, chord_types,

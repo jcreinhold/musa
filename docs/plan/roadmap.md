@@ -2180,6 +2180,7 @@ Owns platform and real-time integration:
 - output stream lifecycle;
 - live scheduling;
 - MIDI input;
+- live MIDI output, behind a platform module (prompt 213);
 - transport;
 - real-time command queues;
 - render-plan installation;
@@ -2188,14 +2189,19 @@ Owns platform and real-time integration:
 Dependencies:
 
 ```text
-musa-compiler
 musa-dsp
+musa-score
 cpal
 midir
 rtrb
 tracing
 thiserror
+coremidi        # macOS only
 ```
+
+`musa-compiler` is a dev-dependency here, not a production one: the crate is `consumer` in `scripts/check-layers.py`'s
+table, and a consumer may depend only on theory and vocabulary. Tests build realistic fixtures through the pipeline,
+which is what the dev-dependency exemption is for.
 
 Public interface:
 

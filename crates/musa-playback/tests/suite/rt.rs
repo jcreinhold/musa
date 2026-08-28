@@ -291,3 +291,54 @@ fn the_callback_module_contains_no_logging() {
         );
     }
 }
+
+/// The live MIDI send loop, held to the same contract as the audio callback.
+///
+/// It is not an OS callback — `06-daw-boundary.md` §7 puts the obligation on
+/// the send path all the same, and the reason is the same: a loop that
+/// allocates has a pause in it that the music will hear. Every buffer the
+/// loop uses is sized when the run opens, so a whole run of pumps, a batch
+/// overflow, and the panic sequence must together allocate nothing.
+#[test]
+fn the_midi_send_loop_allocates_nothing() {
+    use musa_playback::testing::MidiOutputHarness;
+    use musa_playback::{LiveMidiPacket, LiveMidiPart, MidiOutputConfig, MidiOutputMode, MidiOutputTarget};
+
+    let parts = vec![
+        LiveMidiPart {
+            name: "flute".to_owned(),
+            channel: 0,
+        },
+        LiveMidiPart {
+            name: "cello".to_owned(),
+            channel: 1,
+        },
+    ];
+    // Six hundred messages over half a second, more than one batch of them
+    // simultaneous, so the loop meets its own bound while being measured.
+    let mut packets = Vec::with_capacity(600);
+    for index in 0..600u64 {
+        packets.push(LiveMidiPacket {
+            micros: (index / 300) * 1_000,
+            part: (index % 2) as usize,
+            bytes: [0x90 | (index % 2) as u8, (index % 128) as u8, 80],
+        });
+    }
+    let config = MidiOutputConfig {
+        mode: MidiOutputMode::SourcePerPart,
+        target: MidiOutputTarget::VirtualSources,
+        client: "Musa".to_owned(),
+    };
+    let mut harness = MidiOutputHarness::new(&config, &parts, packets, 4_000, 20_000);
+    harness.reserve(4_096);
+    // The first pump fixes the run's origin; measurement starts after it so
+    // that nothing lazily initialised on the way in is counted.
+    harness.pump(0);
+
+    let before = allocs();
+    for step in 1..64u64 {
+        harness.pump(step * 1_000);
+    }
+    harness.panic_at(64_000);
+    assert_eq!(allocs(), before, "the MIDI send loop allocated");
+}

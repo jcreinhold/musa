@@ -136,7 +136,7 @@ impl DawLoss {
         &self.message
     }
 
-    fn new(kind: &str, message: impl Into<String>) -> Self {
+    pub(crate) fn new(kind: &str, message: impl Into<String>) -> Self {
         Self {
             kind: kind.to_owned(),
             message: message.into(),

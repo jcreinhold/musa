@@ -2439,6 +2439,7 @@ dependencies = [
 name = "musa-playback"
 version = "0.1.0"
 dependencies = [
+ "coremidi",
  "cpal",
  "midir",
  "musa-compiler",

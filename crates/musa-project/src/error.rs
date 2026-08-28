@@ -94,6 +94,12 @@ pub enum ProjectError {
     #[error("audio engine: {0}")]
     Engine(String),
 
+    /// Live MIDI output could not be published, started, or reached. A
+    /// separate variant from [`Self::Engine`] because a machine with no
+    /// sound card may still have a workstation to send to, and the reverse.
+    #[error("MIDI output: {0}")]
+    MidiOutput(String),
+
     /// An analysis request named something the score does not have, or a
     /// window with no music in it. The score is untouched: an analysis reads.
     #[error("cannot analyze: {0}")]

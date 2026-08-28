@@ -891,3 +891,70 @@ fn render_to_daw_refuses_an_unknown_profile_or_a_missing_directory() -> std::io:
     );
     Ok(())
 }
+
+/// `musa midi plan` says what would be sent without touching the host.
+///
+/// The plan is the interesting half for a CLI test: `send` needs a running
+/// workstation, and asking CI for one would make this a test of the machine.
+#[test]
+fn midi_plan_names_the_ports_the_channels_and_the_losses() -> std::io::Result<()> {
+    let output = musa(&["midi", "plan", &glass_mountain()])?;
+    assert!(output.status.success(), "stderr: {:?}", output.stderr);
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("performance to virtual sources"), "stdout: {stdout}");
+    assert!(stdout.contains("port 0:"), "stdout: {stdout}");
+    assert!(stdout.contains("channel 1"), "stdout: {stdout}");
+    assert!(stdout.contains("messages"), "stdout: {stdout}");
+    // Every loss the projection carries is stated, not swallowed.
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("warning: notation:"), "stderr: {stderr}");
+    assert!(stderr.contains("warning: tuning:"), "stderr: {stderr}");
+    Ok(())
+}
+
+#[test]
+fn midi_plan_reads_the_score_when_asked_for_the_score() -> std::io::Result<()> {
+    let output = musa(&["midi", "plan", &glass_mountain(), "--mode", "score"])?;
+    assert!(output.status.success(), "stderr: {:?}", output.stderr);
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("score to virtual sources"), "stdout: {stdout}");
+    Ok(())
+}
+
+#[test]
+fn midi_plan_channelizes_onto_one_port_when_asked() -> std::io::Result<()> {
+    let output = musa(&["midi", "plan", &glass_mountain(), "--single-source"])?;
+    assert!(output.status.success(), "stderr: {:?}", output.stderr);
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert_eq!(stdout.matches("  port ").count(), 1, "stdout: {stdout}");
+    assert!(!stdout.contains("port 1"), "stdout: {stdout}");
+    Ok(())
+}
+
+#[test]
+fn midi_refuses_a_verb_it_does_not_have_and_a_mode_it_does_not_know() -> std::io::Result<()> {
+    let unknown = musa(&["midi", "broadcast", &glass_mountain()])?;
+    assert!(!unknown.status.success());
+    assert!(
+        String::from_utf8_lossy(&unknown.stderr).contains("endpoints"),
+        "the refusal does not say what it does take"
+    );
+
+    let mode = musa(&["midi", "plan", &glass_mountain(), "--mode", "loud"])?;
+    assert!(!mode.status.success());
+    assert!(String::from_utf8_lossy(&mode.stderr).contains("score or performance"));
+
+    let target = musa(&["midi", "plan", &glass_mountain(), "--to"])?;
+    assert!(!target.status.success());
+    assert!(String::from_utf8_lossy(&target.stderr).contains("endpoints"));
+    Ok(())
+}
+
+/// `musa midi endpoints` reads the host and says what it found, whatever
+/// that is — a machine with nothing connected is not an error.
+#[test]
+fn midi_endpoints_reports_what_the_host_offers() -> std::io::Result<()> {
+    let output = musa(&["midi", "endpoints"])?;
+    assert!(output.status.success(), "stderr: {:?}", output.stderr);
+    Ok(())
+}

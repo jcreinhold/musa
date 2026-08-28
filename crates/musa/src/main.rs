@@ -10,9 +10,9 @@ mod ignore;
 use std::process::ExitCode;
 
 use musa_project::{
-    AnalysisKind, AnalysisRequest, AnalysisScope, DawExportOptions, DawProfile, ExportArtifact, ExportRequest, Logging,
-    MidiMode, MusicalTime, ProjectCommand, ProjectSession, Realization, TransportRequest, asset_inventory,
-    fetch_packages, lock_assets, verify_packages,
+    AnalysisKind, AnalysisRequest, AnalysisScope, DawExportOptions, DawProfile, ExportArtifact, ExportRequest,
+    LiveMidiOptions, Logging, MidiMode, MidiOutputMode, MidiOutputTarget, MusicalTime, ProjectCommand, ProjectSession,
+    Realization, TransportRequest, asset_inventory, fetch_packages, lock_assets, verify_packages,
 };
 
 fn main() -> ExitCode {
@@ -30,6 +30,7 @@ fn main() -> ExitCode {
         Some("explain") => cmd_explain(args.get(1..).unwrap_or_default()),
         Some("render") => with_seed(args.get(1..).unwrap_or_default(), cmd_render),
         Some("play") => cmd_play(args.get(1..).unwrap_or_default()),
+        Some("midi") => with_seed(args.get(1..).unwrap_or_default(), cmd_midi),
         Some("events") => with_seed(args.get(1..).unwrap_or_default(), cmd_events),
         Some("analyze") => with_seed(args.get(1..).unwrap_or_default(), cmd_analyze),
         Some("assets") => cmd_assets(args.get(1..).unwrap_or_default()),
@@ -91,6 +92,12 @@ fn print_usage() {
     println!("      --mode score | performance           for --to midi (default: score)");
     println!("      -o <path>                            where to write it (`-` for stdout)");
     println!("  musa play <file.musa> [--loop]         live playback through the audio engine");
+    println!("  musa midi endpoints                    every MIDI destination this host offers");
+    println!("  musa midi plan <file.musa>             what sending it would publish and play");
+    println!("  musa midi send <file.musa>             play it to a workstation, live");
+    println!("      --mode score | performance           which document to send (default: performance)");
+    println!("      --single-source                      one port for every part, not one each");
+    println!("      --to <endpoint>                      send to a destination instead of publishing");
     println!("  musa events <file.musa> [--normalized] print the piece as events interchange text");
     println!("  musa events --check <file.musa.events> parse, check, and evaluate events text");
     println!("      a file whose first line is `% musa-events-1` is Musa too: check, format");
@@ -115,6 +122,129 @@ fn print_usage() {
     println!("  -v, -vv, -vvv   say more about what musa is doing, on stderr");
     println!("  -q              say only what failed");
     println!("  MUSA_LOG        a filter, in place of the dial: `MUSA_LOG=musa_compiler=debug`");
+}
+
+/// List, plan, or play live MIDI.
+///
+/// Three verbs because they are three different things: `endpoints` asks the
+/// host what it offers, `plan` asks the piece what it would send and needs no
+/// host at all, and `send` does it.
+fn cmd_midi(args: &[String], realization: &Realization) -> ExitCode {
+    let mut mode = MidiMode::Performance;
+    let mut sources = MidiOutputMode::SourcePerPart;
+    let mut target = MidiOutputTarget::VirtualSources;
+    let mut rest: Vec<&str> = Vec::new();
+    let mut arguments = args.iter();
+    while let Some(arg) = arguments.next() {
+        match arg.as_str() {
+            "--mode" => match arguments.next().map(String::as_str) {
+                Some("score") => mode = MidiMode::Score,
+                Some("performance") => mode = MidiMode::Performance,
+                other => {
+                    eprintln!(
+                        "error: --mode takes score or performance, not `{}`",
+                        other.unwrap_or("")
+                    );
+                    return ExitCode::FAILURE;
+                }
+            },
+            "--single-source" => sources = MidiOutputMode::SingleChannelized,
+            "--to" => match arguments.next() {
+                Some(id) => target = MidiOutputTarget::Destination(id.clone()),
+                None => {
+                    eprintln!("error: --to needs a destination; `musa midi endpoints` lists them");
+                    return ExitCode::FAILURE;
+                }
+            },
+            other => rest.push(other),
+        }
+    }
+    let options = LiveMidiOptions { mode, sources, target };
+    match rest.as_slice() {
+        ["endpoints"] => cmd_midi_endpoints(),
+        ["plan", path] => cmd_midi_plan(path, &options, realization),
+        ["send", path] => cmd_midi_send(path, &options, realization),
+        _ => {
+            eprintln!("error: midi takes `endpoints`, `plan <file.musa>`, or `send <file.musa>`");
+            ExitCode::FAILURE
+        }
+    }
+}
+
+fn cmd_midi_endpoints() -> ExitCode {
+    let endpoints = ProjectSession::midi_endpoints();
+    if endpoints.is_empty() {
+        println!("no MIDI destinations are connected");
+        return ExitCode::SUCCESS;
+    }
+    for endpoint in &endpoints {
+        println!("{}\t{}", endpoint.id, endpoint.name);
+    }
+    ExitCode::SUCCESS
+}
+
+fn cmd_midi_plan(path: &str, options: &LiveMidiOptions, realization: &Realization) -> ExitCode {
+    let session = match open(path, realization) {
+        Ok(session) => session,
+        Err(code) => return code,
+    };
+    let (projection, report) = match session.plan_midi_output(options) {
+        Ok(planned) => planned,
+        Err(error) => {
+            eprintln!("error: {error}");
+            return ExitCode::FAILURE;
+        }
+    };
+    print_midi_report(&report);
+    println!("{} messages, {}", projection.packets().len(), report.timing());
+    ExitCode::SUCCESS
+}
+
+fn cmd_midi_send(path: &str, options: &LiveMidiOptions, realization: &Realization) -> ExitCode {
+    let mut session = match open(path, realization) {
+        Ok(session) => session,
+        Err(code) => return code,
+    };
+    let report = match session.start_midi_output(options) {
+        Ok(report) => report,
+        Err(error) => {
+            eprintln!("error: {error}");
+            return ExitCode::FAILURE;
+        }
+    };
+    print_midi_report(&report);
+    println!("sending… ({})", report.timing());
+    while session.is_midi_output_running() {
+        std::thread::sleep(std::time::Duration::from_millis(50));
+    }
+    let counters = session.midi_output_counters().unwrap_or_default();
+    session.stop_midi_output();
+    println!(
+        "done: {} sent, {} late, {} dropped, {} refused",
+        counters.sent, counters.late, counters.dropped, counters.refused
+    );
+    ExitCode::SUCCESS
+}
+
+fn print_midi_report(report: &musa_project::LiveMidiReport) {
+    let document = match report.mode() {
+        MidiMode::Score => "score",
+        MidiMode::Performance => "performance",
+    };
+    println!("{document} to {}", report.target());
+    for port in report.ports() {
+        println!("  port {}: {}", port.port, port.name);
+    }
+    for part in report.parts() {
+        // Channels are counted from one in every workstation a musician has
+        // ever seen, and from zero in every wire format. This is a person's
+        // side of the boundary.
+        let channel = part.channel.saturating_add(1);
+        println!("  {} — channel {channel}, port {}", part.name, part.port);
+    }
+    for loss in report.losses() {
+        eprintln!("warning: {}: {}", loss.kind(), loss.message());
+    }
 }
 
 /// Materialize the project's exact package graph and rewrite its package lock.

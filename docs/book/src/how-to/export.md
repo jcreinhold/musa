@@ -43,6 +43,10 @@ and MusicXML; GarageBand documents importing MIDI and audio. Export the ones you
 or export `--to daw`, which packages all of them at once with a manifest saying what each is and what it lost. That is
 [its own how-to](daw-bundle.md).
 
+A workstation can also receive the performance as it happens, rather than as files: `musa midi send` publishes named
+MIDI sources it records from. That is [its own how-to](live-midi.md) too, and it sends the same performance
+`performance.mid` carries.
+
 What crosses is a *presentation* of the piece, and each format loses something specific. A MIDI file carries note
 numbers, not written pitch: spelling, voices, ties, beams, and notated durations do not survive it. A WAV carries one
 mix at one moment. MusicXML carries notation but not the studio.

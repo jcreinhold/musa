@@ -1,7 +1,7 @@
 ---
 id: 213
 slug: coremidi-performance-output
-status: pending
+status: done
 depends_on: [210, 212]
 phase: 4
 ---

@@ -12,6 +12,7 @@ mod lilypond;
 mod media;
 mod mei;
 mod midi;
+mod midi_schedule;
 mod musicxml;
 mod open_form;
 mod pitch_capabilities;

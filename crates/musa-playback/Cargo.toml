@@ -18,6 +18,11 @@ rtrb = "0.3"
 thiserror = "2"
 tracing = "0.1"
 
+# CoreMIDI is the only MIDI output macOS has, and it is macOS-only: the rest
+# of the crate builds and every live-output law runs without it.
+[target.'cfg(target_os = "macos")'.dependencies]
+coremidi = "0.9"
+
 [dev-dependencies]
 musa-compiler = { workspace = true }
 rtrb = "0.3"

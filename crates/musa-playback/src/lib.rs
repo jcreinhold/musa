@@ -16,6 +16,7 @@ mod core;
 mod engine;
 mod error;
 mod midi;
+mod midi_out;
 
 pub use crate::core::{AuditionEvent, AuditionInputKind, AuditionTarget, PreparedPlaybackPlan, TransportCommand};
 pub use crate::engine::{AudioEngine, EngineConfig};
@@ -23,6 +24,10 @@ pub use crate::error::EngineError;
 pub use crate::midi::{
     CalibratedMidiEvent, MidiClockCalibration, MidiClockCalibrator, MidiClockQuality, MidiInput, MidiInputDevice,
     MidiInputEvent, MidiInputLosses, MidiMessageKind,
+};
+pub use crate::midi_out::{
+    LiveMidiPacket, LiveMidiPart, MidiEndpoint, MidiOutput, MidiOutputConfig, MidiOutputCounters, MidiOutputMode,
+    MidiOutputReport, MidiOutputTarget, MidiPortReport,
 };
 
 #[doc(hidden)]
@@ -32,6 +37,7 @@ pub mod testing {
     //! facade; hidden so no real caller depends on it.
     pub use crate::core::{AuditionMessage, CallbackCore, Message};
     pub use crate::midi::MidiCallbackHarness;
+    pub use crate::midi_out::testing::MidiOutputHarness;
 
     use musa_dsp::{MachineValue, PreparedMachine, StartedMachine, StepError};
 
