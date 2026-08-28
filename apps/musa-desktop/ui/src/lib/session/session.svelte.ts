@@ -21,6 +21,9 @@ import type { ErrorDto } from "./generated/ErrorDto";
 import type { ExportTargetDto } from "./generated/ExportTargetDto";
 import type { GroupEditDto } from "./generated/GroupEditDto";
 import type { GroupEditPlanDto } from "./generated/GroupEditPlanDto";
+import type { ReviewActionDto } from "./generated/ReviewActionDto";
+import type { ReviewAuditionDto } from "./generated/ReviewAuditionDto";
+import type { ReviewFactsDto } from "./generated/ReviewFactsDto";
 import type { TemplateDto } from "./generated/TemplateDto";
 import type { EditDto } from "./generated/EditDto";
 import type { StudioEditDto } from "./generated/StudioEditDto";
@@ -70,6 +73,13 @@ export type Link = Pick<
   | "editImpact"
   | "barlineRewrite"
   | "groupEditPlan"
+  | "reviewBegin"
+  | "reviewRead"
+  | "reviewAct"
+  | "reviewUndo"
+  | "reviewAudition"
+  | "reviewAccept"
+  | "reviewDiscard"
   | "transport"
   | "exportTo"
   | "snapshot"
@@ -169,6 +179,15 @@ export class Session {
    * change while the inspector asks, and both read this.
    */
   groupPlan = $state<GroupEditPlanDto | null>(null);
+
+  /**
+   * The take being reviewed, or null when none is.
+   *
+   * A state of the session and not of a panel: the leaf draws the proposal,
+   * the top margin says where it would go, and the inspector asks the few
+   * questions — all three read this one reading.
+   */
+  review = $state<ReviewFactsDto | null>(null);
 
   /** Which analysis is in flight, so the panel can say it is reading. */
   reading = $state<string | null>(null);
@@ -596,6 +615,88 @@ export class Session {
   /** Put the preview away, changing nothing. */
   cancelGroupEdit(): void {
     this.groupPlan = null;
+  }
+
+  /**
+   * Open the take just captured for review.
+   *
+   * Nothing is written. A take the pipeline refuses — played without a pulse,
+   * longer than one reading — says so in the top margin and leaves the score
+   * exactly as it was.
+   */
+  async beginReview(): Promise<void> {
+    await this.reading_(() => this.#link?.reviewBegin());
+  }
+
+  /** One gesture on the review. */
+  async reviewAct(action: ReviewActionDto): Promise<void> {
+    await this.reading_(
+      () => this.#link?.reviewAct(action),
+      (facts) => this.#spoken(facts),
+    );
+  }
+
+  /** Take back the last review decision. */
+  async undoReview(): Promise<void> {
+    await this.reading_(
+      () => this.#link?.reviewUndo(),
+      () => "Taken back.",
+    );
+  }
+
+  /** Hear the take as played, or the notation as written. */
+  async auditionReview(mode: ReviewAuditionDto): Promise<void> {
+    await this.reading_(
+      () => this.#link?.reviewAudition(mode),
+      () => (mode === "played" ? "Playing what you played." : "Playing what is written."),
+    );
+  }
+
+  /** Accept the reading; the phrase is settled. */
+  async acceptReview(): Promise<void> {
+    await this.reading_(
+      () => this.#link?.reviewAccept(),
+      () => "Kept.",
+    );
+  }
+
+  /** Close the review and drop the take with it. */
+  async discardReview(): Promise<void> {
+    const link = this.#link;
+    this.review = null;
+    if (!link) return;
+    try {
+      await link.reviewDiscard();
+    } catch (thrown) {
+      this.fail(thrown);
+    }
+  }
+
+  /**
+   * One concise result per action, not one per re-engraved note
+   * (`05-states.md`): the project already counted what read differently.
+   */
+  #spoken(facts: ReviewFactsDto): string {
+    const last = facts.history.at(-1);
+    const changed = facts.changed.length;
+    const notes = changed === 1 ? "1 note" : `${changed} notes`;
+    return last ? `${last[0].toUpperCase()}${last.slice(1)} — ${notes}.` : `${notes}.`;
+  }
+
+  /** Run one review call, keep its reading, and report it once. */
+  private async reading_(
+    ask: () => Promise<ReviewFactsDto> | undefined,
+    say?: (facts: ReviewFactsDto) => string,
+  ): Promise<void> {
+    const pending = ask();
+    if (!pending) return;
+    try {
+      const facts = await pending;
+      this.review = facts;
+      if (say) this.say({ tone: "result", message: say(facts) });
+    } catch (thrown) {
+      this.fail(thrown);
+    }
   }
 
   /**

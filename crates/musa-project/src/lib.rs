@@ -55,6 +55,7 @@ mod playback;
 mod position;
 mod project;
 mod realization;
+mod review;
 mod rhythm;
 mod session;
 mod sf2;
@@ -99,6 +100,10 @@ pub use crate::midi::{
 pub use crate::packages::{fetch_packages, verify_packages};
 pub use crate::position::Position;
 pub use crate::project::{Project, ProjectMeta};
+pub use crate::review::{
+    AmbiguityKind, ReviewAction, ReviewAmbiguity, ReviewAudition, ReviewChoice, ReviewDecision, ReviewError,
+    ReviewFacts, ReviewNote,
+};
 pub use crate::rhythm::RhythmTranscriptionReport;
 pub use crate::session::ProjectSession;
 pub use crate::sf2::{Sf2InstrumentFacts, Sf2Limits};

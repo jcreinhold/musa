@@ -351,7 +351,17 @@ export async function stubShell(
       window.__musaEdits = [];
       window.__musaGroupEdits = [];
       window.__musaSaves = 0;
+      window.__musaReviewActs = [];
       window.__musaRevision = current.revision as number;
+
+      /** Restate the capture facts, leaving everything else where it was. */
+      function capture(patch: Record<string, unknown>): Record<string, unknown> {
+        current = {
+          ...current,
+          midiCapture: { ...(current.midiCapture as Record<string, unknown>), ...patch },
+        };
+        return answer();
+      }
 
       /** Every answer goes out through here, so the tests can watch the revision. */
       function answer(): Record<string, unknown> {
@@ -378,6 +388,19 @@ export async function stubShell(
 
       /** Plan identities, minted per preview and never reused. */
       let plans = 0;
+
+      /**
+       * The reading under review, and the states it has been in.
+       *
+       * The stub is not a transcriber. What it answers is the *shape* the
+       * project guarantees: one immutable proposal, marks only where the
+       * retained readings disagree, one decision settles one mark, taking a
+       * decision back restores exactly the reading before it, and keeping it
+       * seals the review without touching the source. That the notation it
+       * would compose is the right notation is `musa-project`'s review laws.
+       */
+      let review: Record<string, unknown> | null = null;
+      const readings: Record<string, unknown>[] = [];
 
       /**
        * Restate the reading in force: which performance it is, and which of its
@@ -706,6 +729,90 @@ export async function stubShell(
           };
           return current;
         },
+        /*
+         * The rest of the capture surface. The stub is not a transcriber and
+         * has no keyboard plugged into it: what it answers is the state
+         * machine the facade guarantees — listening, capturing, a take to
+         * review — so that a screen showing one of those states is showing a
+         * state the core can actually be in. An unanswered command here is a
+         * failure notice on every screen that opens, which is what these
+         * were missing.
+         */
+        select_midi_input: (args) => {
+          current = { ...current, midiPort: String(args.id) };
+          return current;
+        },
+        start_midi_capture: () => capture({ state: "capturing", captureEvents: 0, captureMicros: 0 }),
+        stop_midi_capture: () => capture({ state: "review" }),
+        keep_recent_midi: () => capture({ state: "review" }),
+        clear_recent_midi: () => capture({ state: "listen", recentEvents: 0, recentMicros: 0 }),
+        set_recent_midi: (args) => capture({ recentEnabled: args.enabled === true }),
+        review_begin: () => {
+          if (!review) throw { kind: "backend", message: "there is no take to review" };
+          readings.length = 0;
+          return review;
+        },
+        review_read: () => review,
+        review_act: (args) => {
+          if (!review) throw { kind: "backend", message: "there is no take to review" };
+          if (review.sealed === true) throw { kind: "backend", message: "this reading has been kept" };
+          const action = args.action as { kind: string; ambiguity?: string; choice?: string; notes?: number[] };
+          readings.push(review);
+          window.__musaReviewActs.push(action);
+          const marks = review.ambiguities as { id: string; kind: string; choices: { id: string }[] }[];
+          // Choosing settles exactly the one mark it answers, and the reading
+          // that produced it becomes the current one.
+          const settled =
+            action.kind === "choose"
+              ? marks.filter((mark) => mark.id !== action.ambiguity)
+              : action.kind === "tap"
+                ? marks.filter((mark) => mark.kind !== "pulse")
+                : marks;
+          const chosen = marks.find((mark) => mark.id === action.ambiguity);
+          review = {
+            ...review,
+            ambiguities: settled.map((mark) =>
+              mark.id === action.ambiguity
+                ? {
+                    ...mark,
+                    choices: mark.choices.map((choice) => ({ ...choice, current: choice.id === action.choice })),
+                  }
+                : mark,
+            ),
+            history: [
+              ...(review.history as string[]),
+              action.kind === "choose"
+                ? ((chosen?.choices.find((choice) => choice.id === action.choice) as { label?: string })?.label ??
+                  "Chose a reading.")
+                : action.kind === "tap"
+                  ? "Took the pulse from the taps."
+                  : `Wrote ${(action.notes ?? []).length} notes again.`,
+            ],
+            changed: action.notes ?? [],
+          };
+          return review;
+        },
+        review_undo: () => {
+          const previous = readings.pop();
+          if (!previous) throw { kind: "backend", message: "there is nothing to take back" };
+          review = previous;
+          return review;
+        },
+        review_audition: (args) => {
+          if (!review) throw { kind: "backend", message: "there is no take to review" };
+          review = { ...review, audition: args.mode };
+          return review;
+        },
+        review_accept: () => {
+          if (!review) throw { kind: "backend", message: "there is no take to review" };
+          review = { ...review, sealed: true };
+          return review;
+        },
+        review_discard: () => {
+          review = null;
+          readings.length = 0;
+          return null;
+        },
         export: () => ({ path: "/tmp/glass-mountain.mei" }),
         // The file dialogs are the platform's, not musa's, so the stub answers
         // them the way a composer who picked a file would: with a path.
@@ -753,6 +860,16 @@ export async function stubShell(
         },
       });
 
+      // The take a review reads. The project composes this from a capture;
+      // the stub is handed one, because a headless browser has no keyboard
+      // plugged into it.
+      Object.defineProperty(window, "__musaReview", {
+        value: (facts: Record<string, unknown> | null) => {
+          review = facts;
+          readings.length = 0;
+        },
+      });
+
       // The tests raise shell events — a menu selection, a position tick —
       // through the same path the shell does.
       Object.defineProperty(window, "__musaEmit", {
@@ -778,6 +895,10 @@ declare global {
     __musaEdits: Record<string, unknown>[];
     /** Every group transformation it has committed, in order. */
     __musaGroupEdits: Record<string, unknown>[];
+    /** Seed the take a review reads, or clear it. */
+    __musaReview: (facts: Record<string, unknown> | null) => void;
+    /** Every review gesture the interface has made, in order. */
+    __musaReviewActs: Record<string, unknown>[];
     /** The revision the stub last answered with, so undo can be seen to land. */
     __musaRevision: number;
     /** How many times the interface has asked the shell to save. */

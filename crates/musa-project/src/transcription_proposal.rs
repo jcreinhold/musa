@@ -29,6 +29,7 @@ use musa_syntax::BarSpacing;
 
 use crate::command::Revision;
 use crate::midi::CapturedMidiEvent;
+use crate::review::ReviewDecision;
 use crate::transcription_pairing::{self, GroupShape};
 use crate::transcription_search::{Candidate, Refusal, RhythmEvent, Take, TakeClock};
 use crate::transcription_spell;
@@ -141,6 +142,7 @@ pub struct NotationProposal {
     groups: Vec<ProposalGroup>,
     voice_count: usize,
     candidate: Candidate,
+    ranked: Vec<Candidate>,
     losses: Vec<ProposalLoss>,
     source: Option<ProposalSource>,
     peak_states: usize,
@@ -148,7 +150,7 @@ pub struct NotationProposal {
 }
 
 /// The proposal facade version; bump when this public shape changes.
-pub const PROPOSAL_VERSION: u64 = 1;
+pub const PROPOSAL_VERSION: u64 = 2;
 
 impl NotationProposal {
     /// The proposal facade version.
@@ -216,6 +218,18 @@ impl NotationProposal {
         &self.candidate
     }
 
+    /// Every candidate the search retained, best first — the top one is
+    /// [`Self::rhythm_candidate`].
+    ///
+    /// Carried rather than recomputed because disagreement *among the retained
+    /// candidates* is what prompt 203 fixed as the ambiguity test: there is no
+    /// calibrated probability here, only "the readings that survived do not
+    /// agree about this beat". A reviewer asking that question would otherwise
+    /// have to run the whole search a second time to answer it.
+    pub fn ranked(&self) -> &[Candidate] {
+        &self.ranked
+    }
+
     /// The facts declared as losses, never silently dropped.
     pub fn losses(&self) -> &[ProposalLoss] {
         &self.losses
@@ -248,7 +262,7 @@ pub(crate) fn propose(
     meter: &str,
     key: Option<Key>,
     policy_name: &str,
-    voice_pins: &[VoiceConstraint],
+    decisions: &[ReviewDecision],
     spacing: BarSpacing,
 ) -> Result<NotationProposal, ProposalError> {
     let completed = transcription_pairing::complete(events);
@@ -275,7 +289,15 @@ pub(crate) fn propose(
         clock,
         bar_ticks,
         events: rhythm_events,
-        pins: Vec::new(),
+        pins: decisions
+            .iter()
+            .filter_map(|decision| match *decision {
+                ReviewDecision::Onset { note, ticks } => Some((note, ticks)),
+                ReviewDecision::Voice { .. } | ReviewDecision::Spelling { .. } | ReviewDecision::WrittenEnd { .. } => {
+                    None
+                }
+            })
+            .collect(),
     };
     let report = crate::rhythm::RhythmTranscriptionReport::transcribe(revision, &take, policy_name);
     if let Some(reason) = report.refusal() {
@@ -291,12 +313,22 @@ pub(crate) fn propose(
         return Err(ProposalError::Policy("the rank is empty".to_owned()));
     };
 
-    let assignment = transcription_voice::assign_voices(&completed.notes, quarter, voice_pins)
+    let voice_pins = decisions
+        .iter()
+        .filter_map(|decision| match *decision {
+            ReviewDecision::Voice { note, voice } => Some(VoiceConstraint::Pin {
+                note_index: note,
+                voice,
+            }),
+            ReviewDecision::Onset { .. } | ReviewDecision::Spelling { .. } | ReviewDecision::WrittenEnd { .. } => None,
+        })
+        .collect::<Vec<_>>();
+    let assignment = transcription_voice::assign_voices(&completed.notes, quarter, &voice_pins)
         .map_err(ProposalError::VoiceRefused)?;
     let spellings = transcription_spell::spell_pitches(&completed.notes, key);
     let ends = transcription_spell::infer_written_ends(&completed.notes, &candidate.durations);
 
-    let notes = (0..completed.notes.len())
+    let mut notes = (0..completed.notes.len())
         .map(|index| ProposalNote {
             pitch: spellings[index].spelled.clone(),
             alternatives: spellings[index].alternatives.clone(),
@@ -307,6 +339,27 @@ pub(crate) fn propose(
             derivation: completed.notes[index].derivation,
         })
         .collect::<Vec<_>>();
+
+    // Spelling and written-end decisions land on the composed note rather than
+    // on the search: what a reviewer settled about how a note is *written* is
+    // not evidence about when it was played, and feeding it back as timing
+    // evidence would let one decision move a neighbour.
+    for decision in decisions {
+        match *decision {
+            ReviewDecision::Spelling { note, ref pitch } => {
+                if let Some(entry) = notes.get_mut(note) {
+                    entry.pitch.clone_from(pitch);
+                }
+            }
+            ReviewDecision::WrittenEnd { note, ticks } => {
+                if let Some(entry) = notes.get_mut(note) {
+                    entry.written_end_ticks = ticks;
+                    entry.grace = false;
+                }
+            }
+            ReviewDecision::Onset { .. } | ReviewDecision::Voice { .. } => {}
+        }
+    }
 
     let groups = transcription_pairing::group_notes(&completed.notes, quarter)
         .into_iter()
@@ -364,6 +417,7 @@ pub(crate) fn propose(
         groups,
         voice_count: assignment.voice_count,
         candidate: candidate.clone(),
+        ranked: candidates.to_vec(),
         losses,
         source,
         peak_states: report.peak_states(),

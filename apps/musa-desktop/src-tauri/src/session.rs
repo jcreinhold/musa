@@ -26,7 +26,7 @@ use musa_project::{
 use serde_json::Value;
 use tauri::{AppHandle, Emitter};
 
-use crate::dto::{BarlinePreviewDto, ErrorDto, ErrorKindDto, ExportedDto, GroupEditPlanDto};
+use crate::dto::{BarlinePreviewDto, ErrorDto, ErrorKindDto, ExportedDto, GroupEditPlanDto, ReviewFactsDto};
 
 /// How often the position is reported while playing (`06-frame-budgets.md` §3).
 /// At rest the thread blocks: there is no timer anywhere in the application.
@@ -78,6 +78,19 @@ enum Job {
     MidiKeep(Option<String>),
     MidiClear,
     MidiRecent(bool),
+    /// Open the take just captured for review, discard the review, take back
+    /// its last decision, accept it, hear the other performance, or make one
+    /// gesture on it.
+    ///
+    /// None of these touch the source, so none of them emit a snapshot: a
+    /// review is a reading of evidence and mints no revision.
+    ReviewBegin,
+    ReviewRead,
+    ReviewAct(musa_project::ReviewAction),
+    ReviewUndo,
+    ReviewAudition(musa_project::ReviewAudition),
+    ReviewAccept,
+    ReviewDiscard,
     /// Read the last valid score, and report what one analysis saw.
     ///
     /// A job like the others because it reads the session's score, and
@@ -168,6 +181,34 @@ impl SessionHandle {
         self.ask(Job::GroupEditPlan(edit))
     }
 
+    pub(crate) fn review_begin(&self) -> Reply {
+        self.ask(Job::ReviewBegin)
+    }
+
+    pub(crate) fn review_read(&self) -> Reply {
+        self.ask(Job::ReviewRead)
+    }
+
+    pub(crate) fn review_act(&self, action: musa_project::ReviewAction) -> Reply {
+        self.ask(Job::ReviewAct(action))
+    }
+
+    pub(crate) fn review_undo(&self) -> Reply {
+        self.ask(Job::ReviewUndo)
+    }
+
+    pub(crate) fn review_audition(&self, mode: musa_project::ReviewAudition) -> Reply {
+        self.ask(Job::ReviewAudition(mode))
+    }
+
+    pub(crate) fn review_accept(&self) -> Reply {
+        self.ask(Job::ReviewAccept)
+    }
+
+    pub(crate) fn review_discard(&self) -> Reply {
+        self.ask(Job::ReviewDiscard)
+    }
+
     pub(crate) fn listen_to_midi(&self, listening: bool, caret: Option<String>) -> Reply {
         self.ask(Job::Midi(listening, caret))
     }
@@ -247,6 +288,13 @@ fn run(app: &AppHandle, inbox: &Receiver<(Job, Sender<Reply>)>) {
                     | Job::Impact(_)
                     | Job::BarlineRewrite
                     | Job::GroupEditPlan(_)
+                    | Job::ReviewBegin
+                    | Job::ReviewRead
+                    | Job::ReviewAct(_)
+                    | Job::ReviewUndo
+                    | Job::ReviewAudition(_)
+                    | Job::ReviewAccept
+                    | Job::ReviewDiscard
                     | Job::Midi(..)
                     | Job::MidiSelect(_)
                     | Job::MidiCaptureStart(_)
@@ -307,6 +355,35 @@ fn emit<T: serde::Serialize>(app: &AppHandle, event: &str, payload: &T) {
 /// index count in (`musa_project::Utf16Offsets`).
 fn snapshot_json(session: &mut Project) -> Value {
     session.snapshot().to_wire()
+}
+
+/// Restate one Review reading in the webview's own types.
+fn review_json(facts: &musa_project::ReviewFacts) -> Reply {
+    serde_json::to_value(ReviewFactsDto::from(facts))
+        .map_err(|error| ErrorDto::shell(ErrorKindDto::Backend, error.to_string()))
+}
+
+/// Why a take could not be read as notation, in one sentence a musician can
+/// act on. The refusals are the ones prompt 203 fixed, so each says what to do
+/// next rather than naming a stage.
+fn proposal_reason(error: &musa_project::ProposalError) -> String {
+    match *error {
+        musa_project::ProposalError::SearchRefused(musa_project::Refusal::WriteSource) => {
+            "this was played without a pulse to read it against; write it as source, or play it to a click".to_owned()
+        }
+        musa_project::ProposalError::SearchRefused(musa_project::Refusal::Unsplittable { note_count }) => {
+            format!("{note_count} notes is longer than one reading; play a phrase at a time")
+        }
+        musa_project::ProposalError::SearchRefused(musa_project::Refusal::TooManyVoices)
+        | musa_project::ProposalError::VoiceRefused(_) => {
+            "more lines are sounding at once than a keyboard part is written in".to_owned()
+        }
+        musa_project::ProposalError::SearchRefused(musa_project::Refusal::Exhausted) => {
+            "this take is more than one reading can work through; play a shorter phrase".to_owned()
+        }
+        musa_project::ProposalError::UncheckableSource(ref detail) => detail.clone(),
+        musa_project::ProposalError::Policy(ref reason) => reason.clone(),
+    }
 }
 
 /// Run one job against the session.
@@ -401,6 +478,53 @@ fn perform(session: &mut Option<Project>, job: Job) -> Reply {
             let plan = piece.plan_group_edit(&edit).map_err(|error| ErrorDto::from(&error))?;
             serde_json::to_value(GroupEditPlanDto::new(plan, &offsets))
                 .map_err(|error| ErrorDto::shell(ErrorKindDto::Backend, error.to_string()))
+        }
+        Job::ReviewBegin => {
+            let piece = session.as_mut().ok_or_else(no_project)?.current_mut();
+            let facts = piece
+                .review_latest_take("standard")
+                .map_err(|error| ErrorDto::shell(ErrorKindDto::Document, proposal_reason(&error)))?;
+            review_json(&facts)
+        }
+        Job::ReviewRead => {
+            let piece = session.as_ref().ok_or_else(no_project)?.current();
+            match piece.review() {
+                Some(facts) => review_json(&facts),
+                None => Ok(serde_json::Value::Null),
+            }
+        }
+        Job::ReviewAct(action) => {
+            let piece = session.as_mut().ok_or_else(no_project)?.current_mut();
+            let facts = piece
+                .review_act(&action)
+                .map_err(|error| ErrorDto::shell(ErrorKindDto::Document, error.to_string()))?;
+            review_json(&facts)
+        }
+        Job::ReviewUndo => {
+            let piece = session.as_mut().ok_or_else(no_project)?.current_mut();
+            let facts = piece
+                .review_undo()
+                .map_err(|error| ErrorDto::shell(ErrorKindDto::Document, error.to_string()))?;
+            review_json(&facts)
+        }
+        Job::ReviewAudition(mode) => {
+            let piece = session.as_mut().ok_or_else(no_project)?.current_mut();
+            let facts = piece
+                .review_audition(mode)
+                .map_err(|error| ErrorDto::shell(ErrorKindDto::Document, error.to_string()))?;
+            review_json(&facts)
+        }
+        Job::ReviewAccept => {
+            let piece = session.as_mut().ok_or_else(no_project)?.current_mut();
+            let facts = piece
+                .accept_review()
+                .map_err(|error| ErrorDto::shell(ErrorKindDto::Document, error.to_string()))?;
+            review_json(&facts)
+        }
+        Job::ReviewDiscard => {
+            let piece = session.as_mut().ok_or_else(no_project)?.current_mut();
+            piece.discard_review();
+            Ok(serde_json::Value::Null)
         }
         Job::Snapshot => session.as_mut().map(snapshot_json).ok_or_else(no_project),
         Job::Analyze(kind) => {

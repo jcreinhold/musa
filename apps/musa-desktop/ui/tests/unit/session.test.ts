@@ -12,8 +12,57 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SETTLE_MS, Session, type Link } from "../../src/lib/session/session.svelte";
 import fixture from "../../fixtures/glass-mountain.snapshot.json";
 import type { ProjectSnapshot } from "../../src/lib/state/snapshot";
+import type { ReviewFactsDto } from "../../src/lib/session/generated/ReviewFactsDto";
 
 const VALID = fixture as unknown as ProjectSnapshot;
+
+/** One reading of a take, as the project composes one. */
+const REVIEW: ReviewFactsDto = {
+  takeName: "keyboard@3",
+  revision: VALID.revision as unknown as bigint,
+  current: true,
+  meter: "4/4",
+  policy: "standard",
+  notes: [
+    {
+      pitch: "c4",
+      voice: 0,
+      onsetTicks: 0,
+      endTicks: 24,
+      pedalExtended: false,
+      grace: false,
+      name: "c4, 1/4, line 1, bar 1, beat 1",
+    },
+    {
+      pitch: "e4",
+      voice: 0,
+      onsetTicks: 24,
+      endTicks: 24,
+      pedalExtended: false,
+      grace: false,
+      name: "e4, 1/4, line 1, bar 1, beat 2",
+    },
+  ],
+  voiceCount: 1,
+  ambiguities: [
+    {
+      id: "placement-1",
+      kind: "placement",
+      explanation: "the readings that survived disagree about where this note falls",
+      notes: [1],
+      choices: [
+        { id: "t24", label: "bar 1, beat 2", current: true },
+        { id: "t16", label: "bar 1, 1/6 after beat 1", current: false },
+      ],
+    },
+  ],
+  losses: [],
+  history: [],
+  audition: "played",
+  source: 'piece "keyboard" {}\n',
+  sealed: false,
+  changed: [],
+};
 
 /** A snapshot of `source` at `revision`, compiling or not, as the core would. */
 function snapshotOf(source: string, revision: number, compiles = true): ProjectSnapshot {
@@ -88,6 +137,18 @@ function recorder(): Recorder {
       warnings: [],
       specializable: false,
     })),
+    reviewBegin: vi.fn(async () => REVIEW),
+    reviewRead: vi.fn(async () => REVIEW),
+    reviewAct: vi.fn(async (action) => ({
+      ...REVIEW,
+      history: [action.kind === "tie" ? "write it through to the next note" : "a decision"],
+      changed: [0],
+      ambiguities: [],
+    })),
+    reviewUndo: vi.fn(async () => REVIEW),
+    reviewAudition: vi.fn(async (mode) => ({ ...REVIEW, audition: mode })),
+    reviewAccept: vi.fn(async () => ({ ...REVIEW, sealed: true })),
+    reviewDiscard: vi.fn(async () => null),
     transport: vi.fn(async () => VALID),
     exportTo: vi.fn(async () => ({ path: "/tmp/out.mei" })),
     snapshot: vi.fn(async () => VALID),
@@ -514,5 +575,75 @@ describe("results and failures", () => {
       tone: "failure",
       message: "this note is tied; edit the whole tie",
     });
+  });
+});
+
+describe("reviewing a take", () => {
+  it("opens the reading and keeps it on the session, not in a panel", async () => {
+    const link = recorder();
+    const session = new Session(link);
+    session.receive(VALID);
+
+    await session.beginReview();
+    expect(session.review?.takeName).toBe("keyboard@3");
+    expect(session.review?.ambiguities).toHaveLength(1);
+  });
+
+  it("reports one result per action, not one per re-engraved note", async () => {
+    const link = recorder();
+    const session = new Session(link);
+    session.receive(VALID);
+    await session.beginReview();
+
+    await session.reviewAct({ kind: "tie", note: 0, tied: true });
+    expect(link.reviewAct).toHaveBeenCalledWith({ kind: "tie", note: 0, tied: true });
+    expect(session.notice?.message).toBe("Write it through to the next note — 1 note.");
+    expect(session.review?.ambiguities).toHaveLength(0);
+  });
+
+  it("switching what you hear decides nothing", async () => {
+    const link = recorder();
+    const session = new Session(link);
+    session.receive(VALID);
+    await session.beginReview();
+
+    await session.auditionReview("written");
+    expect(session.review?.audition).toBe("written");
+    expect(session.review?.history).toEqual([]);
+  });
+
+  it("accepting settles the phrase and writes no source", async () => {
+    const link = recorder();
+    const session = new Session(link);
+    session.receive(VALID);
+    await session.beginReview();
+
+    await session.acceptReview();
+    expect(session.review?.sealed).toBe(true);
+    expect(link.applied).toEqual([]);
+  });
+
+  it("discarding clears the reading even before the shell answers", async () => {
+    const link = recorder();
+    const session = new Session(link);
+    session.receive(VALID);
+    await session.beginReview();
+
+    await session.discardReview();
+    expect(session.review).toBeNull();
+    expect(link.reviewDiscard).toHaveBeenCalled();
+  });
+
+  it("a refused take says so and leaves nothing under review", async () => {
+    const link = recorder();
+    link.reviewBegin = vi.fn(async () => {
+      throw { kind: "document", message: "this was played without a pulse to read it against" };
+    });
+    const session = new Session(link);
+    session.receive(VALID);
+
+    await session.beginReview();
+    expect(session.review).toBeNull();
+    expect(session.notice?.tone).toBe("failure");
   });
 });

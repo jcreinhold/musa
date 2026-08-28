@@ -16,6 +16,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { engraved } from "./engraved";
 import { toggleSource, rewrite } from "./source";
 import { stubShell } from "./shell";
+import { openReview } from "./reviewing";
 
 /** The debounce the budget is stated relative to (`06-frame-budgets.md` §1). */
 const SETTLE_MS = 100;
@@ -503,6 +504,132 @@ test("B12: a piece already opened is on the leaf within 400 ms", async ({ page }
   ).toBeLessThanOrEqual(400);
   // A turn that measured nothing is not a fast turn.
   expect(Math.min(...samples)).toBeGreaterThan(0);
+});
+
+/**
+ * Review's own interaction quantities (`06-frame-budgets.md` §7).
+ *
+ * That section is deliberate about what it does not yet contain: it asks for
+ * these to be **measured** before the table names a threshold, and says an
+ * uncalibrated impression is not performance evidence. So these tests report
+ * the numbers and assert only ceilings the table already justifies for a
+ * gesture of the same shape — a panel populated (B4, 100 ms) and a reading
+ * redrawn (B11, 250 ms). What they cannot measure here is the transcriber:
+ * the harness's shell is not one, so "local retranscription" is the
+ * interface's share of it — the round trip through the session store to the
+ * replacement reading — and the core's share is `musa-project`'s to measure.
+ */
+test.describe("review", () => {
+  /**
+   * The first `to` mark that is not earlier than the `from` mark, in ms.
+   *
+   * `atLeast` is what separates "the answer to this gesture" from "the answer
+   * to the last one": a strict `>` is right when the two marks are made in
+   * different tasks, and wrong when they are made in the same one, where the
+   * clock's resolution can put them at the same instant.
+   */
+  async function between(page: Page, from: string, to: string, atLeast = false): Promise<number> {
+    return page.evaluate(
+      ([start, end, same]) => {
+        const gesture = performance.getEntriesByName(`musa:${start}`, "mark")[0]?.startTime;
+        if (gesture === undefined) return Number.NaN;
+        const done = performance
+          .getEntriesByName(`musa:${end}`, "mark")
+          .find((at) => (same ? at.startTime >= gesture : at.startTime > gesture));
+        return done === undefined ? Number.NaN : done.startTime - gesture;
+      },
+      [from, to, atLeast] as const,
+    );
+  }
+
+  test("R1: asking to hear it the other way reaches the audition within 100 ms", async ({ page }) => {
+    await stubShell(page);
+    await page.goto("/?perf=1");
+    await openReview(page, "straight-known");
+
+    const hearing = page.getByRole("group", { name: "What to hear" });
+    const samples: number[] = [];
+    for (let trial = 0; trial < TRIALS; trial += 1) {
+      const wanted = trial % 2 === 0 ? "Written" : "Played";
+      await page.evaluate(() => performance.clearMarks());
+      await hearing.getByRole("button", { name: wanted }).click();
+      await expect(hearing.getByRole("button", { name: wanted })).toHaveAttribute("aria-pressed", "true");
+      samples.push(await between(page, "reviewAudition", "reviewDrawn"));
+    }
+    expect(
+      record("R1 input→audition", p95(samples)),
+      `the audition was in force at p95 ${Math.round(p95(samples))} ms after the press`,
+    ).toBeLessThanOrEqual(100);
+  });
+
+  test("R2: a gesture reaches its replacement reading and preview within 250 ms", async ({ page }) => {
+    await stubShell(page);
+    await page.goto("/?perf=1");
+    await openReview(page, "rolled-and-block-chords");
+
+    const panel = page.getByRole("complementary", { name: "Choices" });
+    const samples: number[] = [];
+    for (let trial = 0; trial < TRIALS; trial += 1) {
+      // The same question, asked and taken back, so every trial starts from
+      // the same reading and measures one gesture rather than a shrinking list.
+      await panel.getByRole("button", { expanded: false }).first().click();
+      await page.evaluate(() => performance.clearMarks());
+      await panel
+        .getByRole("group", { name: "What this cluster is" })
+        .getByRole("button", { name: "Make chord" })
+        .click();
+      await page.waitForFunction(() => {
+        const gesture = performance.getEntriesByName("musa:reviewAct", "mark")[0];
+        return (
+          gesture !== undefined &&
+          performance.getEntriesByName("musa:reviewDrawn", "mark").some((at) => at.startTime > gesture.startTime)
+        );
+      });
+      samples.push(await between(page, "reviewAct", "reviewDrawn"));
+      await page.getByRole("button", { name: "Take back" }).click();
+      await expect(panel.getByRole("group", { name: "What you decided" })).toHaveCount(0);
+    }
+    expect(
+      record("R2 action→preview", p95(samples)),
+      `the replacement reading was drawn at p95 ${Math.round(p95(samples))} ms after the gesture`,
+    ).toBeLessThanOrEqual(250);
+    // A gesture that measured nothing is not a fast gesture.
+    expect(Math.min(...samples)).toBeGreaterThan(0);
+  });
+
+  test("R3: focus is back on the note the composer was reading within 50 ms of the redraw", async ({ page }) => {
+    await stubShell(page);
+    await page.goto("/?perf=1");
+    await openReview(page, "swing-known");
+
+    // The first note, taken with the keyboard: this budget is about a reader
+    // who never touches the pointer.
+    await page.keyboard.press("ArrowRight");
+
+    const samples: number[] = [];
+    for (let trial = 0; trial < TRIALS; trial += 1) {
+      // Every trial reads the same note. Deciding does not move the selection
+      // — the take is immutable and a note is its index — so the measurement
+      // is one gesture repeated rather than a walk along the phrase.
+      await expect(page.locator("#proposal-0")).toHaveAttribute("aria-pressed", "true");
+      await page.evaluate(() => performance.clearMarks());
+      await page.keyboard.press("8");
+      await page.waitForFunction(() => performance.getEntriesByName("musa:reviewFocus", "mark").length > 0);
+      // Restoring focus is in the same task as the redraw, so this usually
+      // measures a fraction of a millisecond. That is the point: the budget
+      // is met by construction, and this catches the day focus is deferred to
+      // a later frame instead.
+      samples.push(await between(page, "reviewDrawn", "reviewFocus", true));
+      // The note the composer was on is the note they are still on: index
+      // into an immutable take, so nothing has moved under the caret.
+      expect(await page.evaluate(() => document.activeElement?.id ?? "")).toBe("proposal-0");
+      await page.keyboard.press("u");
+    }
+    expect(
+      record("R3 focus restored", p95(samples)),
+      `focus was restored at p95 ${Math.round(p95(samples))} ms after the redraw`,
+    ).toBeLessThanOrEqual(50);
+  });
 });
 
 declare global {

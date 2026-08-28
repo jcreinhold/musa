@@ -16,6 +16,7 @@
   import { onMount, untrack } from "svelte";
 
   import Compose from "./screens/Compose.svelte";
+  import Review from "./screens/Review.svelte";
   import Contents from "./screens/Contents.svelte";
   import Sound from "./screens/Sound.svelte";
   import Mix from "./screens/Mix.svelte";
@@ -875,6 +876,15 @@
     ondiagnostic={showDiagnostic}
     onreveal={open}
     onshow={(which) => (screen = which)}
+  />
+{:else if session.snapshot && session.review}
+  <Review
+    facts={session.review}
+    onact={(action) => void session.reviewAct(action)}
+    onundo={() => void session.undoReview()}
+    onaudition={(mode) => void session.auditionReview(mode)}
+    onaccept={() => void session.acceptReview()}
+    ondiscard={() => void session.discardReview()}
   />
 {:else if session.snapshot}
   <Compose

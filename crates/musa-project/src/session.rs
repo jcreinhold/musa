@@ -150,6 +150,14 @@ pub struct ProjectSession {
     audition_routes: Vec<AuditionRoute>,
     /// Presses waiting to be grouped into chords.
     entry: EntryBuffer,
+    /// The take currently under review, if one is.
+    ///
+    /// Held beside the source rather than in it: a review is a temporary
+    /// reading of evidence, and until it is placed the canonical document does
+    /// not know it exists. It survives an edit to the source — the review says
+    /// it is no longer current rather than vanishing, because a musician who
+    /// fixed a typo mid-review has not withdrawn the phrase they played.
+    review: Option<crate::review::Review>,
 }
 
 struct AuditionRoute {
@@ -642,7 +650,7 @@ impl ProjectSession {
         meter: &str,
         key: Option<musa_score::Key>,
         policy_name: &str,
-        voice_pins: &[crate::VoiceConstraint],
+        decisions: &[crate::ReviewDecision],
     ) -> Result<crate::NotationProposal, crate::ProposalError> {
         crate::transcription_proposal::propose(
             self.revision,
@@ -653,9 +661,182 @@ impl ProjectSession {
             meter,
             key,
             policy_name,
-            voice_pins,
+            decisions,
             self.bar_spacing(),
         )
+    }
+
+    /// Open one captured take for review.
+    ///
+    /// The proposal is composed once here and recomposed from the take on
+    /// every decision, so Review never holds a second editable score. The
+    /// canonical source is untouched by this and by every decision made
+    /// against it; placing the result is a separate transaction.
+    ///
+    /// # Errors
+    /// Returns [`crate::ProposalError`] when the take does not compose at all
+    /// — the same refusals [`Self::propose_notation`] reports.
+    pub fn begin_review(
+        &mut self,
+        take_name: &str,
+        events: &[crate::CapturedMidiEvent],
+        clock: crate::TakeClock,
+        bar_ticks: u32,
+        meter: &str,
+        key: Option<musa_score::Key>,
+        policy_name: &str,
+    ) -> Result<crate::ReviewFacts, crate::ProposalError> {
+        let review = crate::review::Review::begin(
+            self.revision,
+            take_name,
+            events,
+            clock,
+            bar_ticks,
+            meter,
+            key,
+            policy_name,
+            self.bar_spacing(),
+        )?;
+        let facts = review.facts(self.revision);
+        self.review = Some(review);
+        Ok(facts)
+    }
+
+    /// Open the take that was just captured for review.
+    ///
+    /// The destination context is read from the piece rather than asked for:
+    /// meter, tempo, and key are already compiled facts, and a Review that
+    /// asked the musician to restate them would be asking about the score
+    /// rather than about what they played. A take captured against a running
+    /// transport carries that clock; one played freely returns pulse and phase
+    /// as questions (prompt 203's known/free split).
+    ///
+    /// # Errors
+    /// Returns [`crate::ProposalError`] when there is no take to review, the
+    /// piece does not currently compile, or the take is refused by the search
+    /// — an ametric take asks for source rather than a grid.
+    pub fn review_latest_take(&mut self, policy_name: &str) -> Result<crate::ReviewFacts, crate::ProposalError> {
+        let Some(take) = self.midi_performance.latest_take() else {
+            return Err(crate::ProposalError::Policy(
+                "nothing has been played to review".to_owned(),
+            ));
+        };
+        let Some(valid) = self.valid.as_ref() else {
+            return Err(crate::ProposalError::Policy(
+                "this piece does not compile, so there is no part to read the take against".to_owned(),
+            ));
+        };
+        let context = take.context().clone();
+        let events = take.events().to_vec();
+        let (count, unit) = context.meter.unwrap_or((4, 4));
+        let meter = format!("{count}/{unit}");
+        // One bar in grid ticks: 96 to the whole note, so `4/4` is 96 and
+        // `7/8` is 84. Exact, and refused rather than rounded if the meter
+        // names a unit this grid cannot divide.
+        let bar_ticks = (96_u32.checked_div(unit).unwrap_or(0)).saturating_mul(count);
+        if bar_ticks == 0 {
+            return Err(crate::ProposalError::Policy(format!(
+                "`{meter}` is not a meter this grid can measure a bar of"
+            )));
+        }
+        let quarter_micros = context
+            .tempo
+            .and_then(|tempo| 60_000_000_i64.checked_div(tempo.numerator))
+            .and_then(|micros| u64::try_from(micros).ok())
+            .unwrap_or(500_000);
+        let clock = if context.transport_playing {
+            crate::TakeClock::Known {
+                quarter_micros,
+                origin_micros: 0,
+            }
+        } else {
+            crate::TakeClock::Free
+        };
+        let key = valid
+            .score
+            .key_at(musa_score::Scope::Piece, musa_score::MusicalTime::ZERO);
+        let name = format!("{}@{}", context.part, context.revision);
+        self.begin_review(&name, &events, clock, bar_ticks, &meter, key, policy_name)
+    }
+
+    /// What the Review surface reads, or `None` when nothing is under review.
+    #[must_use]
+    pub fn review(&self) -> Option<crate::ReviewFacts> {
+        self.review.as_ref().map(|review| review.facts(self.revision))
+    }
+
+    /// Apply one review gesture and return the reading it produced.
+    ///
+    /// Atomic: a gesture the take cannot be read under leaves the review
+    /// exactly as it was, so a refusal costs the musician nothing.
+    ///
+    /// # Errors
+    /// Returns [`crate::ReviewError`] when nothing is under review, the review
+    /// has been accepted, the gesture names something that is not there, or
+    /// the site does not admit it.
+    pub fn review_act(&mut self, action: &crate::ReviewAction) -> Result<crate::ReviewFacts, crate::ReviewError> {
+        let revision = self.revision;
+        let review = self.review.as_mut().ok_or(crate::ReviewError::NotReviewing)?;
+        review.act(action)?;
+        Ok(review.facts(revision))
+    }
+
+    /// Take back the last review decision.
+    ///
+    /// A history of its own, because the source has not changed: project undo
+    /// moves between revisions, and a review has produced none.
+    ///
+    /// # Errors
+    /// Returns [`crate::ReviewError`] when nothing is under review, the review
+    /// has been accepted, or there is nothing left to take back.
+    pub fn review_undo(&mut self) -> Result<crate::ReviewFacts, crate::ReviewError> {
+        let revision = self.revision;
+        let review = self.review.as_mut().ok_or(crate::ReviewError::NotReviewing)?;
+        review.undo()?;
+        Ok(review.facts(revision))
+    }
+
+    /// Choose which performance the transport would play.
+    ///
+    /// # Errors
+    /// Returns [`crate::ReviewError::NotReviewing`] when nothing is under
+    /// review.
+    pub fn review_audition(&mut self, mode: crate::ReviewAudition) -> Result<crate::ReviewFacts, crate::ReviewError> {
+        let revision = self.revision;
+        let review = self.review.as_mut().ok_or(crate::ReviewError::NotReviewing)?;
+        review.audition(mode);
+        Ok(review.facts(revision))
+    }
+
+    /// Accept the reading: the proposal is final and takes no further
+    /// decisions.
+    ///
+    /// This does not touch the source. Acceptance settles *what the phrase
+    /// is*; placing it into a part and voice is a separate, revision-safe
+    /// transaction.
+    ///
+    /// # Errors
+    /// Returns [`crate::ReviewError`] when nothing is under review, it was
+    /// already accepted, or it still has an exact written form it could not
+    /// spell.
+    pub fn accept_review(&mut self) -> Result<crate::ReviewFacts, crate::ReviewError> {
+        let revision = self.revision;
+        let review = self.review.as_mut().ok_or(crate::ReviewError::NotReviewing)?;
+        if review.facts(revision).sealed {
+            return Err(crate::ReviewError::Sealed);
+        }
+        if review.proposal().source().is_none() {
+            return Err(crate::ReviewError::Refused(
+                "this reading has a length it cannot write exactly, so there is no phrase to keep yet".to_owned(),
+            ));
+        }
+        review.seal();
+        Ok(review.facts(revision))
+    }
+
+    /// Close the review and drop the take with it.
+    pub fn discard_review(&mut self) {
+        self.review = None;
     }
 
     /// How this piece's project wants its bars laid out.
@@ -1198,6 +1379,7 @@ impl ProjectSession {
             started: Instant::now(),
             audition_routes: Vec::new(),
             entry: EntryBuffer::default(),
+            review: None,
         }
     }
 

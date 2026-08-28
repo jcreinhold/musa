@@ -34,5 +34,9 @@ thiserror = "2"
 ts-rs = "12"
 
 [dev-dependencies]
+# The review fixtures are composed from the real take, and a take is captured
+# MIDI: the generator builds one the way the capture path does. A dev
+# dependency, because the shell itself never touches the device boundary.
+musa-playback = { workspace = true }
 musa-syntax = { workspace = true }
 tempfile = "3"

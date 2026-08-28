@@ -1,0 +1,639 @@
+{
+  "straight-known": {
+    "takeName": "straight-known",
+    "revision": 0,
+    "current": true,
+    "meter": "4/4",
+    "policy": "standard",
+    "notes": [
+      {
+        "pitch": "c4",
+        "voice": 0,
+        "onsetTicks": 0,
+        "endTicks": 24,
+        "pedalExtended": false,
+        "grace": false,
+        "name": "c4, 1/4, line 1, bar 1, beat 1"
+      },
+      {
+        "pitch": "d4",
+        "voice": 0,
+        "onsetTicks": 24,
+        "endTicks": 24,
+        "pedalExtended": false,
+        "grace": false,
+        "name": "d4, 1/4, line 1, bar 1, beat 2"
+      },
+      {
+        "pitch": "e4",
+        "voice": 0,
+        "onsetTicks": 48,
+        "endTicks": 24,
+        "pedalExtended": false,
+        "grace": false,
+        "name": "e4, 1/4, line 1, bar 1, beat 3"
+      },
+      {
+        "pitch": "f4",
+        "voice": 0,
+        "onsetTicks": 72,
+        "endTicks": 24,
+        "pedalExtended": false,
+        "grace": false,
+        "name": "f4, 1/4, line 1, bar 1, beat 4"
+      }
+    ],
+    "voiceCount": 1,
+    "ambiguities": [],
+    "losses": [],
+    "history": [],
+    "audition": "played",
+    "source": "piece \"straight-known\" {\n    tempo 1/4 = 120;\n    meter 4/4;\n    score {\n        part keyboard {\n            voice voice0 {\n                | c4/4 d4/4 e4/4 f4/4\n            }\n        }\n    }\n}\n",
+    "sealed": false,
+    "changed": []
+  },
+  "swing-known": {
+    "takeName": "swing-known",
+    "revision": 0,
+    "current": true,
+    "meter": "4/4",
+    "policy": "standard",
+    "notes": [
+      {
+        "pitch": "c4",
+        "voice": 0,
+        "onsetTicks": 0,
+        "endTicks": 12,
+        "pedalExtended": false,
+        "grace": false,
+        "name": "c4, 1/8, line 1, bar 1, beat 1"
+      },
+      {
+        "pitch": "d4",
+        "voice": 0,
+        "onsetTicks": 16,
+        "endTicks": 12,
+        "pedalExtended": false,
+        "grace": false,
+        "name": "d4, 1/8, line 1, bar 1, 1/6 after beat 1"
+      },
+      {
+        "pitch": "e4",
+        "voice": 0,
+        "onsetTicks": 24,
+        "endTicks": 12,
+        "pedalExtended": false,
+        "grace": false,
+        "name": "e4, 1/8, line 1, bar 1, beat 2"
+      },
+      {
+        "pitch": "f4",
+        "voice": 0,
+        "onsetTicks": 40,
+        "endTicks": 12,
+        "pedalExtended": false,
+        "grace": false,
+        "name": "f4, 1/8, line 1, bar 1, 1/6 after beat 2"
+      },
+      {
+        "pitch": "g4",
+        "voice": 0,
+        "onsetTicks": 48,
+        "endTicks": 12,
+        "pedalExtended": false,
+        "grace": false,
+        "name": "g4, 1/8, line 1, bar 1, beat 3"
+      },
+      {
+        "pitch": "a4",
+        "voice": 0,
+        "onsetTicks": 64,
+        "endTicks": 12,
+        "pedalExtended": false,
+        "grace": false,
+        "name": "a4, 1/8, line 1, bar 1, 1/6 after beat 3"
+      },
+      {
+        "pitch": "b4",
+        "voice": 0,
+        "onsetTicks": 72,
+        "endTicks": 12,
+        "pedalExtended": false,
+        "grace": false,
+        "name": "b4, 1/8, line 1, bar 1, beat 4"
+      },
+      {
+        "pitch": "c5",
+        "voice": 0,
+        "onsetTicks": 88,
+        "endTicks": 24,
+        "pedalExtended": false,
+        "grace": false,
+        "name": "c5, 1/4, line 1, bar 1, 1/6 after beat 4"
+      }
+    ],
+    "voiceCount": 1,
+    "ambiguities": [
+      {
+        "id": "placement-1",
+        "kind": "placement",
+        "explanation": "the readings that survived disagree about where this note falls",
+        "notes": [
+          1
+        ],
+        "choices": [
+          {
+            "id": "t15",
+            "label": "bar 1, 5/32 after beat 1",
+            "current": false
+          },
+          {
+            "id": "t16",
+            "label": "bar 1, 1/6 after beat 1",
+            "current": true
+          }
+        ]
+      },
+      {
+        "id": "placement-7",
+        "kind": "placement",
+        "explanation": "the readings that survived disagree about where this note falls",
+        "notes": [
+          7
+        ],
+        "choices": [
+          {
+            "id": "t87",
+            "label": "bar 1, 5/32 after beat 4",
+            "current": false
+          },
+          {
+            "id": "t88",
+            "label": "bar 1, 1/6 after beat 4",
+            "current": true
+          }
+        ]
+      }
+    ],
+    "losses": [
+      "note 3 is a length this notation cannot write exactly, so no source was written"
+    ],
+    "history": [],
+    "audition": "played",
+    "source": null,
+    "sealed": false,
+    "changed": []
+  },
+  "rolled-and-block-chords": {
+    "takeName": "rolled-and-block-chords",
+    "revision": 0,
+    "current": true,
+    "meter": "4/4",
+    "policy": "standard",
+    "notes": [
+      {
+        "pitch": "c3",
+        "voice": 0,
+        "onsetTicks": 0,
+        "endTicks": 24,
+        "pedalExtended": false,
+        "grace": false,
+        "name": "c3, 1/4, line 1, bar 1, beat 1"
+      },
+      {
+        "pitch": "c4",
+        "voice": 1,
+        "onsetTicks": 0,
+        "endTicks": 24,
+        "pedalExtended": false,
+        "grace": false,
+        "name": "c4, 1/4, line 2, bar 1, beat 1"
+      },
+      {
+        "pitch": "d3",
+        "voice": 0,
+        "onsetTicks": 24,
+        "endTicks": 24,
+        "pedalExtended": false,
+        "grace": false,
+        "name": "d3, 1/4, line 1, bar 1, beat 2"
+      },
+      {
+        "pitch": "d4",
+        "voice": 1,
+        "onsetTicks": 24,
+        "endTicks": 24,
+        "pedalExtended": false,
+        "grace": false,
+        "name": "d4, 1/4, line 2, bar 1, beat 2"
+      },
+      {
+        "pitch": "e3",
+        "voice": 0,
+        "onsetTicks": 48,
+        "endTicks": 24,
+        "pedalExtended": false,
+        "grace": false,
+        "name": "e3, 1/4, line 1, bar 1, beat 3"
+      },
+      {
+        "pitch": "e4",
+        "voice": 1,
+        "onsetTicks": 48,
+        "endTicks": 24,
+        "pedalExtended": false,
+        "grace": false,
+        "name": "e4, 1/4, line 2, bar 1, beat 3"
+      },
+      {
+        "pitch": "f3",
+        "voice": 0,
+        "onsetTicks": 72,
+        "endTicks": 24,
+        "pedalExtended": false,
+        "grace": false,
+        "name": "f3, 1/4, line 1, bar 1, beat 4"
+      },
+      {
+        "pitch": "f4",
+        "voice": 1,
+        "onsetTicks": 72,
+        "endTicks": 24,
+        "pedalExtended": false,
+        "grace": false,
+        "name": "f4, 1/4, line 2, bar 1, beat 4"
+      }
+    ],
+    "voiceCount": 2,
+    "ambiguities": [
+      {
+        "id": "group-0",
+        "kind": "onsetGroup",
+        "explanation": "these keys went down close together; that is a chord or a rolled figure, and the page says which",
+        "notes": [
+          0,
+          1
+        ],
+        "choices": [
+          {
+            "id": "rolled",
+            "label": "a rolled chord",
+            "current": true
+          },
+          {
+            "id": "arpeggio",
+            "label": "an arpeggio",
+            "current": false
+          }
+        ]
+      },
+      {
+        "id": "group-1",
+        "kind": "onsetGroup",
+        "explanation": "these keys went down close together; that is a chord or a rolled figure, and the page says which",
+        "notes": [
+          2,
+          3
+        ],
+        "choices": [
+          {
+            "id": "rolled",
+            "label": "a rolled chord",
+            "current": true
+          },
+          {
+            "id": "arpeggio",
+            "label": "an arpeggio",
+            "current": false
+          }
+        ]
+      },
+      {
+        "id": "group-2",
+        "kind": "onsetGroup",
+        "explanation": "these keys went down close together; that is a chord or a rolled figure, and the page says which",
+        "notes": [
+          4,
+          5
+        ],
+        "choices": [
+          {
+            "id": "rolled",
+            "label": "a rolled chord",
+            "current": true
+          },
+          {
+            "id": "arpeggio",
+            "label": "an arpeggio",
+            "current": false
+          }
+        ]
+      },
+      {
+        "id": "group-3",
+        "kind": "onsetGroup",
+        "explanation": "these keys went down close together; that is a chord or a rolled figure, and the page says which",
+        "notes": [
+          6,
+          7
+        ],
+        "choices": [
+          {
+            "id": "rolled",
+            "label": "a rolled chord",
+            "current": true
+          },
+          {
+            "id": "arpeggio",
+            "label": "an arpeggio",
+            "current": false
+          }
+        ]
+      }
+    ],
+    "losses": [],
+    "history": [],
+    "audition": "played",
+    "source": "piece \"rolled-and-block-chords\" {\n    tempo 1/4 = 120;\n    meter 4/4;\n    score {\n        part keyboard {\n            voice voice0 {\n                | c3/4 d3/4 e3/4 f3/4\n            }\n            voice voice1 {\n                | c4/4 d4/4 e4/4 f4/4\n            }\n        }\n    }\n}\n",
+    "sealed": false,
+    "changed": []
+  },
+  "crossing-voices": {
+    "takeName": "crossing-voices",
+    "revision": 0,
+    "current": true,
+    "meter": "4/4",
+    "policy": "standard",
+    "notes": [
+      {
+        "pitch": "c3",
+        "voice": 0,
+        "onsetTicks": 0,
+        "endTicks": 24,
+        "pedalExtended": false,
+        "grace": false,
+        "name": "c3, 1/4, line 1, bar 1, beat 1"
+      },
+      {
+        "pitch": "c5",
+        "voice": 1,
+        "onsetTicks": 0,
+        "endTicks": 24,
+        "pedalExtended": false,
+        "grace": false,
+        "name": "c5, 1/4, line 2, bar 1, beat 1"
+      },
+      {
+        "pitch": "g4",
+        "voice": 1,
+        "onsetTicks": 24,
+        "endTicks": 24,
+        "pedalExtended": false,
+        "grace": false,
+        "name": "g4, 1/4, line 2, bar 1, beat 2"
+      },
+      {
+        "pitch": "g3",
+        "voice": 0,
+        "onsetTicks": 24,
+        "endTicks": 24,
+        "pedalExtended": false,
+        "grace": false,
+        "name": "g3, 1/4, line 1, bar 1, beat 2"
+      },
+      {
+        "pitch": "e4",
+        "voice": 1,
+        "onsetTicks": 48,
+        "endTicks": 24,
+        "pedalExtended": false,
+        "grace": false,
+        "name": "e4, 1/4, line 2, bar 1, beat 3"
+      },
+      {
+        "pitch": "b3",
+        "voice": 0,
+        "onsetTicks": 48,
+        "endTicks": 24,
+        "pedalExtended": false,
+        "grace": false,
+        "name": "b3, 1/4, line 1, bar 1, beat 3"
+      },
+      {
+        "pitch": "e3",
+        "voice": 0,
+        "onsetTicks": 72,
+        "endTicks": 24,
+        "pedalExtended": false,
+        "grace": false,
+        "name": "e3, 1/4, line 1, bar 1, beat 4"
+      },
+      {
+        "pitch": "c5",
+        "voice": 1,
+        "onsetTicks": 72,
+        "endTicks": 24,
+        "pedalExtended": false,
+        "grace": false,
+        "name": "c5, 1/4, line 2, bar 1, beat 4"
+      }
+    ],
+    "voiceCount": 2,
+    "ambiguities": [
+      {
+        "id": "group-0",
+        "kind": "onsetGroup",
+        "explanation": "these keys went down close together; that is a chord or a rolled figure, and the page says which",
+        "notes": [
+          0,
+          1
+        ],
+        "choices": [
+          {
+            "id": "rolled",
+            "label": "a rolled chord",
+            "current": true
+          },
+          {
+            "id": "arpeggio",
+            "label": "an arpeggio",
+            "current": false
+          }
+        ]
+      },
+      {
+        "id": "group-1",
+        "kind": "onsetGroup",
+        "explanation": "these keys went down close together; that is a chord or a rolled figure, and the page says which",
+        "notes": [
+          2,
+          3
+        ],
+        "choices": [
+          {
+            "id": "rolled",
+            "label": "a rolled chord",
+            "current": true
+          },
+          {
+            "id": "arpeggio",
+            "label": "an arpeggio",
+            "current": false
+          }
+        ]
+      },
+      {
+        "id": "voice-1",
+        "kind": "voice",
+        "explanation": "two lines cross here; which note carries on which line is a musical reading, not a distance",
+        "notes": [
+          2,
+          3
+        ],
+        "choices": [
+          {
+            "id": "crossing",
+            "label": "keep these lines crossing",
+            "current": true
+          },
+          {
+            "id": "separate",
+            "label": "keep each line in its own range",
+            "current": false
+          }
+        ]
+      },
+      {
+        "id": "group-2",
+        "kind": "onsetGroup",
+        "explanation": "these keys went down close together; that is a chord or a rolled figure, and the page says which",
+        "notes": [
+          4,
+          5
+        ],
+        "choices": [
+          {
+            "id": "rolled",
+            "label": "a rolled chord",
+            "current": true
+          },
+          {
+            "id": "arpeggio",
+            "label": "an arpeggio",
+            "current": false
+          }
+        ]
+      },
+      {
+        "id": "group-3",
+        "kind": "onsetGroup",
+        "explanation": "these keys went down close together; that is a chord or a rolled figure, and the page says which",
+        "notes": [
+          6,
+          7
+        ],
+        "choices": [
+          {
+            "id": "rolled",
+            "label": "a rolled chord",
+            "current": true
+          },
+          {
+            "id": "arpeggio",
+            "label": "an arpeggio",
+            "current": false
+          }
+        ]
+      }
+    ],
+    "losses": [],
+    "history": [],
+    "audition": "played",
+    "source": "piece \"crossing-voices\" {\n    tempo 1/4 = 120;\n    meter 4/4;\n    score {\n        part keyboard {\n            voice voice0 {\n                | c3/4 g3/4 b3/4 e3/4\n            }\n            voice voice1 {\n                | c5/4 g4/4 e4/4 c5/4\n            }\n        }\n    }\n}\n",
+    "sealed": false,
+    "changed": []
+  },
+  "rubato-free": {
+    "takeName": "rubato-free",
+    "revision": 0,
+    "current": true,
+    "meter": "4/4",
+    "policy": "standard",
+    "notes": [
+      {
+        "pitch": "c4",
+        "voice": 0,
+        "onsetTicks": 0,
+        "endTicks": 36,
+        "pedalExtended": false,
+        "grace": false,
+        "name": "c4, 3/8, line 1, bar 1, beat 1"
+      },
+      {
+        "pitch": "e4",
+        "voice": 0,
+        "onsetTicks": 24,
+        "endTicks": 36,
+        "pedalExtended": false,
+        "grace": false,
+        "name": "e4, 3/8, line 1, bar 1, beat 2"
+      },
+      {
+        "pitch": "g4",
+        "voice": 0,
+        "onsetTicks": 48,
+        "endTicks": 36,
+        "pedalExtended": false,
+        "grace": false,
+        "name": "g4, 3/8, line 1, bar 1, beat 3"
+      },
+      {
+        "pitch": "f4",
+        "voice": 0,
+        "onsetTicks": 72,
+        "endTicks": 36,
+        "pedalExtended": false,
+        "grace": false,
+        "name": "f4, 3/8, line 1, bar 1, beat 4"
+      },
+      {
+        "pitch": "d4",
+        "voice": 0,
+        "onsetTicks": 96,
+        "endTicks": 36,
+        "pedalExtended": false,
+        "grace": false,
+        "name": "d4, 3/8, line 1, bar 2, beat 1"
+      },
+      {
+        "pitch": "c4",
+        "voice": 0,
+        "onsetTicks": 120,
+        "endTicks": 36,
+        "pedalExtended": false,
+        "grace": false,
+        "name": "c4, 3/8, line 1, bar 2, beat 2"
+      }
+    ],
+    "voiceCount": 1,
+    "ambiguities": [
+      {
+        "id": "pulse",
+        "kind": "pulse",
+        "explanation": "this was played without a click, and the readings that survived do not agree on a pulse; tap a few beats while you listen",
+        "notes": [
+          0
+        ],
+        "choices": []
+      }
+    ],
+    "losses": [
+      "note 2 is a length this notation cannot write exactly, so no source was written"
+    ],
+    "history": [],
+    "audition": "played",
+    "source": null,
+    "sealed": false,
+    "changed": []
+  }
+}

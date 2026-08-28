@@ -177,42 +177,40 @@ test("undo takes an entered note back", async ({ page }) => {
   await expect.poll(() => page.evaluate(() => window.__musaRevision)).toBe(before);
 });
 
-test("a keyboard is named while entry is on, and its notes are written", async ({ page }) => {
+test("a keyboard is named where the caret is, and what it plays is not written", async ({ page }) => {
   await inScore(page);
   await page.keyboard.press("n");
 
-  // The keyboard is read while notes are being entered, and named where the
-  // composer is looking — not announced in a settings pane they would have to
-  // go and find.
-  await expect(page.getByText("Stub Keyboard", { exact: true })).toBeVisible();
+  // The keyboard is opened once there is a caret for it to play into, and
+  // named where the composer is looking — not announced in a settings pane
+  // they would have to go and find. The line says what it is for, so nobody
+  // has to discover by playing that the notes are not going into the score.
+  await expect(page.getByText(/Stub Keyboard$/)).toBeVisible();
+  await expect(page.locator("span.port")).toHaveAttribute("title", /never writes notes/);
 
+  // Playing it writes nothing. A played note is a performance and a written
+  // note is notation, and the interface never silently turns one into the
+  // other: Capture holds the take and Review is where it becomes source.
   await page.keyboard.press("8");
   await page.evaluate(() => window.__musaEmit("musa://midi", { pitches: ["eb4"] }));
+  await page.evaluate(() => window.__musaEmit("musa://midi", { pitches: ["c4", "e4", "g4"] }));
+  await expect.poll(() => page.evaluate(() => window.__musaEdits.length)).toBe(0);
+
+  // The letters still write, so entry mode is not disabled — it is the device
+  // that is not an editing surface.
+  await page.keyboard.press("c");
   await settled(page, 1);
   const [written] = await edits(page);
-  expect(written?.kind).toBe("insertNote");
-  // The pitch is the core's spelling — the interface never decides whether a
-  // black key is a sharp or a flat — and the duration is the one entry is set
-  // to, because a keyboard cannot say how long a note is notated for.
-  expect(written?.note).toEqual({
-    kind: "note",
-    pitch: "eb4",
-    duration: "1/8",
+  expect(written).toMatchObject({
+    kind: "insertNote",
+    note: { kind: "note", pitch: "c4", duration: "1/8" },
   });
 
-  // Several keys held together arrive as one chord, already grouped.
-  await page.evaluate(() => window.__musaEmit("musa://midi", { pitches: ["c4", "e4", "g4"] }));
-  await settled(page, 2);
-  const asked = await edits(page);
-  expect(asked[1]?.note).toEqual({
-    kind: "chord",
-    pitches: ["c4", "e4", "g4"],
-    duration: "1/8",
-  });
-
-  // Leaving entry stops the keyboard being read, and the name goes with it.
+  // Leaving entry stops the letters being pitches, and leaves the keyboard
+  // open: it auditions and captures whether or not letters are writing.
   await page.keyboard.press("Escape");
-  await expect(page.getByText("Stub Keyboard", { exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /^Notes/ })).toHaveAttribute("aria-pressed", "false");
+  await expect(page.getByText(/Stub Keyboard$/)).toBeVisible();
 });
 
 test("notes played with entry off are not written", async ({ page }) => {

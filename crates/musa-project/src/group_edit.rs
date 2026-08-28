@@ -313,7 +313,7 @@ const fn applies_to(intent: &GroupIntent, kind: EventKind) -> bool {
 
 /// A written duration as an exact rational, or nothing when the source names
 /// it rather than writing it.
-fn exact(written: &str) -> Option<Ratio<i64>> {
+pub(crate) fn exact(written: &str) -> Option<Ratio<i64>> {
     match written.split_once('/') {
         Some((numerator, denominator)) => {
             let numerator: i64 = numerator.trim().parse().ok()?;
@@ -405,29 +405,38 @@ fn rewritten_pitches(intent: &GroupIntent, written: &WrittenStatement) -> Result
     written
         .pitches
         .iter()
-        .map(|spelling| {
-            let pitch = WrittenPitch::parse(spelling).ok_or_else(|| {
-                uneditable(format!(
-                    "this pitch is written as `{spelling}`, which is a name rather than a note"
-                ))
-            })?;
-            let moved = match *intent {
-                GroupIntent::MoveDiatonically { steps } => pitch.step(i64::from(steps)),
-                GroupIntent::ShiftAccidentals { steps } => pitch.alter(steps),
-                GroupIntent::TransposeBy { interval: ref written } => {
-                    let action = interval(written)
-                        .ok_or_else(|| uneditable(format!("`{written}` is not a written interval")))?;
-                    pitch.transpose(action)
-                }
-                GroupIntent::SetEachDuration { .. } | GroupIntent::ScaleDurations { .. } => {
-                    return Err(uneditable("that is not a pitch command"));
-                }
-            };
-            moved
-                .map(|result| result.to_string())
-                .ok_or_else(|| uneditable(format!("`{spelling}` cannot be moved that far")))
-        })
+        .map(|spelling| moved_pitch(intent, spelling))
         .collect()
+}
+
+/// One written pitch under a pitch intent, or the refusal that names why it
+/// could not move.
+///
+/// Lifted out of [`rewritten_pitches`] because Review transforms the same way
+/// (prompt 207): a proposal note carries a spelling and no source span, and
+/// the arithmetic that turns `g#4` into `a#4` must be the one the source path
+/// already uses, or the two surfaces would disagree about what a step is.
+pub(crate) fn moved_pitch(intent: &GroupIntent, spelling: &str) -> Result<String, ProjectError> {
+    let pitch = WrittenPitch::parse(spelling).ok_or_else(|| {
+        uneditable(format!(
+            "this pitch is written as `{spelling}`, which is a name rather than a note"
+        ))
+    })?;
+    let moved = match *intent {
+        GroupIntent::MoveDiatonically { steps } => pitch.step(i64::from(steps)),
+        GroupIntent::ShiftAccidentals { steps } => pitch.alter(steps),
+        GroupIntent::TransposeBy { interval: ref written } => {
+            let action =
+                interval(written).ok_or_else(|| uneditable(format!("`{written}` is not a written interval")))?;
+            pitch.transpose(action)
+        }
+        GroupIntent::SetEachDuration { .. } | GroupIntent::ScaleDurations { .. } => {
+            return Err(uneditable("that is not a pitch command"));
+        }
+    };
+    moved
+        .map(|result| result.to_string())
+        .ok_or_else(|| uneditable(format!("`{spelling}` cannot be moved that far")))
 }
 
 /// One replacement, keyed by the statement it rewrites.

@@ -2363,6 +2363,7 @@ dependencies = [
 name = "musa-desktop"
 version = "0.1.0"
 dependencies = [
+ "musa-playback",
  "musa-project",
  "musa-syntax",
  "serde",

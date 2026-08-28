@@ -377,6 +377,14 @@
                   : session.startMidiCapture(workspace.caretAt?.id ?? null))}
               >{snapshot.midiCapture.state === "capturing" ? "Finish" : "Capture"}</button
             >
+            {#if snapshot.midiCapture.state === "review"}
+              <!--
+                The take is captured and nothing has been written. Review is
+                where it becomes notation, so it is offered exactly when
+                there is a take to read (prompt 207).
+              -->
+              <button type="button" class="text" onclick={() => void session.beginReview()}>Review the take</button>
+            {/if}
             {#if snapshot.midiCapture.recentEnabled}
               <button
                 type="button"

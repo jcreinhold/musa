@@ -15,6 +15,9 @@ import type { ErrorDto } from "./generated/ErrorDto";
 import type { ExportTargetDto } from "./generated/ExportTargetDto";
 import type { GroupEditDto } from "./generated/GroupEditDto";
 import type { GroupEditPlanDto } from "./generated/GroupEditPlanDto";
+import type { ReviewActionDto } from "./generated/ReviewActionDto";
+import type { ReviewAuditionDto } from "./generated/ReviewAuditionDto";
+import type { ReviewFactsDto } from "./generated/ReviewFactsDto";
 import type { TemplateDto } from "./generated/TemplateDto";
 import type { TransportDto } from "./generated/TransportDto";
 import type { AnalysisFacts, EditImpact, LibraryDocument, MidiEntry, ProjectSnapshot } from "../state/snapshot";
@@ -65,6 +68,23 @@ export const bridge = {
    * it consumes.
    */
   groupEditPlan: (edit: GroupEditDto) => call<GroupEditPlanDto>("group_edit_plan", { edit }),
+  /**
+   * Open the take just captured for review. Nothing is written: the reply is
+   * a reading of what was played against this piece's meter, tempo, and key.
+   */
+  reviewBegin: () => call<ReviewFactsDto>("review_begin", {}),
+  /** The current review, or `null` when nothing is under review. */
+  reviewRead: () => call<ReviewFactsDto | null>("review_read", {}),
+  /** One gesture on the review; the reply is the reading it produced. */
+  reviewAct: (action: ReviewActionDto) => call<ReviewFactsDto>("review_act", { action }),
+  /** Take back the last review decision. */
+  reviewUndo: () => call<ReviewFactsDto>("review_undo", {}),
+  /** Hear the take as played, or the notation as written. */
+  reviewAudition: (mode: ReviewAuditionDto) => call<ReviewFactsDto>("review_audition", { mode }),
+  /** Accept the reading. Placing it into the score is a separate step. */
+  reviewAccept: () => call<ReviewFactsDto>("review_accept", {}),
+  /** Close the review and drop the take with it. */
+  reviewDiscard: () => call<null>("review_discard", {}),
   transport: (command: TransportDto) => call<ProjectSnapshot>("transport", { command }),
   exportTo: (target: ExportTargetDto, path: string | null) =>
     call<{ path: string }>("export", { request: { target, path } }),

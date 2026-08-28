@@ -192,6 +192,12 @@ test.describe("settings", () => {
     return sheet(page).getByRole("group", { name: label }).locator('button[aria-pressed="true"]');
   }
 
+  /** One choice in the row named `label`. The sheet has more than one row
+   * offering `On`, so a choice is named by the question it answers. */
+  function choose(page: Page, label: string, choice: string) {
+    return sheet(page).getByRole("group", { name: label }).getByRole("button", { name: choice, exact: true });
+  }
+
   test("⌘, opens it, and Esc closes it", async ({ page }) => {
     await expect(sheet(page)).toHaveCount(0);
     await page.keyboard.press("ControlOrMeta+,");
@@ -236,7 +242,7 @@ test.describe("settings", () => {
 
   test("vim mode is turned on here and holds in the source", async ({ page }) => {
     await run(page, "settings.open");
-    await sheet(page).getByRole("button", { name: "On" }).click();
+    await choose(page, "Vim mode", "On").click();
     await expect(inForce(page, "Vim mode")).toHaveText("On");
     await page.keyboard.press("Escape");
 
@@ -253,9 +259,9 @@ test.describe("settings", () => {
    */
   test("every choice outlives the window it was made in", async ({ page }) => {
     await run(page, "settings.open");
-    await sheet(page).getByRole("button", { name: "Dark" }).click();
-    await sheet(page).getByRole("button", { name: "Larger" }).click();
-    await sheet(page).getByRole("button", { name: "On" }).click();
+    await choose(page, "Theme", "Dark").click();
+    await choose(page, "Text size", "Larger").click();
+    await choose(page, "Vim mode", "On").click();
 
     await page.reload();
     await engraved(page);

@@ -29,7 +29,21 @@ export type Moment =
   /** An origin segment was clicked, so a new selection is owed (B9). */
   | "origin"
   /** Origin view was asked for, so the lens is owed (B9). */
-  | "lens";
+  | "lens"
+  /*
+   * Review's own moments (`06-frame-budgets.md` §7). That section asks for
+   * three quantities to be *measured* before the table names a threshold, so
+   * these exist to produce the measurement rather than to assert a number
+   * nobody has taken yet.
+   */
+  /** A review gesture was made, so a replacement reading is owed. */
+  | "reviewAct"
+  /** The A or B audition was asked for. */
+  | "reviewAudition"
+  /** The replacement reading is on the leaf. */
+  | "reviewDrawn"
+  /** Focus is back on the note the composer was reading. */
+  | "reviewFocus";
 
 const enabled =
   typeof globalThis.location !== "undefined" && new URLSearchParams(globalThis.location.search).has("perf");

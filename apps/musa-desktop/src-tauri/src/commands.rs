@@ -17,7 +17,10 @@ use std::path::PathBuf;
 use serde_json::Value;
 use tauri::State;
 
-use crate::dto::{CommandDto, EditDto, ErrorDto, ErrorKindDto, ExportDto, GroupEditDto, TemplateDto, TransportDto};
+use crate::dto::{
+    CommandDto, EditDto, ErrorDto, ErrorKindDto, ExportDto, GroupEditDto, ReviewActionDto, ReviewAuditionDto,
+    TemplateDto, TransportDto,
+};
 use crate::session::SessionHandle;
 
 /// Open a `.musa` file, or a folder of them, as the session's project.
@@ -107,6 +110,77 @@ pub fn barline_rewrite(session: State<'_, SessionHandle>) -> Result<Value, Error
 #[tauri::command]
 pub fn group_edit_plan(edit: GroupEditDto, session: State<'_, SessionHandle>) -> Result<Value, ErrorDto> {
     session.group_edit_plan(edit.into())
+}
+
+/// Open the take just captured for review.
+///
+/// Nothing is written: the reply is a reading of the take against this
+/// piece's meter, tempo, and key, and the source is untouched until the
+/// reviewed phrase is placed.
+///
+/// # Errors
+/// If no piece is open, it has never compiled, nothing has been played, or
+/// the take is refused rather than written onto a grid.
+#[tauri::command]
+pub fn review_begin(session: State<'_, SessionHandle>) -> Result<Value, ErrorDto> {
+    session.review_begin()
+}
+
+/// Read the current review, or `null` when nothing is under review.
+///
+/// # Errors
+/// If no piece is open.
+#[tauri::command]
+pub fn review_read(session: State<'_, SessionHandle>) -> Result<Value, ErrorDto> {
+    session.review_read()
+}
+
+/// Make one gesture on the review.
+///
+/// # Errors
+/// If no piece is open, nothing is under review, it has been accepted, the
+/// gesture names something that is not there, or the site does not admit it.
+#[tauri::command]
+pub fn review_act(action: ReviewActionDto, session: State<'_, SessionHandle>) -> Result<Value, ErrorDto> {
+    session.review_act(action.into())
+}
+
+/// Take back the last review decision.
+///
+/// # Errors
+/// If no piece is open, nothing is under review, it has been accepted, or
+/// there is nothing left to take back.
+#[tauri::command]
+pub fn review_undo(session: State<'_, SessionHandle>) -> Result<Value, ErrorDto> {
+    session.review_undo()
+}
+
+/// Hear the take as played, or the notation as written.
+///
+/// # Errors
+/// If no piece is open or nothing is under review.
+#[tauri::command]
+pub fn review_audition(mode: ReviewAuditionDto, session: State<'_, SessionHandle>) -> Result<Value, ErrorDto> {
+    session.review_audition(mode.into())
+}
+
+/// Accept the reading. The phrase is settled; placing it is a separate step.
+///
+/// # Errors
+/// If no piece is open, nothing is under review, it was already accepted, or
+/// the reading still has a length it cannot write exactly.
+#[tauri::command]
+pub fn review_accept(session: State<'_, SessionHandle>) -> Result<Value, ErrorDto> {
+    session.review_accept()
+}
+
+/// Close the review and drop the take with it.
+///
+/// # Errors
+/// If no piece is open.
+#[tauri::command]
+pub fn review_discard(session: State<'_, SessionHandle>) -> Result<Value, ErrorDto> {
+    session.review_discard()
 }
 
 /// Play, stop, seek, or set the loop.

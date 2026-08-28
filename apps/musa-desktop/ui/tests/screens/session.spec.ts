@@ -6,7 +6,7 @@
  * pleasant to edit in, and it is not visible in any Rust test.
  */
 
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 import { engraved } from "./engraved";
 import { pane, source, toggleSource, rewrite } from "./source";
@@ -37,6 +37,18 @@ test.beforeEach(async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.emulateMedia({ colorScheme: "light" });
 });
+
+/**
+ * The source column's message about how far behind the score is.
+ *
+ * Named by its own role rather than by "the status region": the capture line
+ * carries one too, because a keyboard that goes away has to be announced
+ * (`05-states.md` §4), and this file is about the score being older than the
+ * text.
+ */
+function notice(page: Page) {
+  return page.locator("p.notice");
+}
 
 test("a piece opens engraved, with its source not yet shown", async ({ page }) => {
   await page.goto("/");
@@ -102,8 +114,8 @@ test("breaking the source keeps the score and says how far behind it is", async 
 
   // The column opened itself the first time, and the message names the
   // revision on screen and counts the problems.
-  await expect(page.getByRole("status")).toContainText(/Showing revision \d+/);
-  await expect(page.getByRole("status")).toContainText(/1\s+problem/);
+  await expect(notice(page)).toContainText(/Showing revision \d+/);
+  await expect(notice(page)).toContainText(/1\s+problem/);
   expect(await engravedEvents(page)).toBe(before);
   expect(before).not.toBe("");
 
@@ -132,7 +144,7 @@ test("a diagnostic with one certain fix offers it, and applying it works", async
   // The core writes the title in lower case; the control is sentence case.
   await problem.getByRole("button", { name: "Add }" }).click();
   await expect(page.locator(".diagnostics li")).toHaveCount(0);
-  await expect(page.getByRole("status")).toHaveCount(0);
+  await expect(notice(page)).toHaveCount(0);
 });
 
 test("fixing the source removes the message without announcing it", async ({ page }) => {
@@ -141,10 +153,10 @@ test("fixing the source removes the message without announcing it", async ({ pag
 
   await toggleSource(page);
   await rewrite(page, 'piece "Glass Mountain" {');
-  await expect(page.getByRole("status")).toBeVisible();
+  await expect(notice(page)).toBeVisible();
 
   await rewrite(page, 'piece "Glass Mountain" {}');
-  await expect(page.getByRole("status")).toHaveCount(0);
+  await expect(notice(page)).toHaveCount(0);
 });
 
 test("play reaches the shell and the transport follows", async ({ page }) => {

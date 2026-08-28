@@ -14,7 +14,8 @@ use std::path::PathBuf;
 
 use musa_project::{
     ContainerKind, EditCommand, ExportRequest, GeneratedEditMode, GroupEdit, GroupIntent, HeaderField, InsertAt,
-    NoteSpec, ProjectCommand, ProjectError, Span, StudioEdit, Template, TextEdit, TransportRequest, Utf16Offsets,
+    NoteSpec, ProjectCommand, ProjectError, ReviewAction, ReviewAudition, Span, StudioEdit, Template, TextEdit,
+    TransportRequest, Utf16Offsets,
 };
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
@@ -736,6 +737,256 @@ impl From<PathBuf> for ExportedDto {
     fn from(path: PathBuf) -> Self {
         Self {
             path: path.display().to_string(),
+        }
+    }
+}
+
+/// Which measured disagreement a review mark stands for.
+///
+/// One variant per class prompt 203 observed in the corpus; the interface has
+/// no mark it cannot name.
+#[derive(Clone, Copy, Debug, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "../../ui/src/lib/session/generated/")]
+pub enum AmbiguityKindDto {
+    Pulse,
+    Phase,
+    Placement,
+    WrittenEnd,
+    OnsetGroup,
+    Voice,
+    Spelling,
+}
+
+impl From<musa_project::AmbiguityKind> for AmbiguityKindDto {
+    fn from(kind: musa_project::AmbiguityKind) -> Self {
+        match kind {
+            musa_project::AmbiguityKind::Pulse => Self::Pulse,
+            musa_project::AmbiguityKind::Phase => Self::Phase,
+            musa_project::AmbiguityKind::Placement => Self::Placement,
+            musa_project::AmbiguityKind::WrittenEnd => Self::WrittenEnd,
+            musa_project::AmbiguityKind::OnsetGroup => Self::OnsetGroup,
+            musa_project::AmbiguityKind::Voice => Self::Voice,
+            musa_project::AmbiguityKind::Spelling => Self::Spelling,
+        }
+    }
+}
+
+/// Which performance the transport would play in Review.
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "../../ui/src/lib/session/generated/")]
+pub enum ReviewAuditionDto {
+    /// The captured timing, exactly as played.
+    Played,
+    /// The proposed notation, through the ordinary performance path.
+    Written,
+}
+
+impl From<ReviewAuditionDto> for ReviewAudition {
+    fn from(mode: ReviewAuditionDto) -> Self {
+        match mode {
+            ReviewAuditionDto::Played => Self::Played,
+            ReviewAuditionDto::Written => Self::Written,
+        }
+    }
+}
+
+impl From<ReviewAudition> for ReviewAuditionDto {
+    fn from(mode: ReviewAudition) -> Self {
+        match mode {
+            ReviewAudition::Played => Self::Played,
+            ReviewAudition::Written => Self::Written,
+        }
+    }
+}
+
+/// One reading a review mark offers.
+#[derive(Clone, Debug, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "../../ui/src/lib/session/generated/")]
+pub struct ReviewChoiceDto {
+    pub id: String,
+    pub label: String,
+    pub current: bool,
+}
+
+/// One location still asking for a decision.
+#[derive(Clone, Debug, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "../../ui/src/lib/session/generated/")]
+pub struct ReviewAmbiguityDto {
+    pub id: String,
+    pub kind: AmbiguityKindDto,
+    pub explanation: String,
+    /// Proposal-note indices this mark covers.
+    pub notes: Vec<u32>,
+    pub choices: Vec<ReviewChoiceDto>,
+}
+
+/// One proposed note as Review draws it.
+#[derive(Clone, Debug, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "../../ui/src/lib/session/generated/")]
+pub struct ReviewNoteDto {
+    pub pitch: String,
+    pub voice: u8,
+    /// Grid ticks, 24 to the quarter. The frontend positions with these and
+    /// never recomputes a duration from them.
+    pub onset_ticks: u32,
+    pub end_ticks: u32,
+    pub pedal_extended: bool,
+    pub grace: bool,
+    /// The musical accessible name, composed by the project.
+    pub name: String,
+}
+
+/// Everything the Review surface reads.
+#[derive(Clone, Debug, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "../../ui/src/lib/session/generated/")]
+pub struct ReviewFactsDto {
+    pub take_name: String,
+    pub revision: u64,
+    /// Whether the review still describes the session's revision.
+    pub current: bool,
+    pub meter: String,
+    pub policy: String,
+    pub notes: Vec<ReviewNoteDto>,
+    pub voice_count: u32,
+    pub ambiguities: Vec<ReviewAmbiguityDto>,
+    pub losses: Vec<String>,
+    pub history: Vec<String>,
+    pub audition: ReviewAuditionDto,
+    /// The checked source preview, absent while some length has no exact
+    /// written form.
+    pub source: Option<String>,
+    pub sealed: bool,
+    /// The notes that read differently after the last decision — one spoken
+    /// result, not one per re-engraved note.
+    pub changed: Vec<u32>,
+}
+
+impl From<&musa_project::ReviewFacts> for ReviewFactsDto {
+    fn from(facts: &musa_project::ReviewFacts) -> Self {
+        Self {
+            take_name: facts.take_name.clone(),
+            revision: facts.revision.0,
+            current: facts.current,
+            meter: facts.meter.clone(),
+            policy: facts.policy.clone(),
+            notes: facts
+                .notes
+                .iter()
+                .map(|note| ReviewNoteDto {
+                    pitch: note.pitch.clone(),
+                    voice: note.voice,
+                    onset_ticks: note.onset_ticks,
+                    end_ticks: note.end_ticks,
+                    pedal_extended: note.pedal_extended,
+                    grace: note.grace,
+                    name: note.name.clone(),
+                })
+                .collect(),
+            voice_count: u32::try_from(facts.voice_count).unwrap_or(u32::MAX),
+            ambiguities: facts
+                .ambiguities
+                .iter()
+                .map(|mark| ReviewAmbiguityDto {
+                    id: mark.id.clone(),
+                    kind: mark.kind.into(),
+                    explanation: mark.explanation.clone(),
+                    notes: mark
+                        .notes
+                        .iter()
+                        .map(|&note| u32::try_from(note).unwrap_or(u32::MAX))
+                        .collect(),
+                    choices: mark
+                        .choices
+                        .iter()
+                        .map(|choice| ReviewChoiceDto {
+                            id: choice.id.clone(),
+                            label: choice.label.clone(),
+                            current: choice.current,
+                        })
+                        .collect(),
+                })
+                .collect(),
+            losses: facts.losses.clone(),
+            history: facts.history.clone(),
+            audition: facts.audition.into(),
+            source: facts.source.clone(),
+            sealed: facts.sealed,
+            changed: facts
+                .changed
+                .iter()
+                .map(|&note| u32::try_from(note).unwrap_or(u32::MAX))
+                .collect(),
+        }
+    }
+}
+
+/// One gesture on the Review surface.
+#[derive(Clone, Debug, Deserialize, Serialize, TS)]
+#[serde(tag = "kind", rename_all = "camelCase")]
+#[ts(export, export_to = "../../ui/src/lib/session/generated/")]
+pub enum ReviewActionDto {
+    /// Take one of the readings a mark offers.
+    #[serde(rename_all = "camelCase")]
+    Choose { ambiguity: String, choice: String },
+    /// Beats tapped while auditioning, in take-relative microseconds.
+    #[serde(rename_all = "camelCase")]
+    Tap {
+        beats_micros: Vec<u64>,
+        downbeat: Option<u32>,
+    },
+    /// One of the score's own musical commands, against proposal notes.
+    #[serde(rename_all = "camelCase")]
+    Transform { notes: Vec<u32>, intent: GroupIntentDto },
+    /// Put these notes in this line.
+    #[serde(rename_all = "camelCase")]
+    AssignVoice { notes: Vec<u32>, voice: u8 },
+    /// Write this note with one of its offered spellings.
+    #[serde(rename_all = "camelCase")]
+    Respell { note: u32, pitch: String },
+    /// Write this note through to the next onset in its line, or stop it at
+    /// the key release.
+    #[serde(rename_all = "camelCase")]
+    Tie { note: u32, tied: bool },
+    /// Read this onset cluster as one chord.
+    #[serde(rename_all = "camelCase")]
+    MakeChord { group: u32 },
+    /// Read it as the separately placed notes that were played.
+    #[serde(rename_all = "camelCase")]
+    Split { group: u32 },
+}
+
+impl From<ReviewActionDto> for ReviewAction {
+    fn from(action: ReviewActionDto) -> Self {
+        match action {
+            ReviewActionDto::Choose { ambiguity, choice } => Self::Choose { ambiguity, choice },
+            ReviewActionDto::Tap { beats_micros, downbeat } => Self::Tap {
+                beats_micros,
+                downbeat: downbeat.map(|index| index as usize),
+            },
+            ReviewActionDto::Transform { notes, intent } => Self::Transform {
+                notes: notes.into_iter().map(|note| note as usize).collect(),
+                intent: intent.into(),
+            },
+            ReviewActionDto::AssignVoice { notes, voice } => Self::AssignVoice {
+                notes: notes.into_iter().map(|note| note as usize).collect(),
+                voice,
+            },
+            ReviewActionDto::Respell { note, pitch } => Self::Respell {
+                note: note as usize,
+                pitch,
+            },
+            ReviewActionDto::Tie { note, tied } => Self::Tie {
+                note: note as usize,
+                tied,
+            },
+            ReviewActionDto::MakeChord { group } => Self::MakeChord { group: group as usize },
+            ReviewActionDto::Split { group } => Self::Split { group: group as usize },
         }
     }
 }
