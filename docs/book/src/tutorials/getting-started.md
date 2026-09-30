@@ -1,17 +1,23 @@
 # Getting started
 
-This lesson takes you from a fresh checkout to a rendered score and a played piece. It assumes a
-[Rust](https://rustup.rs) toolchain and [Node](https://nodejs.org) 20 or later.
+This lesson takes you from a fresh checkout to a rendered score and a played piece. It assumes a current stable
+[Rust](https://rustup.rs) toolchain, [Node](https://nodejs.org) 22.13 or later, and
+[pnpm](https://pnpm.io/installation/) 11.20.0, the version pinned in the repository's `package.json`. Native audio
+dependencies are also required; on Linux, install the ALSA development package and `pkg-config`. The desktop editor
+additionally needs the [Tauri system prerequisites](https://v2.tauri.app/start/prerequisites/).
 
 ## Install
 
 ```bash
 git clone https://github.com/jcreinhold/musa.git
 cd musa
+npm install --global pnpm@11.20.0
 make setup
 ```
 
-`make setup` installs everything the repository needs. `make` on its own lists every task.
+`make setup` installs the JavaScript dependencies and Chromium for the screen tests. Rust and native system dependencies
+must already be installed. The CLI commands below also work without the JavaScript setup. `make` on its own lists every
+task.
 
 ## Write a first piece
 

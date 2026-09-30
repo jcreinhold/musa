@@ -115,10 +115,6 @@ importers:
         version: 3.2.7(@types/node@26.2.0)(supports-color@8.1.1)
 
   packages/musa-web:
-    dependencies:
-      musa-engrave:
-        specifier: workspace:*
-        version: link:../musa-engrave
     devDependencies:
       '@playwright/test':
         specifier: ^1.49.0
@@ -126,6 +122,9 @@ importers:
       '@types/node':
         specifier: ^26.1.2
         version: 26.2.0
+      musa-engrave:
+        specifier: workspace:*
+        version: link:../musa-engrave
       typescript:
         specifier: ^5.7.0
         version: 5.9.3

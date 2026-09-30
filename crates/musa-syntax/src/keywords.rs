@@ -430,18 +430,16 @@ static IMPROVISE: KeywordDoc = doc!(
 static STUDIO: KeywordDoc = doc!(
     "studio",
     "what plays the score",
-    "The studio block is everything after the music: the patches that make sound, the assignments of parts to \
-     them, the buses, sends, routes, and modulations that wire the mix. The score says what the notes are; the \
-     studio says what they sound like.\n\n\
-     ```musa\nstudio { patch pad { … } assign violin -> pad; }\n```"
+    "The studio block assigns parts to declared instruments and wires buses, sends, routes, and modulations. \
+     The score says what the notes are; instruments and the studio say what they sound like.\n\n\
+     ```musa\nstudio { assign violin -> glass_pad; route violin -> master; }\n```"
 );
 static PATCH: KeywordDoc = doc!(
     "patch",
-    "a signal graph with a name",
-    "A patch is a named signal chain: oscillators, filters, envelopes, and effects wired with `|>` into one \
-     instrument. A part is realized by the patch an `assign` points at it — and a patch nothing assigns is \
-     wired to silence.\n\n\
-     ```musa\npatch glass_pad { oscillator(sine) |> lowpass(cutoff: 1400 Hz) |> output; }\n```"
+    "the previous spelling of an instrument graph",
+    "`patch` is a previous-edition spelling accepted during the migration window with an exact source fix. \
+     Write an `instrument` with a public signature and an `implementation graph` body instead.\n\n\
+     ```musa\ninstrument glass_pad conforms note_instrument {\n    implementation graph {\n        oscillator(sine) |> lowpass(cutoff: 1400 Hz) |> output;\n    }\n}\n```"
 );
 static BUS: KeywordDoc = doc!(
     "bus",
@@ -452,9 +450,9 @@ static BUS: KeywordDoc = doc!(
 );
 static ASSIGN: KeywordDoc = doc!(
     "assign",
-    "which patch realizes a part",
-    "An assign statement points a part at a patch: `assign violin -> glass_pad;` says the violin's notes are \
-     played by that graph. A part without one keeps the default instrument.\n\n\
+    "which instrument realizes a part",
+    "An assign statement selects a declared instrument: `assign violin -> glass_pad;` says the violin's notes \
+     are played by that instrument. A part without one keeps the default instrument.\n\n\
      ```musa\nassign reeds -> reed;\n```"
 );
 static ROUTE: KeywordDoc = doc!(
@@ -475,9 +473,9 @@ static SEND: KeywordDoc = doc!(
 static MODULATE: KeywordDoc = doc!(
     "modulate",
     "let a signal drive a parameter",
-    "A modulate statement wires a control signal into a patch parameter: `modulate lfo -> \
-     glass_pad.lowpass.cutoff;` lets the LFO move the filter. The path names patch, node, and parameter with \
-     dots.\n\n\
+    "A modulate statement wires a control signal into an instrument implementation's private parameter: \
+     `modulate lfo -> glass_pad.lowpass.cutoff;` lets the LFO move the filter. The path names instrument, \
+     node, and parameter with dots.\n\n\
      ```musa\nmodulate lfo -> pad.lowpass.cutoff;\n```"
 );
 static MASTER: KeywordDoc = doc!(
@@ -496,9 +494,9 @@ static AT: KeywordDoc = doc!(
 );
 static OUTPUT: KeywordDoc = doc!(
     "output",
-    "where a patch's signal leaves",
-    "`output` ends a patch's signal chain: whatever reaches it is the sound the patch makes. A chain without \
-     one builds to nothing, and the compiler says so.\n\n\
+    "where an instrument graph's signal leaves",
+    "`output` ends an instrument implementation's signal chain: whatever reaches it is the sound the instrument \
+     makes. A chain without one builds to nothing, and the compiler says so.\n\n\
      ```musa\noscillator(sine) |> gain(-15 dB) |> output;\n```"
 );
 static PITCH_KW: KeywordDoc = doc!(
@@ -507,7 +505,7 @@ static PITCH_KW: KeywordDoc = doc!(
     "`pitch` names a module of the standard library — `import std::pitch;` brings its written-pitch and interval \
      operations into scope. It is no longer the type: a type is spelled with a capital, so a motif parameter is \
      written `root: Pitch`.\n\n\
-     ```musa\nimport std::pitch;\n\nmotif call(root: Pitch = c5) { root/4 }\n```"
+     ```musa\nimport std::pitch;\n\nmotif call(root: Pitch) { root/4 }\n```"
 );
 static LET: KeywordDoc = doc!(
     "let",

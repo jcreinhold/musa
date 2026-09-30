@@ -5,10 +5,7 @@
  * validates never pays for it.
  */
 
-import __wbg_init, {
-  typeset as wasmTypeset,
-  validate as wasmValidate,
-} from "../wasm/musa_wasm.js";
+import __wbg_init, { typeset as wasmTypeset, validate as wasmValidate } from "../wasm/musa_wasm.js";
 
 import { musaWasmUrl } from "./assets";
 import type { MusaDiagnostic } from "./types";
@@ -33,15 +30,13 @@ async function start(): Promise<unknown> {
       // Node cannot fetch a file: URL; read the bytes instead.
       const { readFile } = await import("node:fs/promises");
       const { fileURLToPath } = await import("node:url");
-      return await __wbg_init(await readFile(fileURLToPath(url)));
+      return await __wbg_init({ module_or_path: await readFile(fileURLToPath(url)) });
     }
-    return await __wbg_init(url);
+    return await __wbg_init({ module_or_path: url });
   } catch (error) {
     // A failed start must not be cached forever: the next call retries.
     starting = undefined;
-    throw new Error(
-      `@musa/web: could not load the musa wasm from ${url}: ${error}`,
-    );
+    throw new Error(`@musa/web: could not load the musa wasm from ${url}: ${error}`);
   }
 }
 
@@ -52,9 +47,7 @@ export async function compileSnippet(source: string): Promise<TypesetResult> {
 }
 
 /** Compile one snippet for its diagnostics only. */
-export async function validateSnippet(
-  source: string,
-): Promise<MusaDiagnostic[]> {
+export async function validateSnippet(source: string): Promise<MusaDiagnostic[]> {
   await module_();
   return wasmValidate(source) as MusaDiagnostic[];
 }

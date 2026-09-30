@@ -2,9 +2,10 @@
 
 This file defines the trusted computing base for Musa.
 
-If a bug exists in trusted code, the kernel may accept an ill-typed program. If a bug exists in untrusted code, the
-kernel rejects the artifact. That is the whole claim, and everything below exists to make it enforceable rather than
-aspirational.
+When the independent re-checker runs, a bug in trusted code may let it accept an ill-typed program; an ill-typed
+artifact produced by untrusted elaboration must be rejected. The re-checker runs in debug builds and the test corpus,
+not on every release compilation. This is an implementation audit boundary, and everything below states how it is
+enforced and where it runs.
 
 Musa's boundary is *inside* one crate rather than across a dependency graph. `musa-calculus` is a leaf, its semantic
 domain must stay private (roadmap §15.12), and an elaborator in a second crate would need `Value` in the facade — so the

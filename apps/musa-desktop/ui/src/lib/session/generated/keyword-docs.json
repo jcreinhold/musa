@@ -187,17 +187,17 @@
   {
     "spelling": "studio",
     "summary": "what plays the score",
-    "doc": "The studio block is everything after the music: the patches that make sound, the assignments of parts to them, the buses, sends, routes, and modulations that wire the mix. The score says what the notes are; the studio says what they sound like.\n\n```musa\nstudio { patch pad { … } assign violin -> pad; }\n```"
+    "doc": "The studio block assigns parts to declared instruments and wires buses, sends, routes, and modulations. The score says what the notes are; instruments and the studio say what they sound like.\n\n```musa\nstudio { assign violin -> glass_pad; route violin -> master; }\n```"
   },
   {
     "spelling": "patch",
-    "summary": "a signal graph with a name",
-    "doc": "A patch is a named signal chain: oscillators, filters, envelopes, and effects wired with `|>` into one instrument. A part is realized by the patch an `assign` points at it — and a patch nothing assigns is wired to silence.\n\n```musa\npatch glass_pad { oscillator(sine) |> lowpass(cutoff: 1400 Hz) |> output; }\n```"
+    "summary": "the previous spelling of an instrument graph",
+    "doc": "`patch` is a previous-edition spelling accepted during the migration window with an exact source fix. Write an `instrument` with a public signature and an `implementation graph` body instead.\n\n```musa\ninstrument glass_pad conforms note_instrument {\n    implementation graph {\n        oscillator(sine) |> lowpass(cutoff: 1400 Hz) |> output;\n    }\n}\n```"
   },
   {
     "spelling": "modulate",
     "summary": "let a signal drive a parameter",
-    "doc": "A modulate statement wires a control signal into a patch parameter: `modulate lfo -> glass_pad.lowpass.cutoff;` lets the LFO move the filter. The path names patch, node, and parameter with dots.\n\n```musa\nmodulate lfo -> pad.lowpass.cutoff;\n```"
+    "doc": "A modulate statement wires a control signal into an instrument implementation's private parameter: `modulate lfo -> glass_pad.lowpass.cutoff;` lets the LFO move the filter. The path names instrument, node, and parameter with dots.\n\n```musa\nmodulate lfo -> pad.lowpass.cutoff;\n```"
   },
   {
     "spelling": "bus",
@@ -206,8 +206,8 @@
   },
   {
     "spelling": "assign",
-    "summary": "which patch realizes a part",
-    "doc": "An assign statement points a part at a patch: `assign violin -> glass_pad;` says the violin's notes are played by that graph. A part without one keeps the default instrument.\n\n```musa\nassign reeds -> reed;\n```"
+    "summary": "which instrument realizes a part",
+    "doc": "An assign statement selects a declared instrument: `assign violin -> glass_pad;` says the violin's notes are played by that instrument. A part without one keeps the default instrument.\n\n```musa\nassign reeds -> reed;\n```"
   },
   {
     "spelling": "route",
@@ -231,13 +231,13 @@
   },
   {
     "spelling": "output",
-    "summary": "where a patch's signal leaves",
-    "doc": "`output` ends a patch's signal chain: whatever reaches it is the sound the patch makes. A chain without one builds to nothing, and the compiler says so.\n\n```musa\noscillator(sine) |> gain(-15 dB) |> output;\n```"
+    "summary": "where an instrument graph's signal leaves",
+    "doc": "`output` ends an instrument implementation's signal chain: whatever reaches it is the sound the instrument makes. A chain without one builds to nothing, and the compiler says so.\n\n```musa\noscillator(sine) |> gain(-15 dB) |> output;\n```"
   },
   {
     "spelling": "pitch",
     "summary": "the standard library's pitch module",
-    "doc": "`pitch` names a module of the standard library — `import std::pitch;` brings its written-pitch and interval operations into scope. It is no longer the type: a type is spelled with a capital, so a motif parameter is written `root: Pitch`.\n\n```musa\nimport std::pitch;\n\nmotif call(root: Pitch = c5) { root/4 }\n```"
+    "doc": "`pitch` names a module of the standard library — `import std::pitch;` brings its written-pitch and interval operations into scope. It is no longer the type: a type is spelled with a capital, so a motif parameter is written `root: Pitch`.\n\n```musa\nimport std::pitch;\n\nmotif call(root: Pitch) { root/4 }\n```"
   },
   {
     "spelling": "stretch",

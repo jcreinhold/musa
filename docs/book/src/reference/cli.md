@@ -99,7 +99,8 @@ the reason it is on the list. `-f` (or `--force`) formats it anyway, the way `gi
 override exists, and using it is a thing you did on purpose.
 - `--seed` selects a performance reading when a piece carries more than one. It applies to `check`, `render`, and
   `events` — the three commands that compile.
-- Exit codes follow the convention: success is silent, failure prints diagnostics to stderr.
+- Exit code zero means success; a failed request returns a nonzero code and reports diagnostics to stderr. Successful
+  commands may print results: `check` reports `ok`, analysis prints findings, and text exports can go to stdout.
 
 ## Make targets
 
@@ -110,4 +111,4 @@ The repository Makefile names the common invocations:
 | `make check-file FILE=…` | `musa check` |
 | `make render FILE=… TO=… OUT=…` | `musa render --to … -o …` |
 | `make play FILE=…` | `musa play` |
-| `make verify` | Every gate CI runs: format, clippy, tests, types, licences |
+| `make verify` | Native/workbench gates: format, clippy, UI lint, Rust and UI tests, types, docs, dependency audit |

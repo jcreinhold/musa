@@ -23,10 +23,8 @@
     "build:cdn": "vite build --config vite.cdn.config.ts && node scripts/prepare-cdn.mjs",
     "check": "tsc --noEmit",
     "test": "vitest run && playwright test",
-    "prepublishOnly": "bash ../../scripts/build-wasm.sh && pnpm run test && pnpm run build && pnpm run build:cdn"
-  },
-  "dependencies": {
-    "musa-engrave": "workspace:*"
+    "test:package": "pnpm run build && pnpm run build:cdn && node scripts/check-package.mjs",
+    "prepublishOnly": "bash ../../scripts/build-wasm.sh && pnpm run test && pnpm run test:package"
   },
   "peerDependencies": {
     "verovio": "^6.2.0"
@@ -34,6 +32,7 @@
   "devDependencies": {
     "@playwright/test": "^1.49.0",
     "@types/node": "^26.1.2",
+    "musa-engrave": "workspace:*",
     "typescript": "^5.7.0",
     "verovio": "6.2.0",
     "vite": "^6.0.0",

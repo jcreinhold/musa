@@ -18,7 +18,7 @@ midir = "0.11"
 musa-dsp = { workspace = true }
 musa-score = { workspace = true }
 num-rational = "0.4"
-rtrb = "0.3"
+rtrb = "0.3.5"
 thiserror = "2"
 tracing = "0.1"
 
@@ -29,4 +29,4 @@ coremidi = "0.9"
 
 [dev-dependencies]
 musa-compiler = { workspace = true }
-rtrb = "0.3"
+rtrb = "0.3.5"

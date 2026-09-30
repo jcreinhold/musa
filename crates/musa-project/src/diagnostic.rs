@@ -303,15 +303,19 @@ pub fn explain(code: &str) -> Option<&'static str> {
         }
         musa_score::Code::UnknownName => {
             "A name used here is not declared anywhere the piece can see it.\n\n\
-             Names are flat, so this means the name is spelled differently where it \
-             was declared, or lives in a library this piece does not `use`. A motif \
-             declared *after* the one that calls it is a different problem, reported \
-             as `misplaced`.\n\n\
+             Check the spelling, lexical scope, and imports. `import` brings a library \
+             into scope; `use` places music in a voice. A motif may name a later \
+             declaration, but cyclic definitions are rejected.\n\n\
              Broken:\n    \
-             motif sigh(root: pitch) { root/8 root/8 }\n    \
-             voice right { use sigh(c5); use sihg(e5); }\n\n\
+             piece \"example\" {\n        \
+                 motif sigh(root: Pitch) { root/8 root/8 }\n        \
+                 score { part piano { voice right { use sigh(c5); use sihg(e5); } } }\n    \
+             }\n\n\
              Fixed:\n    \
-             voice right { use sigh(c5); use sigh(e5); }"
+             piece \"example\" {\n        \
+                 motif sigh(root: Pitch) { root/8 root/8 }\n        \
+                 score { part piano { voice right { use sigh(c5); use sigh(e5); } } }\n    \
+             }"
         }
         musa_score::Code::DuplicateName => {
             "Two declarations share one name, and musa will not pick between them.\n\n\
@@ -330,14 +334,14 @@ pub fn explain(code: &str) -> Option<&'static str> {
         }
         musa_score::Code::NotAValue => {
             "Something in a value position will not read as one.\n\n\
-             The four value shapes are a pitch (`c4`, `bb3`, `g#5`), a duration \
-             (`1/4`, `3/8`), a meter (`4/4`), and a key (`d major`). A number that \
-             takes a unit must carry it — `250 hz`, not `250` — because a unit is part \
-             of the syntax and musa never guesses one.\n\n\
+             The context determines which value is needed: a pitch, duration, \
+             processor parameter, or another typed value. Audio parameters that \
+             require units must carry them — `250 Hz`, not `250` — because Musa \
+             never guesses a unit.\n\n\
              Broken:\n    \
-             cutoff = 250;\n\n\
+             lowpass(cutoff: 250, resonance: 0.7)\n\n\
              Fixed:\n    \
-             cutoff = 250 hz;"
+             lowpass(cutoff: 250 Hz, resonance: 0.7)"
         }
         musa_score::Code::OutOfRange => {
             "A number is outside the range its parameter allows. The label names the \
@@ -346,10 +350,9 @@ pub fn explain(code: &str) -> Option<&'static str> {
         }
         musa_score::Code::Misplaced => {
             "The statement is valid musa but cannot be here.\n\n\
-             Where a statement may appear is part of what it means: `clef` belongs to a \
-             part because a clef is a property of a staff, and `tempo` belongs to a \
-             piece because a tempo is a property of the music, not of one voice within \
-             it."
+             Where a statement may appear is part of what it means. The diagnostic \
+             names the context it requires; move the statement there rather than \
+             changing its spelling."
         }
         musa_score::Code::DoesNotAddUp => {
             "The written durations do not sum to what the surrounding structure \
@@ -358,15 +361,16 @@ pub fn explain(code: &str) -> Option<&'static str> {
              musa checks this because the alternative is an engraver silently inventing \
              a barline, and a piece that looks right on your screen and wrong on \
              someone else's.\n\n\
-             Broken, in 4/4 — five quarters in a four-quarter measure:\n    \
-             voice right { c5/4 d5/4 e5/4 f5/4 g5/4 }\n\n\
+             Broken, in 4/4 — five quarters in a counted four-quarter measure:\n    \
+             voice right { | c5/4 d5/4 e5/4 f5/4 g5/4 }\n\n\
              Fixed:\n    \
-             voice right { c5/4 d5/4 e5/4 f5/4 rest/2. }"
+             voice right { | c5/4 d5/4 e5/4 f5/4 | g5/4 rest/2. }"
         }
         musa_score::Code::Import => {
-            "A `use` cannot be followed.\n\n\
-             Paths are relative to the file that writes them, are joined without \
-             consulting the filesystem, and must name a file that declares no `piece`. An \
+            "An `import` cannot be resolved.\n\n\
+             A quoted path is relative to the file that writes it and must name \
+             a library that declares no `piece`. Qualified module names resolve \
+             through the package's module tree. An \
              import loop is an error rather than a resolution order, because the order \
              would be an accident of which file you opened.\n\n\
              Broken:\n    \
@@ -389,13 +393,13 @@ pub fn explain(code: &str) -> Option<&'static str> {
             "An elaboration expression has a different type from the value its context requires. Musa does not insert hidden coercions: written pitch, exact ratios, durations, and natural numbers remain distinct values. The primary label names the expression and the message states both types."
         }
         musa_score::Code::WrongArity => {
-            "A function call does not supply its declared parameters exactly once. Positional arguments fill parameters from left to right; named arguments use the parameter's written name; only a parameter with a default may be omitted."
+            "A function call does not supply its explicit parameters exactly once. Positional arguments fill explicit parameters from left to right; implicit arguments may be inferred. Processor parameter labels are a separate notation form, not named function arguments."
         }
         musa_score::Code::DependencyCycle => {
-            "Elaboration definitions are total and non-recursive, but these definitions depend on each other in a cycle. The diagnostic prints that cycle. Pass the changing value as an argument or use one of Musa's finite structural folds instead of recursion."
+            "These definitions depend on each other in a cycle. The diagnostic prints that cycle. Musa permits checked structural recursion when each recursive call decreases; an arbitrary dependency cycle supplies no such termination argument. Break the cycle or express the computation through a checked recursive function or finite fold."
         }
         musa_score::Code::ResourceLimit => {
-            "The expression is finite and type-correct, but its deterministic work, value size, specialization count, or estimated music output exceeds Musa's compilation budget. The diagnostic names the operation, metric, attempted amount, and limit; no partial value or score is published."
+            "Checking or evaluating the expression exceeded Musa's deterministic resource budget. The diagnostic names the operation, metric, attempted amount, and limit; no partial value or score is published. Exhaustion is not evidence that the expression is ill-typed, and it does not establish that checking would succeed with a larger budget."
         }
         musa_score::Code::NonExhaustiveMatch => {
             "A match must say what happens for every value of its scrutinee type. Cover both option or list constructors, both booleans, or finish literal cases with a binding or `_` fallback."
@@ -786,6 +790,28 @@ pub fn explain(code: &str) -> Option<&'static str> {
 #[cfg(test)]
 mod tests {
     use super::explain;
+
+    #[test]
+    fn unknown_name_explanation_repairs_its_example() {
+        let text = explain("unknown-name").unwrap_or_default();
+        let (_, examples) = text.split_once("Broken:\n").unwrap_or_default();
+        let (broken, fixed) = examples.split_once("\n\nFixed:\n").unwrap_or_default();
+        let broken = crate::ProjectSession::from_text(broken.to_owned(), "broken.musa");
+        assert!(
+            broken
+                .snapshot()
+                .diagnostics()
+                .iter()
+                .any(|diagnostic| diagnostic.code == "unknown-name"),
+            "the example must demonstrate the explained refusal"
+        );
+        let fixed = crate::ProjectSession::from_text(fixed.to_owned(), "fixed.musa");
+        assert!(
+            fixed.snapshot().compiles(),
+            "the documented repair must compile: {:?}",
+            fixed.snapshot().diagnostics()
+        );
+    }
 
     #[test]
     fn every_code_has_an_explanation() {

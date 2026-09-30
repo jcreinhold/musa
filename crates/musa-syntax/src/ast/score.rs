@@ -39,7 +39,7 @@ use super::wrapper;
 use crate::SyntaxKind;
 use crate::language::{SyntaxElement, SyntaxNode, SyntaxToken};
 
-/// `motif sigh(root: pitch = e5) { ... }`
+/// `motif sigh(root: Pitch) { ... }`
 pub struct MotifDecl(SyntaxNode);
 wrapper!(MotifDecl, SyntaxKind::MotifDecl);
 

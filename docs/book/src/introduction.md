@@ -21,8 +21,8 @@ piece "twinkle" {
 }
 ```
 
-The source is the only document. The desktop app is a structured editor for that text, not a second place where music
-lives: anything the interface can do, the language can say, and anything the language says, the interface shows.
+The `.musa` file is the master document. The desktop app edits that text and displays the score and performance derived
+from it. Generated notes retain the source locations and transformations that produced them.
 
 ## How this book is organized
 

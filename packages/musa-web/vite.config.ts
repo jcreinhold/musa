@@ -7,7 +7,9 @@ import dts from "vite-plugin-dts";
  * inlines everything instead.
  */
 export default defineConfig(({ command }) => ({
-  plugins: [dts({ include: ["src"] })],
+  // The private workspace engraver is bundled in JS and declarations;
+  // consumers need one public entry, not workspace-relative type imports.
+  plugins: [dts({ include: ["src"], entryRoot: "src", rollupTypes: true, bundledPackages: ["musa-engrave"] })],
   // Relative asset URLs: a library is served from anywhere, never from the
   // server root. The dev server (Playwright) keeps absolute paths.
   base: command === "build" ? "./" : "/",

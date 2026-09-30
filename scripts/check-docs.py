@@ -39,9 +39,9 @@ import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 DOCS = ROOT / "docs"
-# The teaching pages: the book's guide chapters and the one explanation page
-# that came out of the same handbook. Everything here quotes fixtures.
-TEACHING = [DOCS / "book" / "src" / "guide", DOCS / "book" / "src" / "concepts" / "distinctions.md"]
+# The entry point, the book's guide chapters, and the explanation page that
+# came out of the same handbook. Everything here quotes fixtures.
+TEACHING = [ROOT / "README.md", DOCS / "book" / "src" / "guide", DOCS / "book" / "src" / "concepts" / "distinctions.md"]
 # Link checking also covers the two Markdown files that sit at the repository
 # root and cite `docs/` constantly.
 EXTRA = [ROOT / "README.md", ROOT / "AGENTS.md"]

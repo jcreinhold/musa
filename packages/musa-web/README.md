@@ -7,16 +7,35 @@ language. Source in, engraved SVG out, with every note traceable back to the eve
 import { parse, render } from "@musa/web";
 
 // Validate only — never downloads the engraver.
-const diagnostics = await parse(source);
+const validationDiagnostics = await parse(source);
 
 // Compile and engrave one snippet.
 const { svg, mei, diagnostics } = await render(source);
 ```
 
+## Build from source
+
+The package is currently consumed from this repository; `@musa/web` is not published on npm. From the repository root,
+with its Node and pnpm prerequisites installed:
+
+```sh
+pnpm install --frozen-lockfile
+bash scripts/build-wasm.sh
+pnpm --filter @musa/web test:package
+pnpm --dir packages/musa-web pack
+```
+
+The [wasm build script](../../scripts/build-wasm.sh) lists its Rust target, matching `wasm-bindgen` CLI, and optional
+optimizer. Install the resulting package tarball in your application; the examples below assume that local installation.
+The package also requires its `verovio` peer dependency.
+
+`test:package` builds the module and static bundles, then checks exported files, TypeScript declarations, validation,
+and engraving from an isolated consumer with only the public peer installed.
+
 ## The two functions
 
-- **`parse(source)`** — validate a snippet, return its diagnostics. The mermaid.parse analog: it initializes only the
-  (small) musa compiler wasm, never the Verovio engraver (~25 MB).
+- **`parse(source)`** — validate a snippet, return its diagnostics. It initializes only the musa compiler wasm, never
+  the Verovio engraver.
 - **`render(source, options?)`** — compile and engrave, returning `{ svg, mei, diagnostics }`. The mermaid.render
   analog. Snippets engrave as one continuous system trimmed to the music.
 
@@ -27,7 +46,7 @@ reserved for the environment failing (the wasm cannot be fetched), and the error
 
 Two wasm modules do the work, and each is loaded on first use, coalesced so concurrent calls share one start:
 
-- the musa compiler wasm (~300 KB brotli), loaded by the first `parse` or `render`;
+- the musa compiler wasm, loaded by the first `parse` or `render`;
 - the Verovio engraver, loaded by the first `render`, in a Web Worker where workers exist and in-process where they do
   not (Node, the build-time recipe).
 
@@ -78,10 +97,11 @@ static-site build-time recipe use.
 
 ## Three ways to consume it
 
-**1. npm, with a bundler** — `npm i @musa/web`, then `import { typeset } from "@musa/web"` as above. The musa wasm
-resolves beside the package module; bundlers rewrite it, or set `configure({ wasmUrl })`.
+**1. Local package, with a bundler** — install the built tarball, then use `parse` or `render` as above. To scan and
+engrave snippets in the document, import `typeset` and call `await typeset()`. The musa wasm resolves beside the package
+module; bundlers rewrite it, or set `configure({ wasmUrl })`.
 
-**2. CDN, one script tag** — serve `dist-cdn/` (also published as `@musa/web/cdn`):
+**2. Static hosting, one script tag** — serve the built `dist-cdn/` directory:
 
 ```html
 <script src="musa-web.js" data-musa-autostart></script>
@@ -94,13 +114,13 @@ external asset is the compiler wasm, which the script resolves from its own dire
 
 ```
 dist-cdn/
-  musa-web.js         ← the one <script src>        (8.7 MB, 2.4 MB gzip)
-  musa_wasm_bg.wasm   ← the compiler                (0.93 MB, 0.29 MB brotli)
+  musa-web.js         ← the one <script src>
+  musa_wasm_bg.wasm   ← the compiler
 ```
 
 **3. Build time, no client wasm** — for static sites: `examples/build-time/typeset.mjs` renders every `text/musa` block
 in a glob of HTML to baked-in SVG using Node (the in-process engraver path), so the deployed page needs no JavaScript at
-all. `npm i @musa/web`, point the script at your pages.
+all. Install the built package and point the script at your pages.
 
 ## The examples
 
